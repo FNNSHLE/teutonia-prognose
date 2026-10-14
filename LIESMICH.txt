@@ -1,0 +1,36 @@
+TEUTONIA PROGNOSE
+Spielplan, Tabelle und Siegchancen für die Bezirksoberliga Frauen Gruppe 2
+
+STARTEN
+Mac:      Doppelklick auf "Start (Mac).command"
+Windows:  Doppelklick auf "Start (Windows).bat"
+
+Beim Start holt die App den aktuellen Stand von handball.net (dauert ein paar Sekunden)
+und öffnet sich dann im Browser. Ohne Internet zeigt sie den zuletzt geholten Stand.
+Sind die Daten älter als eine Woche, weist die App oben darauf hin.
+
+ERSTER START AUF DEM MAC
+macOS blockiert Dateien aus dem Internet beim ersten Mal ("nicht verifizierter Entwickler").
+Dann: Rechtsklick auf "Start (Mac).command", Öffnen wählen und bestätigen.
+Bei neueren macOS-Versionen: Systemeinstellungen, Datenschutz & Sicherheit, ganz unten "Trotzdem öffnen".
+Das ist nur einmal nötig.
+
+WAS DIE APP ZEIGT
+Heute:         nächstes Spiel mit Siegchance, Stand, Form, Auffälligkeiten
+Matchplan:     datenbelegte Tipps für das nächste Spiel: wer unverzichtbar ist, wen man
+               anfragen sollte, 7-Meter-Reihenfolge, Halbzeitprofile, Zeitstrafen-Risiko,
+               Spielphasen und die wichtigsten Gegnerinnen. Dazu der Aufstellungs-Optimierer:
+               Absagen ausschalten, Torhüterinnen mit "fest" markieren, die App rechnet
+               die beste Besetzung und die Siegchance. Über das Drucker-Symbol als Blatt
+               für die Kabine druckbar.
+Spiele:        Spielplan, jedes Spiel antippen für Verlauf und Aufstellungen
+Tabelle:       Tabelle, Verlauf, Saisonprognose und "Was wäre wenn"
+Mehr:          Spiel-Labor, Spielerinnen, Teams, So rechnet die App
+
+Oben links lässt sich jedes Team der Liga in den Fokus nehmen.
+Hell oder dunkel folgt automatisch der Einstellung des Geräts.
+
+ANDERES TEAM ALS STANDARD
+In "daten/team_id.txt" steht die Team-Nummer von handball.net (86088 = SC TEUTONIA 10).
+Die Nummer steht in der Adresse der Teamseite, z. B. handball.net/team/86088.
+Die Liga wird automatisch erkannt.
