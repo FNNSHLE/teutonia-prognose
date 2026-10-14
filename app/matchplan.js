@@ -80,7 +80,7 @@ function erzeugeMatchplan(ctx) {
     stamm.forEach(s => {
       const w = S(s);
       if (w <= -10 && s.anz >= 2) empf.push({ id: 'AU1', kat: 'Aufstellung', p: -w, eff: -w, titel: `${name(s)} sicher einplanen`,
-        text: `Fehlt sie, sinkt eure Siegchance von ${pr(pF)} auf ${pr(pF + w / 100)} %. Sie wirft ${dez1(s.toreProSpiel)} Tore pro Spiel.`, n, person: s });
+        text: `Ist sie nicht dabei, sinkt eure Siegchance von ${pr(pF)} auf ${pr(pF + w / 100)} %. Sie wirft ${dez1(s.toreProSpiel)} Tore pro Spiel.`, n, person: s });
     });
     // AU2 Seltene Spielerin mit Mehrwert
     tF.liste.filter(s => !ueblichDabei(s) && s.tore >= 1).forEach(s => {
@@ -92,7 +92,7 @@ function erzeugeMatchplan(ctx) {
     const nachToren = tF.liste.slice().sort((a, b) => b.tore - a.tore);
     const top2 = nachToren.slice(0, 2), anteil2 = top2.reduce((a, s) => a + s.anteil, 0);
     if ((anteil2 >= 0.4 || tF.effektiv < 7) && empf.some(e => e.id === 'AU1')) {
-      const weitere = tF.liste.filter(s => !top2.includes(s) && (ueblichDabei(s) || s.tore > 0)).sort((a, b) => b.toreProSpiel - a.toreProSpiel).slice(0, 2);
+      const weitere = tF.liste.filter(s => !top2.includes(s) && s.anz >= 2 && ueblichDabei(s)).sort((a, b) => b.toreProSpiel - a.toreProSpiel).slice(0, 2);
       if (weitere.length === 2) empf.push({ id: 'AU5', kat: 'Aufstellung', p: Math.min(...empf.filter(e => e.id === 'AU1').map(e => e.p)) - 0.1, eff: null, titel: `Entlastung durch ${name(weitere[0])} und ${name(weitere[1])}`,
         text: `${name(top2[0])} und ${name(top2[1])} werfen ${pr(anteil2)} % eurer Tore. Danach kommen ${name(weitere[0])} mit ${dez1(weitere[0].toreProSpiel)} und ${name(weitere[1])} mit ${dez1(weitere[1].toreProSpiel)} Toren pro Spiel.`, n });
     }
@@ -118,8 +118,8 @@ function erzeugeMatchplan(ctx) {
     // DI1 Zeitstrafen-Risiko einer wichtigen Spielerin
     stamm.filter(s => s.anz >= 2 && s.zwei / s.anz >= 0.5).forEach(s => {
       const w = S(s);
-      if (w <= -5) empf.push({ id: 'DI1', kat: 'Disziplin', p: s.zwei / s.anz * -w, eff: null, titel: `${name(s)}: Zeitstrafen-Risiko`,
-        text: `Sie hat ${s.zwei} Zeitstrafe${s.zwei > 1 ? 'n' : ''} in ${s.anz} Spielen. Ohne sie sinkt eure Siegchance um ${Math.round(-w)} Punkte.`, n: s.anz });
+      if (w <= -5) empf.push({ id: 'DI1', kat: 'Disziplin', p: s.zwei / s.anz * -w, eff: null, titel: `Zeitstrafen bei ${name(s)}: ${s.zwei} in ${s.anz} Spielen`,
+        text: `Sie hat ${s.zwei} Zeitstrafe${s.zwei > 1 ? 'n' : ''} in ${s.anz} Spielen. Ohne sie sinkt eure Siegchance um ${Math.round(-w)} Prozentpunkte.`, n: s.anz });
     });
   }
   // DI2 Zeitstrafen des Teams
@@ -150,7 +150,7 @@ function erzeugeMatchplan(ctx) {
       if (s.smVers) tags.push(`7m ${s.sm}/${s.smVers}`);
       if (h1 + h2 >= 4 && (h2 >= 2 * h1 || h1 >= 2 * h2)) tags.push(`${h2 > h1 ? h2 : h1} von ${h1 + h2} Toren in der ${h2 > h1 ? '2.' : '1.'} HZ`);
       if (s.zwei) tags.push(`${s.zwei}× 2'`);
-      gegnerinnen.push({ s, w, tags, text: `Fehlt sie, steigt eure Siegchance um ${Math.round(w)} Punkte.` });
+      gegnerinnen.push({ s, w, tags, text: `Mit ihr hat ${kurzname(gegner)} ${Math.round(w)} Prozentpunkte mehr Siegchance gegen euch.` });
     });
     // GE2 Siebenmeterschützin
     const sm = tG.liste.filter(s => s.smVers >= 3 && s.sm / s.smVers >= 0.75).sort((a, b) => b.sm - a.sm)[0];

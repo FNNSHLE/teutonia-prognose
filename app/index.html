@@ -7,17 +7,26 @@
 <meta name="theme-color" content="#0B0C0E" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Teutonia">
+<meta name="apple-mobile-web-app-title" content="Anwurf">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="alternate icon" type="image/png" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
-<title>Teutonia Prognose</title>
+<title>Anwurf</title>
+<meta name="description" content="Siegchance, Matchplan und Spielplan für das nächste Handballspiel. Privates Fan-Projekt, Daten von handball.net.">
+<meta property="og:title" content="Anwurf · Handball-Prognose">
+<meta property="og:description" content="Wie stehen die Chancen im nächsten Spiel? Siegchance, Matchplan und Tabelle.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fnnshle.github.io/teutonia-prognose/app/index.html">
+<meta property="og:image" content="https://fnnshle.github.io/teutonia-prognose/app/bilder/og-1200x630.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <style>
 /* ================= Tokens (Designkonzept 2.1 bis 2.6) ================= */
 :root {
   --bg-0: #F4F4F6; --bg-1: #FFFFFF; --bg-2: #EEEFF2; --bg-3: #E3E4E8;
   --tafel: #0E0F12; --scrim: rgba(11, 12, 14, .40);
-  --text-1: #0B0C0E; --text-2: #5E6068; --text-3: #8B8E96; --text-on-accent: #FFFFFF;
+  --text-1: #0B0C0E; --text-2: #5E6068; --text-3: #6B6E76; --text-on-accent: #FFFFFF;
   --line-1: #E6E7EB; --line-2: #D3D4DA; --line-ui: #8E9099;
   --accent: #3548E8; --accent-tint: #EBEDFD;
   --sieg: #16A34A; --sieg-text: #0B7A3E; --sieg-tint: #E6F4EC;
@@ -75,7 +84,7 @@ svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
 .ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .ico.k { width: 16px; height: 16px; stroke-width: 1.5; }
 
-.micro { font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.micro { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
 .cap { font-size: 12px; line-height: 16px; }
 .meta { font-size: 13px; line-height: 18px; color: var(--text-2); }
 .t2 { color: var(--text-2); } .t3 { color: var(--text-3); }
@@ -146,7 +155,7 @@ svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
 
 /* Hero-Tafel: in beiden Modi dunkel */
 .tafel {
-  --text-1: #F2F3F5; --text-2: #A2A5AD; --text-3: #6F727A; --sieg: #32D16C; --sieg-text: #32D16C; --remis: #6F727A;
+  --text-1: #F2F3F5; --text-2: #A2A5AD; --text-3: #8B8E96; --sieg: #32D16C; --sieg-text: #32D16C; --remis: #6F727A;
   --niederlage: #FF6B6F; --niederlage-text: #FF6B6F; --accent: #8593FF; --text-on-accent: #0B0C0E; --line-1: #2A2B30;
   --neutral-heim: #D9DBE0; --neutral-gast: #5A5D65;
   color-scheme: dark; background: var(--tafel); color: var(--text-1); border-radius: var(--r-xl); padding: 20px;
@@ -220,12 +229,12 @@ svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
 .chip { flex: none; height: 32px; padding: 0 12px; border-radius: var(--r-full); border: 0; background: var(--bg-2); color: var(--text-1); font-size: 13px; font-weight: 500; scroll-snap-align: start; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .chip.an { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
 .chip:active { background: var(--bg-3); }
-.seg { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; height: 36px; padding: 2px; background: var(--bg-2); border-radius: var(--r-m); margin-bottom: var(--gap); }
+.seg { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; height: 40px; padding: 2px; background: var(--bg-2); border-radius: var(--r-m); margin-bottom: var(--gap); }
 .seg button { position: relative; z-index: 1; border: 0; background: none; font-size: 13px; font-weight: 600; color: var(--text-2); border-radius: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; }
 .seg button.an { color: var(--text-1); background: var(--bg-1); box-shadow: var(--shadow-thumb); }
 @media (prefers-color-scheme: dark) { .seg button.an { background: var(--bg-3); } }
 @media (min-width: 900px) { .seg { height: 32px; max-width: 420px; } }
-.mini-seg { display: inline-grid; grid-template-columns: repeat(3, 36px); height: 28px; padding: 2px; background: var(--bg-2); border-radius: var(--r-s); flex: none; }
+.mini-seg { display: inline-grid; grid-template-columns: repeat(3, 44px); height: 32px; padding: 2px; background: var(--bg-2); border-radius: var(--r-s); flex: none; }
 .mini-seg button { border: 0; background: none; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); }
 .mini-seg button.an { background: var(--text-1); color: var(--bg-1); }
 
@@ -314,6 +323,7 @@ svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
 .schalter:checked::before { transform: translateX(16px); }
 .nur-mobil { display: inline; }
 @media (max-width: 599px) { .sz .wer b .etikett { display: none; } }
+.sheet .griff { display: none !important; }
 @media (min-width: 600px) { .nur-mobil { display: none; } }
 .listenkopf { display: flex; justify-content: space-between; align-items: center; padding: 0 var(--pad); min-height: 36px; }
 
@@ -399,6 +409,46 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .fliess p:last-child { margin-bottom: 0; }
 .datenfuss { font-size: 12px; line-height: 16px; color: var(--text-3); margin-top: 24px; }
 
+/* ================= Marke Anwurf ================= */
+.wortmarke { display: inline-block; font: 700 28px/1 var(--font-display); letter-spacing: -.035em; color: var(--text-1); }
+.wortmarke .ws { display: flex; gap: 2.5%; height: .125em; margin-top: .22em; margin-right: .035em; }
+.wortmarke .ws i { border-radius: 999px; }
+.wortmarke .ws i:nth-child(1) { flex: 0 0 41.25%; background: var(--sieg); }
+.wortmarke .ws i:nth-child(2) { flex: 0 0 12.5%; background: var(--remis); }
+.wortmarke .ws i:nth-child(3) { flex: 0 0 41.25%; background: var(--niederlage); }
+.seitenleiste .marke { padding: 10px 10px 14px; }
+.seitenleiste .marke .wortmarke { font-size: 24px; }
+.absender { font-size: 12px; line-height: 16px; color: var(--text-3); margin-top: 8px; }
+.tafel .ball { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #F2F3F5; left: 50%; margin-left: -7px; top: -22px; transition: opacity 200ms var(--ease-out) 600ms; }
+.tafel .streifen-wrap { position: relative; }
+.tafel .streifen-wrap.anwurf i { transition: flex-grow 600ms var(--ease-out); }
+.tafel .streifen-wrap.fertig .ball { opacity: 0; }
+.moment { display: flex; align-items: center; gap: 10px; font-weight: 600; margin: 0 0 var(--gap); }
+.intro { position: relative; display: grid; gap: 12px; background: var(--bg-1); border: 1px solid var(--line-1); border-radius: var(--r-l); padding: 20px; margin-bottom: var(--gap); overflow: hidden; }
+.intro .bild { margin: -20px -20px 0; height: 132px; background: var(--tafel) center/cover no-repeat; }
+.intro p { margin: 0; color: var(--text-2); }
+.intro .aktionen { display: flex; gap: 8px; flex-wrap: wrap; }
+.wichtigstes { background: var(--bg-1); border: 1px solid var(--line-1); border-radius: var(--r-l); padding: var(--pad); margin-bottom: var(--gap); }
+.wichtigstes .zeile { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--line-1); }
+.wichtigstes .zeile:first-of-type { border-top: 0; padding-top: 0; }
+.wichtigstes .zeile .micro { padding-top: 3px; }
+.siebenmeter { display: grid; gap: 0; }
+.siebenmeter .platz7 { display: grid; grid-template-columns: 36px minmax(0,1fr) auto; gap: 12px; align-items: center; min-height: 52px; border-top: 1px solid var(--line-1); }
+.siebenmeter .platz7:first-child { border-top: 0; }
+.siebenmeter .platz7 .nr { font: 700 22px/1 var(--font-display); color: var(--text-3); }
+.pin { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--text-3); border-radius: var(--r-m); flex: none; margin: -10px 0; }
+.pin.an { color: var(--accent); }
+.pin .ico { width: 20px; height: 20px; }
+.sz.label { cursor: pointer; }
+.sz .wer .cap.zwei { white-space: normal; }
+.scroll-hinweis { position: relative; }
+.scroll-hinweis::after { content: ""; position: absolute; top: 0; right: calc(-1 * var(--pad)); bottom: 0; width: 24px; background: linear-gradient(to left, var(--bg-1), transparent); pointer-events: none; }
+.route { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.tafel .route { color: var(--accent); }
+.legende-sun { display: flex; gap: 12px; font-size: 12px; color: var(--text-2); margin-top: 10px; }
+.legende-sun span { display: inline-flex; gap: 6px; align-items: center; }
+.kabinenblatt { display: none; }
+
 /* Bewegung */
 .wachsen rect.b { transform-box: fill-box; transform-origin: center bottom; animation: wachse var(--t-draw) var(--ease-out) both; }
 @keyframes wachse { from { transform: scaleY(0); } }
@@ -414,6 +464,15 @@ dialog.sheet::backdrop { background: var(--scrim); }
   .app { display: block; }
   .inhalt { padding: 0; max-width: none; }
   .nur-druck { display: block; }
+  body.druck-kabine .inhalt > *:not(.kabinenblatt) { display: none !important; }
+  body.druck-kabine .kabinenblatt { display: block !important; }
+  .kabinenblatt h1 { font-size: 20pt; margin: 0 0 2mm; }
+  .kabinenblatt h2 { font-size: 11pt; margin: 5mm 0 2mm; text-transform: uppercase; letter-spacing: .06em; }
+  .kabinenblatt table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+  .kabinenblatt td, .kabinenblatt th { border-bottom: 1px solid #ccc; padding: 1.4mm 1mm; text-align: left; }
+  .kabinenblatt .gross { font-size: 14pt; font-weight: 700; }
+  .kabinenblatt .spalten { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .kabinenblatt .fuss { margin-top: 6mm; font-size: 8pt; color: #555; }
   .modul, .karte, .kachel { border: 1px solid #bbb; break-inside: avoid; padding: 8px 10px; margin-bottom: 6px; }
   .karten { gap: 6px; } .karten.zwei { grid-template-columns: 1fr 1fr; }
   .h1 { font-size: 18pt; line-height: 1.1; }
@@ -434,12 +493,12 @@ dialog.sheet::backdrop { background: var(--scrim); }
 </div>
 <dialog class="sheet" id="sheet"></dialog>
 
-<script src="../daten/daten.js?t=1791975225"></script>
-<script src="../daten/spielberichte.js?t=1791975225"></script>
-<script src="modell.js?v=11"></script>
-<script src="spielerinnen.js?v=11"></script>
-<script src="kennzahlen.js?v=11"></script>
-<script src="matchplan.js?v=11"></script>
-<script src="app.js?v=11"></script>
+<script src="../daten/daten.js?t=1791974897"></script>
+<script src="../daten/spielberichte.js?t=1791974897"></script>
+<script src="modell.js?v=20"></script>
+<script src="spielerinnen.js?v=20"></script>
+<script src="kennzahlen.js?v=20"></script>
+<script src="matchplan.js?v=20"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

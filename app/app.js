@@ -1,5 +1,7 @@
 (function () {
   'use strict';
+  const APP = 'Anwurf';
+  const ABSENDER = 'Anwurf ist ein privates Fan-Projekt, kein Angebot von SC Teutonia 10 oder handball.net. Daten: handball.net.';
   const $ = s => document.querySelector(s);
   const $$ = s => document.querySelectorAll(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -7,6 +9,8 @@
     get(k, d) { try { const v = localStorage.getItem('hbprog.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('hbprog.' + k, JSON.stringify(v)); } catch (e) {} },
   };
+  // Trainerinnen-Modus: Werte je Spielerin nur über den Link mit #trainerin. Schutz vor dem beiläufigen Blick, kein Zugriffsschutz.
+  let TRAINERIN = /trainerin/i.test(location.hash);
 
   // ================= Zahlensatz =================
   const NB = ' ', MINUS = '−';
@@ -14,8 +18,6 @@
   const vz = (x, n = 1) => { const r = Number(x.toFixed(n)); return (r > 0 ? '+' : r < 0 ? MINUS : '±') + Math.abs(r).toFixed(n).replace('.', ','); };
   const vzGanz = x => { const r = Math.round(x); return (r > 0 ? '+' : r < 0 ? MINUS : '±') + Math.abs(r); };
   const pct = x => Math.round(x * 100) + NB + '%';
-  const pctGross = x => `${Math.round(x * 100)}<span class="pz">%</span>`;
-  // Drei Wahrscheinlichkeiten so runden, dass sie exakt 100 ergeben (Largest Remainder)
   function drei(a, b, c) {
     const roh = [a, b, c].map(x => x * 100), ganz = roh.map(Math.floor);
     let rest = 100 - ganz.reduce((x, y) => x + y, 0);
@@ -26,7 +28,7 @@
 
   const D = window.HB_DATA;
   if (!D || !D.pages || !D.pages.length) {
-    $('#inhalt').innerHTML = `<div class="leer" style="padding-top:20vh">${ico('tafel')}<b>Noch keine Daten</b><p>Die App über „Start (Mac)“ oder „Start (Windows)“ öffnen. Beim ersten Start braucht sie Internet.</p></div>`;
+    $('#inhalt').innerHTML = `<div class="leer" style="padding-top:20vh">${ico('tafel')}<b>Noch keine Daten</b><p>Öffne ${APP} über „Start (Mac)“ oder „Start (Windows)“. Beim ersten Start braucht es Internet.</p></div>`;
     return;
   }
 
@@ -37,12 +39,15 @@
     [m.local, m.visitor].forEach(t => { if (t && !teams[t.id]) teams[t.id] = { id: t.id, roh: t.name, logo: t.club && t.club.logo }; });
     const r = m.result || {};
     const hat = typeof r.local === 'number' && typeof r.visitor === 'number';
+    const inst = m.field && m.field.installation;
     return {
       id: m.id, runde: m.round, datum: new Date(m.date), terminOffen: /T00:00:00/.test(m.date),
       heim: m.local.id, gast: m.visitor.id,
       toreHeim: hat ? r.local : null, toreGast: hat ? r.visitor : null,
       gewertet: m.status.is_finished && hat, urteil: m.status.is_finished && !hat, offen: !m.status.is_finished,
-      halle: m.field && (m.field.installation && m.field.installation.name || m.field.name),
+      halle: inst ? String(inst.name || '').replace(/^\d+\s*[-–]\s*/, '') : (m.field && m.field.name) || '',
+      adresse: inst && inst.address ? inst.address : '',
+      lat: inst && inst.latitude, lon: inst && inst.longitude,
     };
   }).filter(g => g.heim && g.gast).sort((a, b) => a.datum - b.datum || a.runde - b.runde);
   const spielNach = {}; spiele.forEach(g => spielNach[g.id] = g);
@@ -53,14 +58,15 @@
   const ligaName = normalisiere((roh[0] && roh[0].phase && roh[0].phase.name) || 'Liga').replace(/\s*\(\d+\)$/, '');
   const DETAILS = window.HB_DETAILS || {};
 
-  // Namensnormalisierung: Versalien in Titelschreibung, Kürzel und römische Ziffern bleiben
   function normalisiere(s) {
-    return String(s).replace(/\s+[\u2013\u2014-]\s+/g, ' · ').split(' ').map(w => {
+    return String(s).replace(/\s+[–—-]\s+/g, ' · ').split(' ').map(w => {
       if (/^(SC|TSV|TV|FC|HT|TH|SG|HSG|SV|TUS|VFL|MTV|TSG|HG|HL|II|III|IV|V|VI)$/.test(w)) return w === 'TUS' ? 'TuS' : w === 'VFL' ? 'VfL' : w;
       if (w.length > 1 && w === w.toUpperCase() && /[A-ZÄÖÜ]{2,}/.test(w)) return w.split('-').map(t => t.charAt(0) + t.slice(1).toLowerCase()).join('-');
       return w;
     }).join(' ');
   }
+  // Adresse wie „NEUMOORSTüCK 1, 21147 HAMBURG“ in Titelschreibung
+  const adresseSchoen = a => String(a).toLowerCase().replace(/(^|[\s,/-])([a-zäöüß])/g, (m, p, c) => p + c.toUpperCase()).replace(/(\d)([A-Z])/g, '$1$2');
   teamIds.forEach(id => {
     const t = teams[id];
     t.lang = normalisiere(t.roh);
@@ -69,7 +75,7 @@
   });
   const kurz = id => teams[id] ? teams[id].kurz : '?';
   const lang = id => teams[id] ? teams[id].lang : '?';
-  window.kurzname = kurz; // für matchplan.js
+  window.kurzname = kurz;
   const UNSER = D.teamId;
 
   // ================= Modelle =================
@@ -104,35 +110,47 @@
   const rang = teamIds.slice().sort((a, b) => staerke(modell, b) - staerke(modell, a));
 
   // ================= Zustand =================
-  let fokus = Number(merk.get('fokus', UNSER)); if (!teams[fokus]) fokus = teams[UNSER] ? UNSER : teamIds[0];
+  // Der Fokus wird bewusst nicht gespeichert: Beim Öffnen zeigt die App immer das eigene Team.
+  let fokus = teams[UNSER] ? UNSER : teamIds[0];
   let bereich = merk.get('bereich', 'heute');
-  const ui = {
-    spieleTeam: merk.get('spieleTeam', 'fokus'), spieleStatus: 'alle', tabelleAnsicht: 'tabelle',
-    spSuche: '', spTeam: 'alle', spSort: 'einfluss', tmSort: 'staerke', tmAb: true,
-  };
+  const ui = { spieleTeam: 'fokus', spieleStatus: 'alle', tabelleAnsicht: 'tabelle', spSuche: '', spTeam: 'alle', spSort: 'tore', tmSort: 'staerke', tmAb: true };
   let fest = merk.get('fest', {}); Object.keys(fest).forEach(k => { if (!spielNach[k] || !spielNach[k].offen) delete fest[k]; });
   const labor = { spiel: null, dabei: {}, eigene: merk.get('eigene', {}), form: { f: 0, g: 0 }, neutral: false, offen: null };
-  const kader = merk.get('kader', {}); // {teamId: {verf: {}, pins: {}}}
+  const kader = merk.get('kader', {});
   const kaderVon = id => (kader[id] = kader[id] || { verf: {}, pins: {} });
 
-  // ================= Perspektive (Designkonzept Detail 1) =================
-  // Für jedes Spiel: ist das Fokus-Team dabei, und auf welcher Seite. Nur dann gibt es Grün und Rot.
+  // ================= Perspektive =================
   function sicht(g) {
     const dabei = g.heim === fokus || g.gast === fokus;
     return { dabei, heim: g.heim === fokus, gegner: dabei ? (g.heim === fokus ? g.gast : g.heim) : null };
   }
-  function ausFokus(p, g) { // Prognose aus Sicht des Fokus-Teams, sonst Heimsicht
+  function ausFokus(p, g) {
     const s = sicht(g);
     if (!s.dabei) return { a: p.pHeim, u: p.pRemis, b: p.pGast, neutral: true };
     return s.heim ? { a: p.pHeim, u: p.pRemis, b: p.pGast } : { a: p.pGast, u: p.pRemis, b: p.pHeim };
   }
+  // Streifen aus Fokus-Sicht: Sieg links
   function streifen(w, dick) {
     const r = drei(w.a, w.u, w.b);
     const c = w.neutral ? ['h', 'u', 'g'] : ['s', 'u', 'n'];
     const lab = w.neutral ? ['Heim', 'Remis', 'Gast'] : ['Sieg', 'Remis', 'Niederlage'];
     return `<div class="streifen${dick ? '' : ' d'}" role="img" aria-label="${lab.map((l, i) => l + ' ' + r[i] + ' Prozent').join(', ')}">${r.map((v, i) => `<i class="${c[i]}" style="flex:${Math.max(v, 1)} 1 0"></i>`).join('')}</div>`;
   }
+  // Streifen räumlich an Heim und Gast gebunden (Spiel-Sheet, Labor): Farbe aus Fokus-Sicht
+  function streifenHG(p, g, dick) {
+    const s = sicht(g), r = drei(p.pHeim, p.pRemis, p.pGast);
+    const c = !s.dabei ? ['h', 'u', 'g'] : s.heim ? ['s', 'u', 'n'] : ['n', 'u', 's'];
+    return `<div class="streifen${dick ? '' : ' d'}" role="img" aria-label="Sieg ${esc(kurz(g.heim))} ${r[0]} Prozent, Remis ${r[1]} Prozent, Sieg ${esc(kurz(g.gast))} ${r[2]} Prozent">${r.map((v, i) => `<i class="${c[i]}" style="flex:${Math.max(v, 1)} 1 0"></i>`).join('')}</div>`;
+  }
+  function dreiHG(p, g) {
+    const s = sicht(g), r = drei(p.pHeim, p.pRemis, p.pGast);
+    const farbe = i => !s.dabei || i === 1 ? '' : ((i === 0) === s.heim ? 'plus' : 'minus');
+    const lab = [`Sieg ${esc(kurz(g.heim))}`, 'Remis', `Sieg ${esc(kurz(g.gast))}`];
+    return `<div class="ergebnis3">${r.map((v, i) => `<div><div class="w ${farbe(i)}">${v}<span class="pz">%</span></div><div class="lab">${lab[i]}</div></div>`).join('')}</div>`;
+  }
+  const erwartet = (p, g) => `Erwartet etwa ${esc(kurz(g.heim))} ${Math.round(p.eHeim)}, ${esc(kurz(g.gast))} ${Math.round(p.eGast)}`;
   const ergebnisAus = (g, id) => { const e = g.heim === id ? g.toreHeim - g.toreGast : g.toreGast - g.toreHeim; return e > 0 ? 'S' : e < 0 ? 'N' : 'U'; };
+  const SUN = { S: 'Sieg', U: 'Remis', N: 'Niederlage' };
 
   // ================= Icons =================
   function ico(n, k) {
@@ -149,23 +167,25 @@
       chev: '<path d="M8 10l4 4 4-4"/>', chevr: '<path d="M10 7l5 5-5 5"/>',
       zu: '<path d="M7 7l10 10M17 7L7 17"/>', haken: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
       druck: '<path d="M7 9V4h10v5M7 17H5a1 1 0 01-1-1v-6a1 1 0 011-1h14a1 1 0 011 1v6a1 1 0 01-1 1h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/>',
-      kreis: '<circle cx="12" cy="12" r="7"/>', uhr: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-      balken: '<path d="M6 18V12M12 18V8M18 18v-4"/>',
+      uhr: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      teilen: '<path d="M12 4v11M8 8l4-4 4 4M5 13v5a2 2 0 002 2h10a2 2 0 002-2v-5"/>',
+      pin: '<path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/>',
+      ort: '<path d="M12 21s-6-5.5-6-10a6 6 0 0112 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/>',
+      schloss: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
     };
     return `<svg class="ico${k ? ' k' : ''}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || ''}</svg>`;
   }
+  const wortmarke = gr => `<span class="wortmarke"${gr ? ` style="font-size:${gr}px"` : ''}>${APP}<span class="ws" aria-hidden="true"><i></i><i></i><i></i></span></span>`;
 
-  // ================= Logo-Kachel mit Monogramm (Detail 4) =================
   function logo(id, g = 20) {
     const t = teams[id];
     const img = t && t.logo ? `<img alt="" loading="lazy" src="${esc(t.logo)}" onload="this.classList.add('da')" onerror="this.remove()">` : '';
     return `<span class="logo l${g}" aria-hidden="true"><span class="mono">${esc(t ? t.mono : '?')}</span>${img}</span>`;
   }
 
-  // ================= Datum =================
+  // ================= Datum (Ortszeit mit falscher UTC-Kennung, UTC-Werte direkt lesen) =================
   const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   const MON = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sep.', 'Okt.', 'Nov.', 'Dez.'];
-  // Die Zeiten von handball.net sind Ortszeit mit falscher UTC-Kennung, also UTC-Werte direkt lesen
   const zeit = d => String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
   const tagKurz = d => String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') + '.';
   const tagLang = d => `${WT[d.getUTCDay()]}, ${d.getUTCDate()}. ${MON[d.getUTCMonth()]}`;
@@ -175,37 +195,39 @@
   }
   const naechstes = id => offen.filter(g => g.heim === id || g.gast === id)[0];
   const spieleVon = id => gewertet.filter(g => g.heim === id || g.gast === id);
+  const routeLink = g => g.lat && g.lon ? `<a class="route" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.lat + ',' + g.lon)}" target="_blank" rel="noopener">Route</a>` : '';
 
-  // ================= Bereiche und Navigation =================
+  // ================= Bereiche =================
   const BEREICHE = [
-    { id: 'heute', name: 'Übersicht', kurz: 'Heute', ico: 'tafel' },
+    { id: 'heute', name: 'Start', kurz: 'Start', ico: 'tafel' },
     { id: 'matchplan', name: 'Matchplan', kurz: 'Matchplan', ico: 'plan' },
-    { id: 'spiele', name: 'Spielplan', kurz: 'Spiele', ico: 'kalender' },
-    { id: 'tabelle', name: 'Tabelle & Szenarien', kurz: 'Tabelle', ico: 'tabelle' },
-    { id: 'labor', name: 'Spiel-Labor', kurz: 'Labor', ico: 'labor' },
+    { id: 'spiele', name: 'Spiele', kurz: 'Spiele', ico: 'kalender' },
+    { id: 'tabelle', name: 'Tabelle', kurz: 'Tabelle', ico: 'tabelle' },
+    { id: 'labor', name: 'Durchspielen', kurz: 'Durchspielen', ico: 'labor' },
     { id: 'spielerinnen', name: 'Spielerinnen', kurz: 'Spielerinnen', ico: 'trikot' },
     { id: 'teams', name: 'Teams', kurz: 'Teams', ico: 'schilde' },
-    { id: 'methodik', name: 'So rechnet die App', kurz: 'Methodik', ico: 'info' },
+    { id: 'methodik', name: 'So rechnet Anwurf', kurz: 'Methodik', ico: 'info' },
   ];
   const geholt = new Date(D.fetchedAt);
   const datenstand = `Datenstand ${geholt.toLocaleDateString('de-DE')} ${geholt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
 
   function gerüst() {
     $('#seitenleiste').innerHTML = `
+      <div class="marke">${wortmarke(24)}</div>
       <button class="wechsler" data-aktion="team">${logo(fokus, 28)}<span class="txt"><span class="n" style="display:block">${esc(kurz(fokus))}</span><small>Platz ${platz(fokus)} · ${(tabelle.find(z => z.id === fokus) || {}).pkt || 0} Punkte</small></span>${ico('chev', 1)}</button>
       <nav>${BEREICHE.map((b, i) => `${i === 4 ? '<div class="luecke"></div>' : ''}<button data-bereich="${b.id}" class="${bereich === b.id ? 'an' : ''}">${ico(b.ico)}${b.name}</button>`).join('')}</nav>
-      <div class="fuss">${esc(datenstand)}<br>${gewertet.length} Spiele gewertet · ${Object.keys(DETAILS).length} Spielberichte</div>`;
-    $('#kopf').innerHTML = `<button class="wechsler" data-aktion="team">${logo(fokus, 24)}<span class="n">${esc(kurz(fokus))}</span>${ico('chev', 1)}</button><span class="platz"></span>
-      ${bereich === 'matchplan' ? `<button class="icobtn" data-aktion="drucken" aria-label="Matchplan drucken">${ico('druck')}</button>` : ''}`;
+      <div class="fuss">${TRAINERIN ? `<span class="etikett" style="margin-bottom:8px">${ico('schloss', 1)} Ansicht Trainerin</span><br>` : ''}${esc(datenstand)}<div class="absender">${esc(ABSENDER)}</div></div>`;
+    $('#kopf').innerHTML = `<button class="wechsler" data-aktion="team" aria-label="Team wählen">${logo(fokus, 24)}<span class="n">${esc(kurz(fokus))}</span>${ico('chev', 1)}</button><span class="platz"></span>
+      ${TRAINERIN ? `<span class="etikett">${ico('schloss', 1)} Trainerin</span>` : ''}`;
     const tabs = ['heute', 'matchplan', 'spiele', 'tabelle'];
-    $('#tabbar').innerHTML = tabs.map(id => { const b = BEREICHE.find(x => x.id === id); return `<button data-bereich="${id}" class="${bereich === id ? 'an' : ''}" aria-label="${b.name}">${ico(b.ico)}<span>${b.kurz}</span></button>`; }).join('') +
+    $('#tabbar').innerHTML = tabs.map(id => { const b = BEREICHE.find(x => x.id === id); return `<button data-bereich="${id}" class="${bereich === id ? 'an' : ''}">${ico(b.ico)}<span>${b.kurz}</span></button>`; }).join('') +
       `<button data-aktion="mehr" class="${tabs.includes(bereich) ? '' : 'an'}">${ico('mehr')}<span>Mehr</span></button>`;
   }
 
   // ================= Sheet =================
   const sheet = $('#sheet');
   function oeffneSheet(titel, html) {
-    sheet.innerHTML = `<div class="griff"></div><div class="skopf"><h2 class="titel" id="sheetTitel">${titel}</h2><button class="zu" data-aktion="zu" aria-label="Schließen"><span>${ico('zu', 1)}</span></button></div><div class="sinhalt">${html}</div>`;
+    sheet.innerHTML = `<div class="skopf"><h2 class="titel" id="sheetTitel">${titel}</h2><button class="zu" data-aktion="zu" aria-label="Schließen"><span>${ico('zu', 1)}</span></button></div><div class="sinhalt">${html}</div>`;
     sheet.setAttribute('aria-labelledby', 'sheetTitel');
     if (!sheet.open) { if (sheet.showModal) sheet.showModal(); else sheet.setAttribute('open', ''); }
     sheet.querySelector('.sinhalt').scrollTop = 0;
@@ -218,12 +240,17 @@
   const modul = (titel, inhalt, opt = {}) => `<section class="modul${opt.klasse ? ' ' + opt.klasse : ''}"${opt.id ? ` id="${opt.id}"` : ''}>${titel ? `<div class="mkopf"><div>${opt.eyebrow ? `<span class="micro">${opt.eyebrow}</span>` : ''}<h2 class="titel">${titel}</h2></div>${opt.aktion || ''}</div>` : ''}${inhalt}${opt.fuss ? `<div class="fussnote">${opt.fuss}</div>` : ''}</section>`;
   const kachel = (lab, wert, ctx, delta) => `<div class="kachel"><div class="lab">${lab}</div><div class="kpi"><span>${wert}</span>${delta || ''}</div>${ctx ? `<div class="ctx">${ctx}</div>` : ''}</div>`;
   const etikett = (t, kontur) => `<span class="etikett${kontur ? ' kontur' : ''}">${t}</span>`;
-  const stichprobe = n => etikett(`n${NB}=${NB}${n}`);
+  const ausSpielen = n => etikett(`aus ${n} Spiel${n === 1 ? '' : 'en'}`);
   const breite = (abzug = 0) => {
     const el = $('#inhalt'); const cs = getComputedStyle(document.documentElement);
     const rand = parseFloat(cs.getPropertyValue('--rand')) || 16, pad = parseFloat(cs.getPropertyValue('--pad')) || 16;
     return Math.max(260, Math.min(1040, el.clientWidth - 2 * rand) - 2 * pad - 2 - abzug);
   };
+
+  function hinweisFokus() {
+    if (fokus === UNSER) return '';
+    return `<div class="hinweis">${ico('info')}<span>Du schaust auf ${esc(kurz(fokus))}.</span><button class="textaktion" data-fokus="${UNSER}">Zurück zu ${esc(kurz(UNSER))}</button></div>`;
+  }
 
   function tafel(id) {
     const g = naechstes(id);
@@ -233,55 +260,53 @@
     }
     const p = prognose(modell, g.heim, g.gast), w = ausFokus(p, g), r = drei(w.a, w.u, w.b);
     const s = sicht(g), t = tageBis(g.datum);
-    const count = g.terminOffen ? '' : t === 0 ? `<span class="count heute">Heute ${zeit(g.datum)}</span>` : t === 1 ? '<span class="count">morgen</span>' : t > 1 ? `<span class="count">in ${t} Tagen</span>` : '';
+    const count = g.terminOffen ? '' : t === 0 ? '' : t === 1 ? '<span class="count">morgen</span>' : t > 1 ? `<span class="count">in ${t} Tagen</span>` : '';
     const seite = (tid, rolle) => `<div>${logo(tid, 48)}<div class="nm">${esc(kurz(tid))}</div><div class="pl">${rolle} · Platz ${platz(tid)}</div>${tid === fokus ? '<div class="fstrich"></div>' : ''}</div>`;
-    const eyebrow = id === UNSER ? `Nächstes Spiel · Spieltag ${g.runde}` : `Nächstes Spiel von ${esc(kurz(id))}`;
+    const eyebrow = t === 0 && !g.terminOffen ? `Heute ist Anwurf · ${zeit(g.datum)} Uhr` : id === UNSER ? `Nächstes Spiel · Spieltag ${g.runde}` : `Nächstes Spiel von ${esc(kurz(id))}`;
+    const eF = s.heim ? p.eHeim : p.eGast, eG = s.heim ? p.eGast : p.eHeim;
     return `<section class="tafel">
       <div class="zone-a"><span class="micro">${eyebrow}</span>${count}</div>
-      <div class="termin">${g.terminOffen ? 'Termin noch offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} · ${s.heim ? 'zu Hause' : 'auswärts'}`}</div>
-      ${g.halle ? `<div class="halle">${esc(normalisiere(g.halle))}</div>` : ''}
+      <div class="termin">${g.terminOffen ? 'Termin noch offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr · ${s.heim ? 'zu Hause' : 'auswärts'}`}</div>
+      ${g.halle ? `<div class="halle">${esc(normalisiere(g.halle))}${g.adresse ? ` · ${esc(adresseSchoen(g.adresse))}` : ''} ${routeLink(g)}</div>` : ''}
       <div class="kern">
         <button class="paarung" data-spiel="${g.id}" aria-label="Spieldetails">${seite(g.heim, 'Heim')}<div class="vs">${s.heim ? 'gegen' : 'bei'}</div>${seite(g.gast, 'Gast')}</button>
         <div>
           <div class="zahl"><div><div class="hero">${r[0]}<span class="pz">%</span></div><div class="lab">Siegchance ${esc(kurz(id))}</div></div>
           <div class="neben">Remis <b>${r[1]}${NB}%</b><br>Niederlage <b>${r[2]}${NB}%</b></div></div>
           ${streifen(w, true)}
-          <div class="erw">Erwartet ${stand(dez(s.heim ? p.eHeim : p.eGast), dez(s.heim ? p.eGast : p.eHeim))} · Basis: ${B.teams[id] ? B.teams[id].spiele.length : 0} Spielberichte je Team</div>
+          <div class="erw">Erwartet etwa ${Math.round(eF)}${NB}:${NB}${Math.round(eG)} · aus je ${B.teams[id] ? B.teams[id].spiele.length : 0} Spielen mit Spielbericht</div>
         </div>
       </div>
-      <div class="aktionen"><button class="btn prim" data-bereich="matchplan">Matchplan</button><button class="btn" data-labor="${g.id}">Im Labor</button></div>
+      <div class="aktionen"><button class="btn prim" data-bereich="matchplan">Matchplan</button><button class="btn" data-labor="${g.id}">Durchspielen</button></div>
     </section>`;
   }
 
   function spielZeile(g, opt = {}) {
-    const s = sicht(g);
-    const d = g.datum;
-    const datum = g.terminOffen ? `<div class="wt">Termin</div><div class="tg t3">offen</div>` : `<div class="wt">${WT[d.getUTCDay()]}</div><div class="tg">${tagKurz(d)}</div>`;
+    const s = sicht(g), d = g.datum;
+    const datum = g.terminOffen ? `<div class="wt">Termin</div><div class="tg t3">offen</div>` : `<div class="wt">${WT[d.getUTCDay()]}</div><div class="tg">${tagKurz(d)}</div>${g.offen ? `<div class="cap t2">${zeit(d)}</div>` : ''}`;
     let paar, rechts;
     if (g.gewertet) {
       const hs = g.toreHeim > g.toreGast ? 'sieger' : g.toreHeim < g.toreGast ? 'verl' : '';
       const gs = g.toreGast > g.toreHeim ? 'sieger' : g.toreGast < g.toreHeim ? 'verl' : '';
       paar = `<div class="${hs}">${logo(g.heim)}<span>${esc(kurz(g.heim))}</span></div><div class="${gs}">${logo(g.gast)}<span>${esc(kurz(g.gast))}</span></div>`;
-      const v = B.verlaeufe[g.id], p = vorher[g.id];
-      const tipp = p.pHeim >= p.pGast && p.pHeim >= p.pRemis ? 'H' : p.pGast >= p.pRemis ? 'G' : 'U';
-      const real = g.toreHeim > g.toreGast ? 'H' : g.toreHeim < g.toreGast ? 'G' : 'U';
-      const treffer = `<svg class="treffer" viewBox="0 0 24 24" aria-label="${tipp === real ? 'Prognose lag richtig' : 'Prognose lag daneben'}" fill="none" stroke="currentColor" stroke-width="2">${tipp === real ? '<path d="M5 12.5l4.5 4.5L19 7.5"/>' : '<circle cx="12" cy="12" r="7"/>'}</svg>`;
-      rechts = `<div class="ergbox">${opt.sun && s.dabei ? `<span class="sun ${ergebnisAus(g, fokus)}">${ergebnisAus(g, fokus)}</span>` : treffer}<div class="tz">
-        <span class="hz">${v ? v.halbzeit.heim : ''}</span><span>${g.toreHeim}</span><span class="hz">${v ? v.halbzeit.gast : ''}</span><span>${g.toreGast}</span></div></div>`;
+      const v = B.verlaeufe[g.id];
+      const e = s.dabei ? ergebnisAus(g, fokus) : null;
+      rechts = `<div class="ergbox">${e ? `<span class="sun ${e}" aria-label="${SUN[e]}">${e}</span>` : ''}<div class="tz" style="grid-template-columns:auto"><span>${g.toreHeim}</span><span>${g.toreGast}</span></div></div>${v ? `<div class="cap t3">Halbzeit ${stand(v.halbzeit.heim, v.halbzeit.gast)}</div>` : ''}`;
     } else {
       paar = `<div>${logo(g.heim)}<span>${esc(kurz(g.heim))}</span></div><div>${logo(g.gast)}<span>${esc(kurz(g.gast))}</span></div>`;
-      if (g.urteil) rechts = '<span class="cap t2">Urteil</span>';
+      if (g.urteil) rechts = '<span class="cap t2">am grünen Tisch</span>';
       else {
-        const w = ausFokus(prognose(modell, g.heim, g.gast), g), r = drei(w.a, w.u, w.b);
-        rechts = `<div class="chance">${s.dabei ? `${r[0]}${NB}%` : `<span class="cap t2">H ${r[0]} · G ${r[2]}</span>`}</div>${streifen(w)}`;
+        const p = prognose(modell, g.heim, g.gast), w = ausFokus(p, g), r = drei(w.a, w.u, w.b);
+        rechts = `<div class="chance">${s.dabei ? `${r[0]}${NB}%` : `<span class="cap t2">Heim ${r[0]}${NB}%</span>`}</div>${streifen(w)}`;
       }
     }
     return `<button class="spiel${s.dabei && !opt.ohneMarke ? ' fokus' : ''}" data-spiel="${g.id}"><div class="dat">${datum}</div><div class="paar">${paar}</div><div class="erg">${rechts}</div></button>`;
   }
 
+  function formSun(g, id, gr) { const e = ergebnisAus(g, id); return `<span class="sun ${e}${gr ? ' gross' : ''}" aria-label="${SUN[e]}"${gr ? '' : ' style="width:18px;height:18px;font-size:11px"'}>${e}</span>`; }
   function tabelleHtml(zeilen, kompakt) {
-    return `<div class="${kompakt ? '' : 'scrollx'}"><table class="tab"><thead><tr><th>#</th><th class="l">Team</th><th>Sp</th><th class="opt">S</th><th class="opt">U</th><th class="opt">N</th><th class="opt">Tore</th><th>Diff</th><th>Pkt</th><th class="opt l" style="padding-left:12px">Form</th></tr></thead><tbody>
-      ${zeilen.map(z => { const i = platz(z.id), d = z.tp - z.tm; return `<tr class="klick${z.id === fokus ? ' f' : ''}" data-fokus="${z.id}"><td class="t2">${i}</td><td class="l tw"><span class="team">${logo(z.id)}<span>${esc(kurz(z.id))}</span></span></td><td>${z.sp}</td><td class="opt">${z.s}</td><td class="opt">${z.u}</td><td class="opt">${z.n}</td><td class="opt">${stand(z.tp, z.tm)}</td><td>${d > 0 ? '+' : d < 0 ? MINUS : ''}${Math.abs(d)}</td><td class="pk">${z.pkt}</td><td class="opt l" style="padding-left:12px"><span style="display:inline-flex;gap:3px">${spieleVon(z.id).slice(-5).map(g => `<span class="sun" style="width:18px;height:18px;font-size:11px">${''}</span>`.replace('class="sun"', `class="sun ${ergebnisAus(g, z.id)}"`).replace('></span>', `>${ergebnisAus(g, z.id)}</span>`)).join('')}</span></td></tr>`; }).join('')}
+    return `<div class="${kompakt ? '' : 'scrollx'}"><table class="tab"><thead><tr><th>#</th><th class="l">Team</th><th>Sp</th><th class="opt">S</th><th class="opt">U</th><th class="opt">N</th><th class="opt">Tore</th><th>Diff</th><th>Punkte</th><th class="opt l" style="padding-left:12px">Form</th></tr></thead><tbody>
+      ${zeilen.map(z => { const i = platz(z.id), d = z.tp - z.tm; return `<tr class="klick${z.id === fokus ? ' f' : ''}" data-team="${z.id}"><td class="t2">${i}</td><td class="l tw"><span class="team">${logo(z.id)}<span>${esc(kurz(z.id))}</span></span></td><td>${z.sp}</td><td class="opt">${z.s}</td><td class="opt">${z.u}</td><td class="opt">${z.n}</td><td class="opt">${stand(z.tp, z.tm)}</td><td>${d > 0 ? '+' : d < 0 ? MINUS : ''}${Math.abs(d)}</td><td class="pk">${z.pkt}</td><td class="opt l" style="padding-left:12px"><span style="display:inline-flex;gap:3px">${spieleVon(z.id).slice(-5).reverse().map(g => formSun(g, z.id)).join('')}</span></td></tr>`; }).join('')}
     </tbody></table></div>`;
   }
 
@@ -289,9 +314,10 @@
   function siegchanceVerlauf(id) {
     const liste = spiele.filter(g => (g.heim === id || g.gast === id) && !g.urteil);
     if (liste.length < 2) return '';
-    const W = breite(), H = 180, L = 4, R = 8, T = 16, Bt = 24;
+    const W = breite(), H = 184, L = 4, R = 8, T = 16, Bt = 28;
     const x = i => L + 44 + i * (W - L - R - 44) / (liste.length - 1);
     const y = v => T + (1 - v) * (H - T - Bt);
+    const jede = Math.ceil(liste.length / Math.max(4, Math.floor(W / 64)));
     let pfad = '', punkte = '';
     liste.forEach((g, i) => {
       const p = g.gewertet ? vorher[g.id] : prognose(modell, g.heim, g.gast);
@@ -300,13 +326,13 @@
       const geg = kurz(g.heim === id ? g.gast : g.heim);
       const e = g.gewertet ? ergebnisAus(g, id) : null;
       const farbe = e ? { S: 'var(--sieg)', U: 'var(--remis)', N: 'var(--niederlage)' }[e] : 'var(--bg-1)';
-      const info = `${geg} (${g.heim === id ? 'H' : 'A'}) · Siegchance ${pct(v)}` + (g.gewertet ? ` · ${stand(g.toreHeim, g.toreGast)}` : ' · offen');
+      const info = `${g.terminOffen ? 'Termin offen' : tagKurz(g.datum)} ${g.heim === id ? 'gegen' : 'bei'} ${geg} · Siegchance ${pct(v)}` + (g.gewertet ? ` · ${stand(g.toreHeim, g.toreGast)}` : '');
       punkte += `<g class="pkt" data-wert="${esc(info)}" data-spiel="${g.id}" style="cursor:pointer"><circle cx="${x(i)}" cy="${y(v)}" r="14" fill="transparent"/><circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="${farbe}" stroke="${e ? farbe : 'var(--accent)'}" stroke-width="2"/></g>`;
-      punkte += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="12" fill="var(--text-3)">${g.runde}</text>`;
+      if (i % jede === 0) punkte += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="12" fill="var(--text-3)">${g.terminOffen ? 'offen' : tagKurz(g.datum)}</text>`;
     });
     const gitter = [0, .5, 1].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line-1)"/><text x="${L}" y="${y(v) - 4}" font-size="12" fill="var(--text-3)">${v * 100}${NB}%</text>`).join('');
     return modul('Siegchance je Spiel', `<div class="wertzeile" data-wertzeile>Punkt antippen für Details</div><svg class="diagramm" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Siegchance je Spiel der Saison">${gitter}<path d="${pfad}" fill="none" stroke="var(--line-2)" stroke-width="1.5"/>${punkte}</svg>`,
-      { fuss: 'Gefüllt: gespielt, Farbe zeigt das Ergebnis, Wert ist die Prognose vor dem Anpfiff. Leer: offen, aktuelle Prognose. Unten die Spieltage.' });
+      { fuss: 'Gefüllt: gespielt, die Farbe zeigt das Ergebnis, der Wert die Chance vor dem Anpfiff. Leer: noch offen.' });
   }
 
   function tabellenVerlauf() {
@@ -321,7 +347,7 @@
       const pts = runden.filter(r => v[r]).map(r => [x(r), y(v[r])]);
       if (!pts.length) return '';
       const f = id === fokus, letzte = pts[pts.length - 1];
-      return `<g data-fokus="${id}" style="cursor:pointer"><path d="${pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('')}" fill="none" stroke="${f ? 'var(--accent)' : 'var(--text-3)'}" stroke-width="${f ? 2.5 : 1.25}" stroke-linejoin="round"/>
+      return `<g data-team="${id}" style="cursor:pointer"><path d="${pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('')}" fill="none" stroke="${f ? 'var(--accent)' : 'var(--text-3)'}" stroke-width="${f ? 2.5 : 1.25}" stroke-linejoin="round"/>
         ${f ? pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--accent)"/>`).join('') : ''}
         <text x="${letzte[0] + 8}" y="${letzte[1] + 4}" font-size="12" fill="${f ? 'var(--accent)' : 'var(--text-2)'}" font-weight="${f ? 600 : 400}">${esc(kurz(id).slice(0, lab > 100 ? 18 : 12))}</text></g>`;
     }).join('');
@@ -330,12 +356,10 @@
     return `<svg class="diagramm" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Tabellenplatz je Spieltag">${achse}${linien}</svg>`;
   }
 
-  // Phasenplan: Tordifferenz je 10-Minuten-Abschnitt, zwei Reihen
   function phasenGrafik(mp) {
     const ph = mp.phasen; if (!ph.fokus || !ph.gegner) return '';
     const W = breite(), rowH = 76, kopfH = 22, zw = 18, H = kopfH + rowH + zw + kopfH + rowH + 24;
-    const spalten = 6, hzL = 20, abst = 4;
-    const sw = (W - hzL - abst * 4) / spalten;
+    const hzL = 20, abst = 4, sw = (W - hzL - abst * 4) / 6;
     const sx = i => i * (sw + abst) + (i >= 3 ? hzL - abst : 0);
     const max = Math.max(5, ...ph.fokus.map(Math.abs), ...ph.gegner.map(Math.abs));
     const bw = Math.min(28, sw * .5);
@@ -343,16 +367,14 @@
       const mitte = y0 + kopfH + rowH / 2, halb = rowH / 2 - 16;
       let s = `<text x="0" y="${y0 + 12}" font-size="12" font-weight="600" fill="var(--text-1)">${esc(name)}</text><line x1="0" x2="${W}" y1="${mitte}" y2="${mitte}" stroke="var(--line-2)"/>`;
       werte.forEach((v, i) => {
-        const h = Math.abs(v) / max * halb, bx = sx(i) + sw / 2 - bw / 2;
-        const by = v >= 0 ? mitte - h : mitte;
+        const h = Math.abs(v) / max * halb, bx = sx(i) + sw / 2 - bw / 2, by = v >= 0 ? mitte - h : mitte;
         const fill = eigen ? (v >= 0 ? 'var(--sieg)' : 'var(--niederlage)') : (v >= 0 ? 'var(--text-2)' : 'none');
         if (v !== 0) s += `<rect class="b" x="${bx}" y="${by}" width="${bw}" height="${Math.max(h, 1.5)}" rx="2" fill="${fill}" stroke="${eigen ? 'none' : 'var(--text-2)'}" stroke-width="${eigen ? 0 : 1.5}" style="animation-delay:${i * 30}ms"/>`;
         s += `<text x="${sx(i) + sw / 2}" y="${v >= 0 ? by - 5 : by + h + 14}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-2)">${vzGanz(v)}</text>`;
       });
       return s;
     };
-    const y2 = kopfH + rowH + zw;
-    let svg = reihe(ph.fokus, 0, true, kurz(fokus)) + reihe(ph.gegner, y2, false, kurz(mp.gegner));
+    let svg = reihe(ph.fokus, 0, true, kurz(fokus)) + reihe(ph.gegner, kopfH + rowH + zw, false, kurz(mp.gegner));
     const hzX = sx(3) - hzL / 2 - abst / 2 + 2;
     svg += `<line x1="${hzX}" x2="${hzX}" y1="${kopfH}" y2="${H - 22}" stroke="var(--line-2)" stroke-dasharray="3 3"/>`;
     const grenze = i => i === 0 ? 0 : i === 6 ? W : i === 3 ? hzX : sx(i) - abst / 2;
@@ -371,7 +393,7 @@
     for (let i = 1; i < pts.length; i++) pfad += `H${x(pts[i][0]).toFixed(1)}V${y(pts[i][1]).toFixed(1)}`;
     const fl = pfad + `H${x(60)}V${y(0)}H${x(0)}Z`;
     const oben = s.dabei ? 'var(--sieg)' : 'var(--text-3)', unten = s.dabei ? 'var(--niederlage)' : 'var(--text-3)', dk = s.dabei ? .16 : .12;
-    const ziele = v.tore.map(t => `<rect x="${x(t.min) - 6}" y="${T}" width="12" height="${H - T - Bt}" fill="transparent" data-wert="${t.min}' · ${stand(t.heim, t.gast)}${t.name ? ' · ' + esc(t.name) : ''}${t.sm ? ' · 7m' : ''}"/>`).join('');
+    const ziele = v.tore.map(t => `<rect x="${x(t.min) - 6}" y="${T}" width="12" height="${H - T - Bt}" fill="transparent" data-wert="${t.min}. Minute · ${stand(t.heim, t.gast)}${t.name ? ' · ' + esc(t.name) : ''}${t.sm ? ' · 7m' : ''}"/>`).join('');
     let hoch = 0, tief = 0; pts.forEach(p => { hoch = Math.max(hoch, p[1]); tief = Math.min(tief, p[1]); });
     const obenName = s.dabei ? kurz(fokus) : kurz(g.heim), untenName = s.dabei ? kurz(s.gegner) : kurz(g.gast);
     return `<div class="wertzeile" data-wertzeile>Größte Führung ${esc(obenName)} ${hoch > 0 ? '+' + hoch : '0'}, ${esc(untenName)} ${tief < 0 ? '+' + (-tief) : '0'}</div>
@@ -379,7 +401,7 @@
       <clipPath id="ob${g.id}"><rect x="0" y="0" width="${W}" height="${y(0)}"/></clipPath><clipPath id="un${g.id}"><rect x="0" y="${y(0)}" width="${W}" height="${H}"/></clipPath>
       <path d="${fl}" fill="${oben}" opacity="${dk}" clip-path="url(#ob${g.id})"/><path d="${fl}" fill="${unten}" opacity="${dk}" clip-path="url(#un${g.id})"/>
       <line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line-2)"/>
-      <line x1="${x(30)}" x2="${x(30)}" y1="${T}" y2="${H - Bt}" stroke="var(--line-2)"/><text x="${x(30) + 4}" y="${T + 8}" font-size="11" font-weight="600" fill="var(--text-3)">HZ</text>
+      <line x1="${x(30)}" x2="${x(30)}" y1="${T}" y2="${H - Bt}" stroke="var(--line-2)"/><text x="${x(30) + 4}" y="${T + 8}" font-size="11" font-weight="600" fill="var(--text-3)">Halbzeit</text>
       <path d="${pfad}" fill="none" stroke="var(--text-1)" stroke-width="1.5"/>
       <text x="${W - R + 6}" y="${y(pts[pts.length - 1][1]) + 4}" font-size="12" font-weight="600" fill="var(--text-1)">${vzGanz(pts[pts.length - 1][1])}</text>
       ${[0, 15, 30, 45, 60].map(m => `<text x="${x(m)}" y="${H - 4}" text-anchor="${m === 0 ? 'start' : m === 60 ? 'end' : 'middle'}" font-size="12" fill="var(--text-3)">${m}'</text>`).join('')}
@@ -388,31 +410,33 @@
   }
 
   function verteilungSvg(p, basis, g) {
-    const s = sicht(g), f = s.dabei && !s.heim ? -1 : 1;
     const W = breite(), H = 150, T = 18, Bt = 22, von = W < 500 ? -12 : -14, bis = -von;
-    const n = bis - von + 1, bw = W / n;
-    const mu = f * p.diff, mb = f * basis.diff, sd = modell.sigma;
+    const n = bis - von + 1, bw = W / n, s = sicht(g);
+    const sd = modell.sigma;
     const pd = (d, m) => normCdf((d + .5 - m) / sd) - normCdf((d - .5 - m) / sd);
-    let mx = 0; for (let d = von; d <= bis; d++) mx = Math.max(mx, pd(d, mu), pd(d, mb));
+    let mx = 0; for (let d = von; d <= bis; d++) mx = Math.max(mx, pd(d, p.diff), pd(d, basis.diff));
     const hh = v => v / mx * (H - T - Bt);
+    // x-Achse Heim links, Gast rechts: Differenz Gast minus Heim nach rechts
     let bars = '', huelle = '';
     for (let d = von; d <= bis; d++) {
-      const xx = (d - von) * bw;
-      const c = !s.dabei ? (d > 0 ? 'var(--neutral-heim)' : d < 0 ? 'var(--neutral-gast)' : 'var(--remis)') : (d > 0 ? 'var(--sieg)' : d < 0 ? 'var(--niederlage)' : 'var(--remis)');
-      bars += `<rect x="${xx + bw * .18}" y="${H - Bt - hh(pd(d, mu))}" width="${bw * .64}" height="${hh(pd(d, mu))}" rx="1.5" fill="${c}"/>`;
-      huelle += (d === von ? 'M' : 'L') + xx.toFixed(1) + ' ' + (H - Bt - hh(pd(d, mb))).toFixed(1) + 'H' + (xx + bw).toFixed(1);
+      const xx = (d - von) * bw, diffHeim = -d;
+      const heimGewinnt = diffHeim > 0, gastGewinnt = diffHeim < 0;
+      const c = !s.dabei ? (heimGewinnt ? 'var(--neutral-heim)' : gastGewinnt ? 'var(--neutral-gast)' : 'var(--remis)')
+        : (diffHeim === 0 ? 'var(--remis)' : (heimGewinnt === s.heim) ? 'var(--sieg)' : 'var(--niederlage)');
+      const v = pd(diffHeim, p.diff), vb = pd(diffHeim, basis.diff);
+      bars += `<rect x="${xx + bw * .18}" y="${H - Bt - hh(v)}" width="${bw * .64}" height="${hh(v)}" rx="1.5" fill="${c}"/>`;
+      huelle += (d === von ? 'M' : 'L') + xx.toFixed(1) + ' ' + (H - Bt - hh(vb)).toFixed(1) + 'H' + (xx + bw).toFixed(1);
     }
-    const achse = [-10, -5, 0, 5, 10].map(d => `<text x="${(d - von + .5) * bw}" y="${H - 4}" text-anchor="middle" font-size="12" fill="${d === 0 ? 'var(--text-2)' : 'var(--text-3)'}" font-weight="${d === 0 ? 600 : 400}">${d > 0 ? '+' + d : d < 0 ? MINUS + (-d) : 0}</text>`).join('');
-    const li = s.dabei ? 'Niederlage' : `${kurz(g.gast)} gewinnt`, re = s.dabei ? 'Sieg' : `${kurz(g.heim)} gewinnt`;
-    return `<svg class="diagramm" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Verteilung der Tordifferenz"><text x="0" y="10" font-size="12" fill="var(--text-3)">${esc(li)}</text><text x="${W}" y="10" text-anchor="end" font-size="12" fill="var(--text-3)">${esc(re)}</text>${bars}<path d="${huelle}" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="4 3" opacity=".7"/>${achse}</svg>`;
+    const achse = [-10, -5, 0, 5, 10].map(d => `<text x="${(d - von + .5) * bw}" y="${H - 4}" text-anchor="middle" font-size="12" fill="${d === 0 ? 'var(--text-2)' : 'var(--text-3)'}" font-weight="${d === 0 ? 600 : 400}">${d === 0 ? 'Remis' : '+' + Math.abs(d)}</text>`).join('');
+    return `<svg class="diagramm" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Verteilung der Tordifferenz"><text x="0" y="10" font-size="12" fill="var(--text-3)">${esc(kurz(g.heim))} gewinnt</text><text x="${W}" y="10" text-anchor="end" font-size="12" fill="var(--text-3)">${esc(kurz(g.gast))} gewinnt</text>${bars}<path d="${huelle}" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="4 3" opacity=".7"/>${achse}</svg>`;
   }
 
-  // ================= Seiten =================
+  // ================= Start =================
   function auffaelligkeiten(id) {
     const t = B.teams[id], m = muster[id], kz = K[id], liste = [];
     const r = rang.indexOf(id) + 1, pl = platz(id);
-    if (r - pl >= 2) liste.push(`Die Tabelle schmeichelt: Platz <b>${pl}</b>, nach Toren und Gegnern aber nur das <b>${r}.</b> stärkste Team.`);
-    if (pl - r >= 2) liste.push(`Stärker als der Tabellenplatz: Platz <b>${pl}</b>, laut Modell das <b>${r}.</b> stärkste Team.`);
+    if (r - pl >= 2) liste.push(`Die Tabelle schmeichelt: Platz <b>${pl}</b>, nach Toren und Gegnern eher Platz <b>${r}</b>.`);
+    if (pl - r >= 2) liste.push(`Stärker als der Tabellenplatz: Platz <b>${pl}</b>, nach Toren und Gegnern eher Platz <b>${r}</b>.`);
     if (t && t.liste.length) {
       const top = t.liste.slice().sort((a, b) => b.tore - a.tore)[0];
       liste.push(`<b>${esc(top.name)}</b> wirft ${pct(top.anteil)} der Teamtore, ${top.tore} in ${top.anz} Spiel${top.anz > 1 ? 'en' : ''}.`);
@@ -424,7 +448,7 @@
     }
     if (m && m.n) {
       const h1 = m.hz1 / m.n, h2 = m.hz2 / m.n;
-      if (Math.abs(h2 - h1) >= 1) liste.push(`Halbzeiten: <b>${vz(h1)}</b> vor der Pause, <b>${vz(h2)}</b> danach, im Schnitt pro Spiel.`);
+      if (Math.abs(h2 - h1) >= 1) liste.push(`Erste Hälfte im Schnitt <b>${vz(h1)}</b> Tore, zweite Hälfte <b>${vz(h2)}</b>.`);
       if (m.knapp) liste.push(`${m.knapp} Spiel${m.knapp > 1 ? 'e' : ''} mit höchstens zwei Toren Unterschied, davon ${m.knappGewonnen} gewonnen.`);
     }
     if (kz && kz.spiele) liste.push(`${dez(kz.zweiProSpiel)} Zeitstrafen pro Spiel, Ligaschnitt ${dez(LIGA.zweiProSpiel)}.`);
@@ -432,71 +456,109 @@
   }
 
   function seiteHeute() {
-    const z = tabelle.find(x => x.id === fokus) || { pkt: 0, tp: 0, tm: 0 };
+    const z = tabelle.find(x => x.id === fokus) || { pkt: 0, tp: 0, tm: 0, sp: 0 };
     const r = rang.indexOf(fokus) + 1, pl = platz(fokus), diff = z.tp - z.tm;
-    const hinweis = fokus !== UNSER ? `<div class="hinweis">${ico('info')}<span>Du schaust auf ${esc(kurz(fokus))}</span><button class="textaktion" data-fokus="${UNSER}">Zurück zu ${esc(kurz(UNSER))}</button></div>` : '';
     const alter = (Date.now() - geholt) / 864e5;
-    const alt = alter > 7 ? `<div class="hinweis">${ico('uhr')}<span>Die Daten sind ${Math.floor(alter)} Tage alt. Für den aktuellen Stand die App über die Start-Datei neu öffnen.</span></div>` : '';
+    const alt = alter > 7 ? `<div class="hinweis">${ico('uhr')}<span>Die Daten sind ${Math.floor(alter)} Tage alt. ${location.protocol === 'file:' ? 'Für den aktuellen Stand die App über die Start-Datei neu öffnen.' : 'Neue Daten kommen, sobald sie eingespielt sind.'}</span></div>` : '';
+    const intro = merk.get('intro', false) ? '' : `<section class="intro">${bildDa.keyvisual ? `<div class="bild" style="background-image:url('bilder/keyvisual-1600x900.png')"></div>` : ''}
+      <div>${wortmarke(26)}</div>
+      <p><b style="color:var(--text-1)">${APP} rechnet aus Ergebnissen und Spielberichten von handball.net aus, wie die Chancen im nächsten Spiel stehen.</b> Die Zahlen sind Richtwerte aus wenigen Spielen, keine Gewissheit.</p>
+      <p class="cap">${esc(ABSENDER)}</p>
+      <div class="aktionen"><button class="btn prim" data-aktion="introWeg">Verstanden</button><button class="btn" data-bereich="methodik">Wie entsteht die Zahl?</button></div></section>`;
     const sim = simBasis.plaetze[fokus];
     const kach = `<div class="kacheln">
-      ${kachel('Tabellenplatz', `${pl}.`, `Modell sieht Platz ${r}`)}
-      ${kachel('Punkte', `${z.pkt}`, `${z.sp || 0} Spiele`)}
+      ${kachel('Tabellenplatz', `${pl}.`, r === pl ? 'passt zu Toren und Gegnern' : `nach Toren und Gegnern eher ${r}.`)}
+      ${kachel('Punkte', `${z.pkt}`, `aus ${z.sp || 0} Spielen`)}
       ${kachel('Tordifferenz', `${diff > 0 ? '+' : diff < 0 ? MINUS : ''}${Math.abs(diff)}`, `${stand(z.tp, z.tm)} Tore`)}
-      ${kachel('Platz 1 am Ende', `${Math.round(sim[0] * 100)}<span class="pz">%</span>`, `Top 3: ${pct(sim[0] + sim[1] + sim[2])}`)}
+      ${kachel('Platz 1 am Saisonende', `${Math.round(sim[0] * 100)}<span class="pz">%</span>`, `unter die ersten 3: ${pct(sim[0] + sim[1] + sim[2])}`)}
     </div>`;
-    const form = spieleVon(fokus).slice(-5);
-    const formHtml = form.length ? `<div class="formreihe">${form.map(g => { const e = ergebnisAus(g, fokus); const geg = g.heim === fokus ? g.gast : g.heim; return `<button data-spiel="${g.id}"><span class="sun gross ${e}">${e}</span><span>${esc(kurz(geg).split(' ')[0])}</span><span class="t3">${g.heim === fokus ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)}</span></button>`; }).join('')}</div>` : '<p class="meta">Noch keine Spiele.</p>';
+    const form = spieleVon(fokus).slice(-5).reverse();
+    const letztes = form[0];
+    let moment = '';
+    if (letztes) {
+      const e = ergebnisAus(letztes, fokus), geg = kurz(letztes.heim === fokus ? letztes.gast : letztes.heim), wo = letztes.heim === fokus ? 'gegen' : 'bei';
+      const st = letztes.heim === fokus ? stand(letztes.toreHeim, letztes.toreGast) : stand(letztes.toreGast, letztes.toreHeim);
+      moment = e === 'S' ? `Sieg ${wo} ${esc(geg)}, ${st}!` : e === 'U' ? `Remis ${wo} ${esc(geg)}, ${st}` : `${st} ${wo} ${esc(geg)}`;
+    }
+    const formHtml = form.length ? `${letztes ? `<p style="margin:0 0 12px">Zuletzt: <b>${moment}</b> <span class="t2">${tagLang(letztes.datum)}</span></p>` : ''}
+      <div class="formreihe">${form.map((g, i) => { const geg = g.heim === fokus ? g.gast : g.heim; return `<button data-spiel="${g.id}">${i === 0 ? '<span class="micro" style="font-size:11px">zuletzt</span>' : '<span class="micro" style="font-size:11px;visibility:hidden">.</span>'}${formSun(g, fokus, true)}<span>${esc(kurz(geg).split(' ')[0])}</span><span class="t3">${g.heim === fokus ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)}</span></button>`; }).join('')}</div>
+      <div class="legende-sun"><span>${'<span class="sun S" style="width:16px;height:16px;font-size:10px">S</span>'} Sieg</span><span><span class="sun U" style="width:16px;height:16px;font-size:10px">U</span> Remis</span><span><span class="sun N" style="width:16px;height:16px;font-size:10px">N</span> Niederlage</span></div>` : '<p class="meta">Noch keine Spiele.</p>';
     const ins = auffaelligkeiten(fokus);
-    const pIdx = tabelle.findIndex(x => x.id === fokus), mini = tabelle.slice(Math.max(0, Math.min(pIdx - 2, tabelle.length - 5)), Math.max(0, Math.min(pIdx - 2, tabelle.length - 5)) + 5);
+    const pIdx = tabelle.findIndex(x => x.id === fokus), start = Math.max(0, Math.min(pIdx - 2, tabelle.length - 5)), mini = tabelle.slice(start, start + 5);
     const bald = offen.filter(g => !g.terminOffen).slice(0, 5);
-    return `${seitenkopf(esc(kurz(fokus)), `Platz ${pl} · ${z.pkt} Punkte · ${esc(ligaName)}`)}${hinweis}${alt}
+    return `${seitenkopf(esc(kurz(fokus)), `Platz ${pl} · ${z.pkt} Punkte · ${esc(ligaName)}`)}${alt}${intro}
       <div class="hero-raster">${tafel(fokus)}${kach}</div>
-      <div class="zwei-sp">${modul('Form', formHtml, { eyebrow: 'Letzte Spiele' })}
-      ${modul('Auffälligkeiten', ins.slice(0, 4).map(x => `<div class="satz">${x}</div>`).join('') || '<p class="meta">Noch zu wenig Daten.</p>', { aktion: ins.length > 4 ? '<button class="textaktion" data-aktion="alleInsights">Alle</button>' : '', fuss: `Grundlage: ${B.teams[fokus] ? B.teams[fokus].spiele.length : 0} Spielberichte.` })}</div>
+      <div class="zwei-sp">${modul('Form', formHtml, { eyebrow: 'Letzte Spiele', aktion: `<button class="textaktion" data-kader="${fokus}">Kader</button>` })}
+      ${modul('Auffälligkeiten', ins.slice(0, 4).map(x => `<div class="satz">${x}</div>`).join('') || '<p class="meta">Noch zu wenig Daten.</p>', { aktion: ins.length > 4 ? '<button class="textaktion" data-aktion="alleInsights">Alle</button>' : '', fuss: `Aus ${B.teams[fokus] ? B.teams[fokus].spiele.length : 0} Spielen mit Spielbericht.` })}</div>
       ${siegchanceVerlauf(fokus)}
       <div class="zwei-sp">${modul('Tabelle', tabelleHtml(mini, true), { aktion: '<button class="textaktion" data-bereich="tabelle">Ganze Tabelle</button>' })}
-      ${modul('Nächste Spiele der Liga', `<div class="zeilen">${bald.map(g => spielZeile(g)).join('') || '<p class="meta">Keine terminierten Spiele.</p>'}</div>`, { aktion: '<button class="textaktion" data-bereich="spiele">Alle</button>' })}</div>
-      <div class="datenfuss">${esc(datenstand)} · Quelle handball.net</div>`;
+      ${modul('Nächste Spiele der Liga', `<div class="zeilen">${bald.map(g => spielZeile(g)).join('') || '<p class="meta">Keine terminierten Spiele.</p>'}</div>`, { aktion: '<button class="textaktion" data-aktion="alleSpiele">Alle</button>' })}</div>
+      <div class="datenfuss">${esc(datenstand)}<br>${esc(ABSENDER)}</div>`;
   }
 
-  // ---------- Matchplan ----------
+  // ================= Matchplan =================
+  const kurzName = n => { const t = n.split(' '); return t.length > 1 ? `${t[0]} ${t[t.length - 1][0]}.` : n; };
   function seiteMatchplan() {
     const g = naechstes(fokus);
     if (!g) return seitenkopf('Matchplan') + modul('', `<div class="leer">${ico('plan')}<b>Kein offenes Spiel</b><p>Für ${esc(kurz(fokus))} steht kein Spiel mehr an.</p></div>`);
     const s = sicht(g);
     const mp = erzeugeMatchplan({ modell, B, K, liga: LIGA, g, fokus, eigene: labor.eigene });
-    const r = drei(mp.basis.s, mp.basis.u, mp.basis.n);
-    const n = Math.min(mp.n || 0, mp.nG || 0);
-    const kopf = seitenkopf('Matchplan', `${s.heim ? 'gegen' : 'bei'} ${esc(kurz(mp.gegner))} · ${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)} · ${zeit(g.datum)}`}`,
+    const r = drei(mp.basis.s, mp.basis.u, mp.basis.n), n = Math.min(mp.n || 0, mp.nG || 0);
+    const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au2 = mp.empfehlungen.filter(e => e.id === 'AU2'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
+    const ph1 = mp.befunde.find(b => b.id === 'PH1');
+    const wichtig = [];
+    if (au1.length) wichtig.push(['Einplanen', au1.map(e => esc(e.person.name)).join(', ')]);
+    if (au2.length) wichtig.push(['Anfragen', au2.map(e => esc(e.person.name)).join(', ')]);
+    if (au6) wichtig.push(['7-Meter', au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${esc(kurzName(x.s.name))}`).join(' · ')]);
+    if (ph1) wichtig.push(['Achtung', esc(ph1.titel)]);
+    const kopf = seitenkopf('Matchplan', `${s.heim ? 'gegen' : 'bei'} ${esc(kurz(mp.gegner))} · ${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr`}`,
       `<div style="text-align:right"><div class="kpi">${r[0]}<span class="pz">%</span></div><div class="cap t2">Siegchance</div></div>`);
-    const druckKopf = `<div class="nur-druck meta" style="margin-bottom:6px">${esc(lang(g.heim))} gegen ${esc(lang(g.gast))} · Sieg ${r[0]} %, Remis ${r[1]} %, Niederlage ${r[2]} % · ${esc(datenstand)}</div>`;
-    const hinweis = `<div class="hinweis">${ico('info')}<span>Grundlage: je ${n || 'wenige'} Spiele mit Spielbericht. Die Zahlen sind Richtwerte, keine Gewissheit.</span></div>`;
+    const aktionen = `<div style="display:flex;gap:8px;margin-bottom:var(--gap)" class="nicht-druck"><button class="btn prim" data-aktion="kabine">${ico('druck', 1)} Kabinenblatt</button>${navigator.share ? `<button class="btn" data-aktion="teilen">${ico('teilen', 1)} Teilen</button>` : ''}</div>`;
+    const das = wichtig.length ? `<section class="wichtigstes"><div class="mkopf"><div><span class="micro">Auf einen Blick</span><h2 class="titel">Das Wichtigste</h2></div></div>${wichtig.map(([k, v]) => `<div class="zeile"><span class="micro">${k}</span><span>${v}</span></div>`).join('')}</section>` : '';
+    const hinweis = `<div class="hinweis">${ico('info')}<span>${n || 'Wenige'} Spielberichte je Team. Genug für eine Richtung, zu wenig für Gewissheit.</span></div>`;
     const maxEff = Math.max(1, ...mp.empfehlungen.map(e => Math.abs(e.eff || 0)));
     const karte = e => {
-      let links;
-      if (e.id === 'AU1') links = `<span class="kpi">${Math.round(e.eff)}</span><small>Punkte hängen an ihr</small><div class="spur"><i style="width:${Math.abs(e.eff) / maxEff * 100}%"></i></div>`;
-      else if (e.id === 'AU2') links = `<span class="kpi gut">+${Math.round(e.eff)}</span><small>Punkte mit ihr</small><div class="spur"><i style="width:${Math.abs(e.eff) / maxEff * 100}%"></i></div>`;
-      else if (e.id === 'AU6') { const b0 = e.siebenmeter[0].s; links = `<span class="kpi">${b0.sm}/${b0.smVers}</span><small>7m der Ersten</small>`; }
-      else if (e.id === 'AU5') links = `<span class="kpi">${Math.round(B.teams[fokus].liste.slice().sort((a, b) => b.tore - a.tore).slice(0, 2).reduce((a, x) => a + x.anteil, 0) * 100)}<span class="pz">%</span></span><small>Tore von zwei</small>`;
-      else if (e.id === 'AU7') links = `<span class="kpi">${e.text.match(/^(\d+)/)[1]}/${e.text.match(/ihrer (\d+)/)[1]}</span><small>Tore ${/zweiten/.test(e.titel) ? '2.' : '1.'} HZ</small>`;
+      let links = '';
+      if (e.id === 'AU1') links = `<span class="kpi">${Math.round(e.eff)}<span class="pz">%</span></span><small>Siegchance hängt an ihr</small><div class="spur"><i style="width:${Math.abs(e.eff) / maxEff * 100}%"></i></div>`;
+      else if (e.id === 'AU2') links = `<span class="kpi gut">+${Math.round(e.eff)}<span class="pz">%</span></span><small>Siegchance mit ihr</small><div class="spur"><i style="width:${Math.abs(e.eff) / maxEff * 100}%"></i></div>`;
+      else if (e.id === 'AU5') links = `<span class="kpi">${Math.round(B.teams[fokus].liste.slice().sort((a, b) => b.tore - a.tore).slice(0, 2).reduce((a, x) => a + x.anteil, 0) * 100)}<span class="pz">%</span></span><small>der Tore von zwei</small>`;
+      else if (e.id === 'AU7') links = `<span class="kpi">${e.text.match(/^(\d+)/)[1]}/${e.text.match(/ihrer (\d+)/)[1]}</span><small>Tore ${/zweiten/.test(e.titel) ? '2.' : '1.'} Hälfte</small>`;
       else if (e.id === 'DI1') links = `<span class="kpi">${e.text.match(/hat (\d+)/)[1]}</span><small>Zeitstrafen</small>`;
-      else if (e.id === 'DI2') links = `<span class="kpi">${dez(K[fokus].zweiProSpiel)}</span><small>2' pro Spiel</small>`;
-      else links = '';
-      return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3>${esc(e.titel)}</h3><p>${esc(e.text)}</p><div class="belege">${etikett(ico('balken', 1) + 'Daten')}${stichprobe(e.n)}</div></div></article>`;
+      else if (e.id === 'DI2') links = `<span class="kpi">${dez(K[fokus].zweiProSpiel)}</span><small>Zeitstrafen pro Spiel</small>`;
+      return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3>${esc(e.titel)}</h3><p>${esc(e.text)}</p><div class="belege">${ausSpielen(e.n)}</div></div></article>`;
     };
-    const empf = mp.empfehlungen.length ? `<div class="karten zwei">${mp.empfehlungen.map(karte).join('')}</div>` : modul('', `<div class="leer">${ico('plan')}<b>Zu wenig Spiele für Empfehlungen</b><p>Ab zwei Spielberichten je Team erscheinen hier Tipps zur Aufstellung.</p></div>`);
-    const befundKarte = b => `<div class="satz"><span class="micro">${b.kat}</span><div style="font-weight:600;margin:2px 0 2px">${esc(b.titel)}</div><div class="t2">${esc(b.text)}</div></div>`;
-    const phasenBef = mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2');
-    const weitere = mp.befunde.filter(b => b.id !== 'PH1' && b.id !== 'PH2');
-    const gegnerinnen = mp.gegnerinnen.length ? `<div class="karten zwei">${mp.gegnerinnen.map(x => `<article class="karte"><div class="eff"><span class="kpi">#${x.s.nummer}</span></div><div><h3 style="margin-top:0">${esc(x.s.name)}</h3><div class="tags">${x.tags.map(t => etikett(esc(t))).join('')}</div><p>${esc(x.text)}</p></div></article>`).join('')}</div>` : '';
-    return `${kopf}${druckKopf}${hinweis}
+    const karten = mp.empfehlungen.filter(e => e.id !== 'AU6');
+    const empf = karten.length ? `<div class="karten zwei">${karten.map(karte).join('')}</div>` : modul('', `<div class="leer">${ico('plan')}<b>Noch zu früh für Empfehlungen</b><p>Ab 2 Spielberichten je Team stehen hier Hinweise zur Aufstellung. Bisher: ${n || 0}.</p></div>`);
+    const siebenmeter = au6 ? modul('7-Meter-Reihenfolge', `<div class="siebenmeter">${au6.siebenmeter.slice(0, 4).map((x, i) => `<div class="platz7"><span class="nr">${i + 1}.</span><span><b style="font-weight:600">${esc(x.s.name)}</b><span class="cap t2" style="display:block">#${x.s.nummer}</span></span><span style="font-weight:600">${x.s.sm} von ${x.s.smVers}</span></div>`).join('')}</div>`,
+      { id: 'mp7m', fuss: `Reihenfolge nach Trefferquote, bei wenigen Würfen vorsichtig Richtung Ligaschnitt (${pct(LIGA.smQuote)}) gezogen. Das Team trifft ${B.teams[fokus].liste.reduce((a, x) => a + x.sm, 0)} von ${B.teams[fokus].liste.reduce((a, x) => a + x.smVers, 0)}.` }) : '';
+    const befund = b => `<div class="satz"><span class="micro">${b.kat}</span><div style="font-weight:600;margin:2px 0">${esc(b.titel)}</div><div class="t2">${esc(b.text)}</div></div>`;
+    const phasenBef = mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2'), weitere = mp.befunde.filter(b => b.id !== 'PH1' && b.id !== 'PH2');
+    const gegnerinnen = mp.gegnerinnen.length ? `<div class="mkopf" style="margin-top:8px"><div><span class="micro">${esc(kurz(mp.gegner))}</span><h2 class="titel">Gegnerinnen im Blick</h2></div></div><div class="karten zwei">${mp.gegnerinnen.map(x => `<article class="karte"><div class="eff"><span class="kpi">#${x.s.nummer}</span></div><div><h3 style="margin-top:0">${esc(x.s.name)}</h3><div class="tags">${x.tags.map(t => etikett(esc(t.replace(/(\d)× 2'/, '$1 Zeitstrafen').replace(' Sp.', ' Spielen').replace('HZ', 'Hälfte')))).join('')}</div></div></article>`).join('')}</div>` : '';
+    const trainerin = TRAINERIN ? optimiererModul(g) : modul('Aufstellung durchrechnen', `<p class="meta" style="margin:0 0 12px">Für die Trainerin: Absagen eintragen, Torhüterinnen festlegen und sehen, wie sich die Siegchance verändert. Die Ansicht zeigt Werte je Spielerin und ist deshalb nicht für die ganze Gruppe gedacht.</p><button class="btn" data-aktion="trainerin">${ico('schloss', 1)} Ansicht für die Trainerin öffnen</button>`, { eyebrow: 'Für die Trainerin', klasse: 'nicht-druck', fuss: 'Diese Ansicht hat keinen Passwortschutz. Sie ist über den Link mit #trainerin am Ende erreichbar.' });
+    return `${kopf}${aktionen}${das}${hinweis}
       <div class="mkopf" style="margin-top:8px"><div><span class="micro">Aufstellung und Disziplin</span><h2 class="titel">Empfehlungen</h2></div></div>
-      ${empf}
-      ${optimiererModul(g)}
-      ${mp.phasen.fokus && mp.phasen.gegner ? modul('Spielphasen', `${phasenGrafik(mp)}${phasenBef.map(befundKarte).join('')}`, { eyebrow: 'Befund', fuss: `Tordifferenz je 10 Minuten, Summe aus ${mp.phasen.nF === mp.phasen.nG ? 'je ' + mp.phasen.nF : mp.phasen.nF + ' und ' + mp.phasen.nG} Spielen mit Spielbericht. Gestrichelt: Halbzeit. Warum die Phasen so verlaufen, zeigen die Daten nicht.` }) : ''}
-      ${gegnerinnen ? `<div class="mkopf" style="margin-top:8px"><div><span class="micro">${esc(kurz(mp.gegner))}</span><h2 class="titel">Gegnerinnen im Blick</h2></div></div>${gegnerinnen}` : ''}
-      ${weitere.length ? modul('Weitere Befunde', weitere.map(befundKarte).join('')) : ''}
-      <div class="fussnote nicht-druck">So entstehen die Empfehlungen: <button class="textaktion" style="margin:0;min-height:0" data-bereich="methodik">Methodik</button></div>`;
+      ${empf}${siebenmeter}${trainerin}
+      ${mp.phasen.fokus && mp.phasen.gegner ? modul('Spielphasen', `${phasenGrafik(mp)}${phasenBef.map(befund).join('')}`, { eyebrow: 'Befund', fuss: `Tordifferenz je 10 Minuten, Summe aus ${mp.phasen.nF === mp.phasen.nG ? 'je ' + mp.phasen.nF : mp.phasen.nF + ' und ' + mp.phasen.nG} Spielen mit Spielbericht. Gestrichelt: Halbzeit. Warum die Phasen so verlaufen, zeigen die Daten nicht.` }) : ''}
+      ${gegnerinnen}
+      ${weitere.length ? modul('Weitere Befunde', weitere.map(befund).join('')) : ''}
+      ${kabinenblatt(g, mp, r, wichtig)}`;
+  }
+
+  function kabinenblatt(g, mp, r, wichtig) {
+    const t = B.teams[fokus], kd = kaderVon(fokus);
+    const kaderListe = t ? t.liste.slice().sort((a, b) => a.nummer - b.nummer).filter(s => TRAINERIN ? kd.verf[s.id] !== false : ueblichDabei(s)) : [];
+    const au6 = mp.empfehlungen.find(e => e.id === 'AU6');
+    return `<section class="kabinenblatt" aria-hidden="true">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end"><h1>${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}</h1><div>${wortmarke(16)}</div></div>
+      <div>${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr`}${g.halle ? ` · ${esc(normalisiere(g.halle))}${g.adresse ? ', ' + esc(adresseSchoen(g.adresse)) : ''}` : ''}</div>
+      <div class="gross" style="margin-top:3mm">Siegchance ${esc(kurz(fokus))}: ${r[0]} % · Remis ${r[1]} % · Niederlage ${r[2]} %</div>
+      <h2>Das Wichtigste</h2><table>${wichtig.map(([k, v]) => `<tr><th style="width:28mm">${k}</th><td>${v}</td></tr>`).join('')}</table>
+      <div class="spalten"><div>${au6 ? `<h2>7-Meter</h2><table>${au6.siebenmeter.slice(0, 4).map((x, i) => `<tr><td class="gross" style="width:10mm">${i + 1}.</td><td>#${x.s.nummer} ${esc(x.s.name)}</td><td>${x.s.sm}/${x.s.smVers}</td></tr>`).join('')}</table>` : ''}
+        <h2>Kader</h2><table>${kaderListe.map(s => `<tr><td style="width:10mm">${s.nummer}</td><td>${esc(s.name)}${kd.pins[s.id] ? ' (immer dabei)' : ''}</td></tr>`).join('')}</table></div>
+      <div><h2>Gegnerinnen im Blick</h2><table>${mp.gegnerinnen.map(x => `<tr><td style="width:10mm">${x.s.nummer}</td><td>${esc(x.s.name)}<br><span style="color:#555">${esc(x.tags.join(' · ').replace(' Sp.', ' Spielen'))}</span></td></tr>`).join('')}</table>
+        <h2>Spielphasen</h2>${mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2').map(b => `<p style="margin:0 0 2mm">${esc(b.titel)}. ${esc(b.text)}</p>`).join('')}</div></div>
+      <div class="fuss">${esc(datenstand)} · Grundlage je ${Math.min(mp.n, mp.nG)} Spielberichte. Richtwerte, keine Gewissheit. ${esc(ABSENDER)}</div>
+    </section>`;
   }
 
   function optimiererModul(g) {
@@ -506,55 +568,62 @@
     const verf = t.liste.filter(s => kd.verf[s.id] !== false).length;
     const rO = drei(o.chance.s, o.chance.u, o.chance.n), rU = drei(o.chanceUeblich.s, o.chanceUeblich.u, o.chanceUeblich.n);
     const delta = rO[0] - rU[0];
-    const sortiert = t.liste.slice().sort((a, b) => (ueblichDabei(b) ? 1 : 0) - (ueblichDabei(a) ? 1 : 0) || b.einfluss - a.einfluss);
     const wertVon = s => { const a = o.auswahl.find(x => x.s === s); if (a) return a.wert; const gst = o.gestrichen.find(x => x.s === s); return gst ? gst.wert : null; };
+    const anders = t.liste.filter(s => (kd.verf[s.id] !== false) !== ueblichDabei(s));
+    const sortiert = t.liste.slice().sort((a, b) => (kd.verf[a.id] === false) - (kd.verf[b.id] === false) || (wertVon(b) || 0) - (wertVon(a) || 0));
     const zeile = s => {
-      const an = kd.verf[s.id] !== false, w = wertVon(s), pin = !!kd.pins[s.id];
-      const im = o.auswahl.some(x => x.s === s);
-      const hz = (K[fokus].torHz[s.name] || [0, 0]);
+      const an = kd.verf[s.id] !== false, w = wertVon(s), pin = !!kd.pins[s.id], im = o.auswahl.some(x => x.s === s);
       const info = [`${s.anz}/${t.spiele.length} Sp.`, `${dez(s.toreProSpiel)} Tore/Sp.`];
       if (s.smVers) info.push(`7m ${s.sm}/${s.smVers}`);
-      if (s.zwei) info.push(`${s.zwei}× 2'`);
-      if (hz[0] + hz[1] >= 3) info.push(`HZ ${hz[0]}/${hz[1]}`);
-      const tags = [];
-      if (!ueblichDabei(s)) tags.push(belegt(s, labor.eigene) ? 'selten dabei' : 'kein Beleg');
-      return `<div class="sz${an && im ? '' : ' aus'}">
-        <input type="checkbox" role="switch" class="schalter" data-verf="${esc(s.id)}" ${an ? 'checked' : ''} aria-label="${esc(s.name)} verfügbar">
+      if (s.zwei) info.push(`${s.zwei}× Zeitstrafe`);
+      const tag = !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
+      const wert = !an ? '<small>nicht dabei</small>' : w == null || w < 1 ? '<small>keine Daten</small>' : `${Math.round(w)}<small>%</small>`;
+      return `<label class="sz label${an && im ? '' : ' aus'}">
+        <input type="checkbox" role="switch" class="schalter" data-verf="${esc(s.id)}" ${an ? 'checked' : ''} aria-label="${esc(s.name)} dabei">
         <span class="nr">#${s.nummer}</span>
-        <span class="wer"><b><span>${esc(s.name)}</span>${tags.map(x => etikett(x, true)).join('')}</b><span class="cap"><span class="nur-mobil">${tags.length ? tags[0] + ' · ' : ''}</span>${info.join(' · ')}</span></span>
-        <span style="display:flex;align-items:center;gap:10px"><button class="pinbtn${pin ? ' an' : ''}" data-pin="${esc(s.id)}" title="Fester Platz, etwa Torhüterin">${etikett('fest')}</button>
-        <span class="wirk">${w != null && an ? `${Math.round(w)}<small>Pkt.</small>` : '<small>fehlt</small>'}</span></span></div>`;
+        <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, true) : ''}</b><span class="cap zwei"><span class="nur-mobil">${tag ? tag + ' · ' : ''}</span>${info.join(' · ')}</span></span>
+        <span style="display:flex;align-items:center;gap:4px"><button type="button" class="pin${pin ? ' an' : ''}" data-pin="${esc(s.id)}" aria-pressed="${pin}" aria-label="${esc(s.name)} immer dabei" title="Immer dabei, etwa Torhüterin">${ico('pin')}</button><span class="wirk">${wert}</span></span></label>`;
     };
-    const ergebnis = `<div class="kacheln" style="margin-bottom:12px">${kachel('Mit dieser Besetzung', `${rO[0]}<span class="pz">%</span>`, `${o.auswahl.length} Spielerinnen auf dem Bogen`, delta ? `<span class="delta ${delta > 0 ? 'plus' : 'minus'}">${delta > 0 ? '+' : MINUS}${Math.abs(delta)}</span>` : '')}${kachel('Übliche Besetzung', `${rU[0]}<span class="pz">%</span>`, 'alle mit mindestens der Hälfte der Spiele')}</div>`;
+    const fehlen = anders.filter(s => kd.verf[s.id] === false), dazu = anders.filter(s => kd.verf[s.id] !== false && belegt(s, labor.eigene));
+    const nameListe = l => l.length > 3 ? `${l.slice(0, 2).map(s => esc(s.name)).join(', ')} und ${l.length - 2} weitere` : l.map(s => esc(s.name)).join(', ');
+    const vergleich = [fehlen.length ? `Nicht dabei: ${nameListe(fehlen)}.` : '', dazu.length ? `Zusätzlich zur Stammbesetzung: ${nameListe(dazu)}.` : ''].join(' ').trim() || 'Gleich wie die Stammbesetzung.';
+    const ergebnis = `<div class="kacheln" style="margin-bottom:12px">${kachel('Mit diesem Kader', `${rO[0]}<span class="pz">%</span>`, `${o.auswahl.length} im Spielbericht (höchstens ${MATCHPLAN.K})`, delta ? `<span class="delta ${delta > 0 ? 'plus' : 'minus'}">${delta > 0 ? '+' : MINUS}${Math.abs(delta)}</span>` : '')}${kachel('Stammbesetzung', `${rU[0]}<span class="pz">%</span>`, 'wer bei mindestens der Hälfte der Spiele dabei war')}</div><p class="meta" style="margin:0 0 8px">${vergleich}</p>`;
     const warn = [];
-    if (o.ohnePins) warn.push('Torhüterinnen sind in den Spielberichten nicht gekennzeichnet. Markiere sie mit „fest“, damit sie immer auf dem Bogen stehen.');
-    if (o.gestrichen.length) warn.push(`Nicht auf dem Bogen (Grenze ${MATCHPLAN.K}): ${o.gestrichen.map(x => esc(x.s.name)).join(', ')}.`);
-    return modul('Aufstellung', `${ergebnis}
+    if (o.ohnePins) warn.push('Torhüterinnen erfassen die Spielberichte nicht. Markiere sie mit der Stecknadel, dann stehen sie immer im Kader.');
+    if (o.gestrichen.length) warn.push(`Nicht im Spielbericht (Grenze ${MATCHPLAN.K}): ${o.gestrichen.map(x => esc(x.s.name)).join(', ')}.`);
+    return modul('Aufstellung durchrechnen', `${ergebnis}
       <div class="listenkopf"><span class="meta">${verf} von ${t.liste.length} verfügbar</span><button class="textaktion" data-aktion="alleVerf">Alle verfügbar</button></div>
       <div class="zeilen">${sortiert.map(zeile).join('')}</div>`,
-      { eyebrow: 'Optimierer', fuss: `Schalter aus = sagt ab. Die Zahl rechts zeigt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der üblichen Besetzung. Mehr als die übliche Besetzung bringt höchstens ein Tor, weil nur sieben auf dem Feld stehen. ${warn.join(' ')}`, id: 'optimierer' });
+      { eyebrow: 'Ansicht Trainerin', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen und Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
   }
 
-  // ---------- Spielplan ----------
+  // ================= Spiele =================
   function seiteSpiele() {
     let liste = ui.spieleTeam === 'fokus' ? spiele.filter(g => g.heim === fokus || g.gast === fokus) : spiele;
     if (ui.spieleStatus === 'offen') liste = liste.filter(g => g.offen);
     if (ui.spieleStatus === 'gespielt') liste = liste.filter(g => !g.offen);
-    const runden = [...new Set(liste.map(g => g.runde))].sort((a, b) => a - b);
-    const segT = `<div class="seg" role="tablist">${[['alle', 'Alle Teams'], ['fokus', kurz(fokus)]].map(([k, l]) => `<button data-ui="spieleTeam" data-wert="${k}" class="${ui.spieleTeam === k ? 'an' : ''}">${esc(l)}</button>`).join('')}</div>`;
-    const segS = `<div class="seg" role="tablist">${[['alle', 'Alle'], ['offen', 'Offen'], ['gespielt', 'Gespielt']].map(([k, l]) => `<button data-ui="spieleStatus" data-wert="${k}" class="${ui.spieleStatus === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
-    const naechsteRunde = (offen.find(g => ui.spieleTeam !== 'fokus' || g.heim === fokus || g.gast === fokus) || {}).runde;
-    return `${seitenkopf('Spielplan', `${esc(ligaName)} · ${gewertet.length} gespielt, ${offen.length} offen`)}${segT}${segS}
-      ${modul('', runden.map(r => `<div class="spieltag micro" id="runde${r}"${r === naechsteRunde ? ' data-naechste' : ''}>Spieltag ${r}</div><div class="zeilen">${liste.filter(g => g.runde === r).map(g => spielZeile(g, { sun: ui.spieleTeam === 'fokus', ohneMarke: ui.spieleTeam === 'fokus' })).join('')}</div>`).join('') || `<div class="leer">${ico('kalender')}<b>Keine Spiele</b></div>`,
-        { fuss: 'Kleine graue Zahlen: Halbzeitstand. Haken: Prognose lag richtig, Kreis: daneben. Prozent: Siegchance des Teams im Fokus.' })}`;
+    const segT = `<div class="seg">${[['fokus', kurz(fokus)], ['alle', 'Alle Teams']].map(([k, l]) => `<button data-ui="spieleTeam" data-wert="${k}" class="${ui.spieleTeam === k ? 'an' : ''}">${esc(l)}</button>`).join('')}</div>`;
+    const segS = `<div class="seg">${[['alle', 'Alle'], ['offen', 'Offen'], ['gespielt', 'Gespielt']].map(([k, l]) => `<button data-ui="spieleStatus" data-wert="${k}" class="${ui.spieleStatus === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
+    let html;
+    if (ui.spieleTeam === 'fokus') {
+      // chronologisch, Spieltag als Etikett
+      const nxt = liste.find(g => g.offen);
+      html = `<div class="zeilen">${liste.map(g => `${g === nxt ? '<div class="spieltag micro" data-naechste>Als Nächstes</div>' : ''}${spielZeile(g, { ohneMarke: true })}`).join('')}</div>`;
+    } else {
+      const runden = [...new Set(liste.map(g => g.runde))].sort((a, b) => a - b);
+      const naechsteRunde = (offen[0] || {}).runde;
+      html = runden.map(r => `<div class="spieltag micro"${r === naechsteRunde ? ' data-naechste' : ''}>Spieltag ${r}</div><div class="zeilen">${liste.filter(g => g.runde === r).map(g => spielZeile(g)).join('')}</div>`).join('');
+    }
+    return `${seitenkopf('Spiele', `${esc(ligaName)} · ${gewertet.length} gespielt, ${offen.length} offen`)}${hinweisFokus()}${segT}${segS}
+      ${modul('', html || `<div class="leer">${ico('kalender')}<b>Keine Spiele</b></div>`, { fuss: 'Prozent: Siegchance des eigenen Teams, bei fremden Spielen die Chance des Heimteams. Spiel antippen für Details, Halle und Route.' })}`;
   }
 
-  // ---------- Tabelle & Szenarien ----------
+  // ================= Tabelle =================
   function seiteTabelle() {
     const seg = `<div class="seg">${[['tabelle', 'Tabelle'], ['verlauf', 'Verlauf'], ['saison', 'Saisonende']].map(([k, l]) => `<button data-ui="tabelleAnsicht" data-wert="${k}" class="${ui.tabelleAnsicht === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
     let inhalt = '';
-    if (ui.tabelleAnsicht === 'tabelle') inhalt = modul('', tabelleHtml(tabelle), { fuss: `Offizielle Tabelle von handball.net. Zeile antippen nimmt das Team in den Fokus.${urteile.length ? ` ${urteile.length} Spiel${urteile.length > 1 ? 'e' : ''} per Urteil gewertet.` : ''}` });
-    if (ui.tabelleAnsicht === 'verlauf') inhalt = modul('Tabellenplatz je Spieltag', tabellenVerlauf(), { fuss: 'Linie antippen nimmt das Team in den Fokus.' });
+    if (ui.tabelleAnsicht === 'tabelle') inhalt = modul('', tabelleHtml(tabelle), { fuss: `Tabelle laut handball.net. Team antippen für Details.${urteile.length ? ` ${urteile.length} Spiel${urteile.length > 1 ? 'e' : ''} am grünen Tisch gewertet.` : ''}` });
+    if (ui.tabelleAnsicht === 'verlauf') inhalt = modul('Platz je Spieltag', tabellenVerlauf(), { fuss: 'Linie antippen für Details zum Team.' });
     if (ui.tabelleAnsicht === 'saison') {
       const nFest = Object.keys(fest).length;
       const sim = nFest ? simuliereSaison(modell, gewertet, offen, teamIds, 5000, fest, bonus) : simBasis;
@@ -563,22 +632,22 @@
       const stufe = v => v < .01 ? null : v < .05 ? 1 : v < .15 ? 2 : v < .30 ? 3 : v < .50 ? 4 : v < .75 ? 5 : 6;
       const zelle = v => { const s = stufe(v); return s ? `<td class="z" style="background:var(--seq-${s});color:${s >= 5 ? `var(--seq-${s}-text)` : 'var(--text-1)'}">${Math.round(v * 100)}</td>` : '<td class="z"></td>'; };
       const reihe = teamIds.slice().sort((a, b) => sim.punkte[b] - sim.punkte[a]);
-      const heat = `<div class="scrollx"><table class="tab heat"><thead><tr><th class="l">Team</th><th>Pkt</th>${teamIds.map((_, i) => `<th style="text-align:center;padding:0">${i + 1}.</th>`).join('')}</tr></thead><tbody>
-        ${reihe.map(id => `<tr class="klick${id === fokus ? ' f' : ''}" data-fokus="${id}"><td class="l tw"><span class="team">${logo(id)}<span>${esc(kurz(id))}</span></span></td><td>${dez(sim.punkte[id])}</td>${sim.plaetze[id].map(zelle).join('')}</tr>`).join('')}</tbody></table></div>`;
+      const heat = `<div class="scroll-hinweis"><div class="scrollx"><table class="tab heat"><thead><tr><th class="l">Team</th><th>Punkte</th>${teamIds.map((_, i) => `<th style="text-align:center;padding:0">${i + 1}.</th>`).join('')}</tr></thead><tbody>
+        ${reihe.map(id => `<tr class="klick${id === fokus ? ' f' : ''}" data-team="${id}"><td class="l tw"><span class="team">${logo(id)}<span>${esc(kurz(id))}</span></span></td><td>${dez(sim.punkte[id])}</td>${sim.plaetze[id].map(zelle).join('')}</tr>`).join('')}</tbody></table></div></div>`;
       const runden = [...new Set(offen.map(g => g.runde))].sort((a, b) => a - b);
       const wi = runden.map(r => `<div class="spieltag micro">Spieltag ${r}</div>` + offen.filter(g => g.runde === r).map(g => {
         const p = prognose(modell, g.heim, g.gast), rr = drei(p.pHeim, p.pRemis, p.pGast), sv = sicht(g);
-        return `<div class="sz" style="grid-template-columns:minmax(0,1fr) auto;${sv.dabei ? 'box-shadow:inset 3px 0 0 var(--accent)' : ''}"><span class="wer"><b><span>${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}</span></b><span class="cap">${g.terminOffen ? 'Termin offen' : tagKurz(g.datum)} · Modell H ${rr[0]} · U ${rr[1]} · G ${rr[2]}</span></span>
+        return `<div class="sz" style="grid-template-columns:minmax(0,1fr) auto;${sv.dabei ? 'box-shadow:inset 3px 0 0 var(--accent)' : ''}"><span class="wer"><b><span>${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}</span></b><span class="cap">${g.terminOffen ? 'Termin offen' : tagKurz(g.datum)} · Heim ${rr[0]} % · Remis ${rr[1]} % · Gast ${rr[2]} %</span></span>
           <span class="mini-seg">${['H', 'U', 'G'].map(k => `<button data-fest="${g.id}" data-wert="${k}" class="${fest[g.id] === k ? 'an' : ''}" aria-label="${k === 'H' ? 'Heimsieg' : k === 'U' ? 'Unentschieden' : 'Gastsieg'} festlegen">${k}</button>`).join('')}</span></div>`;
       }).join('')).join('');
-      inhalt = `<div class="kacheln">${kachel(`Platz 1 · ${esc(kurz(fokus))}`, `${Math.round(sim.plaetze[fokus][0] * 100)}<span class="pz">%</span>`, `erwartete Punkte ${dez(sim.punkte[fokus])}`, dl(sim.plaetze[fokus][0], simBasis.plaetze[fokus][0]))}${kachel('Top 3', `${Math.round(top3(sim, fokus) * 100)}<span class="pz">%</span>`, nFest ? `${nFest} Ergebnis${nFest > 1 ? 'se' : ''} festgelegt` : 'ohne Festlegungen', dl(top3(sim, fokus), top3(simBasis, fokus)))}</div>
-        ${modul('Wo landet wer?', heat, { eyebrow: '5.000 simulierte Spielzeiten', fuss: 'Werte in Prozent. Je dunkler, desto wahrscheinlicher.' })}
-        ${modul('Was wäre wenn?', `<div class="listenkopf" style="padding:0"><span class="meta">${nFest ? `${nFest} Ergebnis${nFest > 1 ? 'se' : ''} festgelegt` : 'Lege Ergebnisse fest, die Simulation rechnet sofort neu.'}</span>${nFest ? '<button class="textaktion" data-aktion="festWeg">Zurücksetzen</button>' : `<button class="textaktion" data-aktion="fokusSiegt">${esc(kurz(fokus))} gewinnt alles</button>`}</div><div class="zeilen">${wi}</div>`, { id: 'wasWaere' })}`;
+      inhalt = `<div class="kacheln">${kachel(`Platz 1 · ${esc(kurz(fokus))}`, `${Math.round(sim.plaetze[fokus][0] * 100)}<span class="pz">%</span>`, `erwartet ${dez(sim.punkte[fokus])} Punkte`, dl(sim.plaetze[fokus][0], simBasis.plaetze[fokus][0]))}${kachel('Unter die ersten 3', `${Math.round(top3(sim, fokus) * 100)}<span class="pz">%</span>`, nFest ? `${nFest} Ergebnis${nFest > 1 ? 'se' : ''} festgelegt` : 'ohne Festlegungen', dl(top3(sim, fokus), top3(simBasis, fokus)))}</div>
+        ${modul('Wo landet wer am Ende?', heat, { eyebrow: '5.000 durchgespielte Saisons', fuss: 'Prozent je Endplatz. Je dunkler, desto wahrscheinlicher. Zur Seite wischen für alle Plätze.' })}
+        ${modul('Was wäre wenn?', `<div class="listenkopf" style="padding:0"><span class="meta">${nFest ? `${nFest} Ergebnis${nFest > 1 ? 'se' : ''} festgelegt` : 'Lege Ergebnisse fest (H Heimsieg, U Remis, G Gastsieg), die Saison rechnet sofort neu.'}</span>${nFest ? '<button class="textaktion" data-aktion="festWeg">Zurücksetzen</button>' : `<button class="textaktion" data-aktion="fokusSiegt">${esc(kurz(fokus))} gewinnt alles</button>`}</div><div class="zeilen">${wi}</div>`, { id: 'wasWaere' })}`;
     }
-    return `${seitenkopf('Tabelle', `${esc(ligaName)} · nach ${maxRunde} Spieltagen`)}${seg}${inhalt}`;
+    return `${seitenkopf('Tabelle', `${esc(ligaName)} · nach ${maxRunde} Spieltagen`)}${hinweisFokus()}${seg}${inhalt}`;
   }
 
-  // ---------- Spiel-Labor ----------
+  // ================= Durchspielen (Labor) =================
   function laborStandard(g) { labor.dabei = ueblicheBesetzung(B, [g.heim, g.gast]); labor.form = { f: 0, g: 0 }; labor.neutral = false; }
   function laborRechne(g, ohne) {
     const s = sicht(g), fHeim = s.dabei ? s.heim : true;
@@ -589,20 +658,20 @@
     return prognoseMitBesetzung(modell, g.heim, g.gast, eh, eg);
   }
   function seiteLabor() {
-    if (!offen.length) return seitenkopf('Spiel-Labor') + modul('', `<div class="leer">${ico('labor')}<b>Keine offenen Spiele</b></div>`);
+    if (!offen.length) return seitenkopf('Durchspielen') + modul('', `<div class="leer">${ico('labor')}<b>Keine offenen Spiele</b></div>`);
     if (!labor.spiel || !spielNach[labor.spiel] || !spielNach[labor.spiel].offen) { const n = naechstes(fokus) || offen[0]; labor.spiel = n.id; laborStandard(n); }
     const g = spielNach[labor.spiel], s = sicht(g);
     const reihen = offen.filter(o => o.heim === fokus || o.gast === fokus).concat(offen.filter(o => o.heim !== fokus && o.gast !== fokus)).slice(0, 24);
     const chips = `<div class="chipreihe">${reihen.map(o => `<button class="chip${o.id === g.id ? ' an' : ''}" data-labor="${o.id}">${esc(kurz(o.heim))} · ${esc(kurz(o.gast))} · ${o.terminOffen ? 'offen' : tagKurz(o.datum)}</button>`).join('')}</div>`;
-    const seiten = s.dabei ? [fokus, s.gegner] : [g.heim, g.gast];
+    const seiten = [g.heim, g.gast];
     const h2h = gewertet.filter(x => (x.heim === g.heim && x.gast === g.gast) || (x.heim === g.gast && x.gast === g.heim));
-    return `${seitenkopf('Spiel-Labor', 'Wer spielt, wer fehlt, wie ist die Tagesform')}${chips}
+    return `${seitenkopf('Durchspielen', 'Wer spielt, wer nicht, wie ist die Tagesform')}${hinweisFokus()}${chips}
       <div class="modul labor-leiste" id="laborErgebnis"></div>
       <div class="zwei-sp">${seiten.map(tid => kaderModul(g, tid)).join('')}</div>
       ${modul('Tagesform und Halle', `${regler('formF', s.dabei ? kurz(fokus) : kurz(g.heim), labor.form.f)}${regler('formG', s.dabei ? kurz(s.gegner) : kurz(g.gast), labor.form.g)}
-        <div class="sz" style="padding:6px 0;grid-template-columns:44px minmax(0,1fr)"><input type="checkbox" role="switch" class="schalter" id="neutral" ${labor.neutral ? 'checked' : ''}><label for="neutral" class="meta" style="color:var(--text-1)">Neutrale Halle, ohne Heimvorteil von ${dez(modell.heim)} Toren</label></div>`, { fuss: 'Tagesform in Toren: plus heißt besser als üblich.' })}
-      ${modul('Verteilung der Tordifferenz', '<div id="laborVerteilung"></div>', { fuss: 'Balken: mit deinen Einstellungen. Gestrichelt: Standardprognose ohne Kaderinfo.' })}
-      ${modul('Wer würde am meisten fehlen?', '<div id="laborWichtig"></div>', { fuss: 'Um so viele Prozentpunkte sinkt die Siegchance des Teams, wenn nur diese eine Spielerin zusätzlich fehlt.' })}
+        <label class="sz label" style="padding:6px 0;grid-template-columns:44px minmax(0,1fr)"><input type="checkbox" role="switch" class="schalter" id="neutral" ${labor.neutral ? 'checked' : ''}><span class="meta" style="color:var(--text-1)">Neutrale Halle, ohne Heimvorteil von ${dez(modell.heim)} Toren</span></label>`, { fuss: 'Tagesform: besser oder schlechter als sonst, in Toren.' })}
+      ${modul('So könnte es ausgehen', '<div id="laborVerteilung"></div>', { fuss: 'Wahrscheinlichkeit je Tordifferenz. Balken: mit deinen Einstellungen. Gestrichelt: ohne Kaderinfo.' })}
+      ${TRAINERIN ? modul('An wem hängt am meisten?', '<div id="laborWichtig"></div>', { eyebrow: 'Ansicht Trainerin', fuss: 'Um so viele Prozentpunkte sinkt die Siegchance, wenn nur diese eine Spielerin zusätzlich nicht dabei ist.' }) : ''}
       ${modul('Direktvergleich', h2h.length ? `<div class="zeilen">${h2h.map(x => spielZeile(x)).join('')}</div>` : '<p class="meta" style="margin:0">Die beiden Teams haben in dieser Saison noch nicht gegeneinander gespielt.</p>')}`;
   }
   function regler(id, name, wert) {
@@ -613,91 +682,91 @@
     const t = B.teams[tid];
     if (!t) return modul(esc(kurz(tid)), '<p class="meta" style="margin:0">Für dieses Team liegen noch keine Spielberichte vor.</p>');
     const an = t.liste.filter(s => labor.dabei[s.id]).length;
-    return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei</span><button class="textaktion" data-aktion="laborUeblich">Übliche Besetzung</button></div>
-      <div class="zeilen">${t.liste.map(s => {
+    return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei</span><button class="textaktion" data-aktion="laborUeblich">Stammbesetzung</button></div>
+      <div class="zeilen">${t.liste.slice().sort((a, b) => a.nummer - b.nummer).map(s => {
         const dab = !!labor.dabei[s.id], eig = labor.eigene[s.id], w = eig != null ? eig : s.einfluss;
-        const tagText = !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'kein Beleg') : '';
-        const tag = tagText ? etikett(tagText, true) : '';
-        return `<div class="sz${dab ? '' : ' aus'}" data-zeile="${esc(s.id)}"><input type="checkbox" role="switch" class="schalter" data-dabei="${esc(s.id)}" ${dab ? 'checked' : ''} aria-label="${esc(s.name)} spielt mit">
-          <span class="nr">#${s.nummer}</span><span class="wer"><b><span>${esc(s.name)}</span>${tag}</b><span class="cap"><span class="nur-mobil">${tagText ? tagText + ' · ' : ''}</span>${dez(s.toreProSpiel)} Tore/Sp. · ${s.anz}/${t.spiele.length} Sp.${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
-          <button class="wirk" data-einfluss="${esc(s.id)}" title="Eigene Einschätzung">${vz(w)}<small>Tore</small></button>
-          ${labor.offen === s.id ? `<div class="regelzeile">${reglerEigen(s.id, w)}</div>` : ''}</div>`;
-      }).join('')}</div>`, { fuss: 'Zahl rechts: Einfluss auf die Tordifferenz. Antippen, um ihn selbst einzuschätzen, etwa für eine Torhüterin. Alle Werte sind vorläufig, solange es weniger als zwei Spiele mit und zwei ohne die Spielerin gibt.' });
+        const tagText = !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
+        const rechts = TRAINERIN ? `<button type="button" class="wirk" data-einfluss="${esc(s.id)}" title="Eigene Einschätzung">${vz(w)}<small>Tore</small></button>` : `<span class="wirk"><small>${dez(s.toreProSpiel)} Tore/Sp.</small></span>`;
+        return `<label class="sz label${dab ? '' : ' aus'}" data-zeile="${esc(s.id)}"><input type="checkbox" role="switch" class="schalter" data-dabei="${esc(s.id)}" ${dab ? 'checked' : ''} aria-label="${esc(s.name)} spielt mit">
+          <span class="nr">#${s.nummer}</span><span class="wer"><b><span>${esc(s.name)}</span>${tagText ? etikett(tagText, true) : ''}</b><span class="cap"><span class="nur-mobil">${tagText ? tagText + ' · ' : ''}</span>${s.anz} von ${t.spiele.length} Spielen${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
+          ${rechts}
+          ${TRAINERIN && labor.offen === s.id ? `<div class="regelzeile">${reglerEigen(s.id, w)}</div>` : ''}</label>`;
+      }).join('')}</div>`, { fuss: TRAINERIN ? 'Zahl rechts: Torwirkung, also so viele Tore Unterschied macht sie im Schnitt. Antippen, um sie selbst einzuschätzen, etwa für eine Torhüterin.' : 'Zeile antippen: dabei oder nicht dabei. Die Chancen oben rechnen sofort neu.' });
   }
   function reglerEigen(pid, w) {
-    const pos = (w + 2) / 10 * 100, mitte = 20;
-    return `<div class="regler" style="grid-template-columns:minmax(0,120px) 1fr 48px"><label class="t2">Eigene Einschätzung</label><input type="range" data-eigen="${esc(pid)}" min="-2" max="8" step="0.5" value="${w}" style="--f0:${Math.min(mitte, pos)}%;--f1:${Math.max(mitte, pos)}%"><output>${vz(w)}</output></div>`;
+    const pos = (w + 2) / 10 * 100;
+    return `<div class="regler"><label class="t2">Eigene Einschätzung</label><input type="range" data-eigen="${esc(pid)}" min="-2" max="8" step="0.5" value="${w}" style="--f0:${Math.min(20, pos)}%;--f1:${Math.max(20, pos)}%"><output>${vz(w)}</output></div>`;
   }
   function laborErgebnis() {
     const g = spielNach[labor.spiel]; if (!g || !$('#laborErgebnis')) return;
-    const s = sicht(g);
     const basis = prognose(modell, g.heim, g.gast), p = laborRechne(g);
-    const wb = ausFokus(basis, g), wp = ausFokus(p, g);
-    const rp = drei(wp.a, wp.u, wp.b), rb = drei(wb.a, wb.u, wb.b);
-    const lab = wp.neutral ? ['Heimsieg', 'Remis', 'Gastsieg'] : ['Sieg', 'Remis', 'Niederlage'];
-    const d = i => { const x = rp[i] - rb[i]; return x ? `<span class="d ${(i === 0 && !wp.neutral) ? (x > 0 ? 'plus' : 'minus') : (i === 2 && !wp.neutral) ? (x > 0 ? 'minus' : 'plus') : 't2'}">${x > 0 ? '+' : MINUS}${Math.abs(x)}</span>` : ''; };
-    $('#laborErgebnis').innerHTML = `<div class="micro" style="text-align:center">${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}${s.dabei ? ` · Sicht ${esc(kurz(fokus))}` : ''}</div>
-      <div class="ergebnis3">${rp.map((v, i) => `<div><div class="w">${v}<span class="pz">%</span>${d(i)}</div><div class="lab">${lab[i]}</div></div>`).join('')}</div>
-      ${streifen(wp, true)}<div class="cap t2" style="text-align:center;margin-top:8px">Ohne Kaderinfo ${rb.join(' / ')} · erwartet ${stand(dez(s.dabei && !s.heim ? p.eGast : p.eHeim), dez(s.dabei && !s.heim ? p.eHeim : p.eGast))}</div>`;
+    const rb = drei(basis.pHeim, basis.pRemis, basis.pGast), rp = drei(p.pHeim, p.pRemis, p.pGast);
+    const s = sicht(g);
+    const d = i => { const x = rp[i] - rb[i]; if (!x) return ''; const gut = !s.dabei || i === 1 ? null : ((i === 0) === s.heim) === (x > 0); return `<span class="d ${gut == null ? 't2' : gut ? 'plus' : 'minus'}">${x > 0 ? '+' : MINUS}${Math.abs(x)}</span>`; };
+    const lab = [`Sieg ${esc(kurz(g.heim))}`, 'Remis', `Sieg ${esc(kurz(g.gast))}`];
+    const farbe = i => !s.dabei || i === 1 ? '' : ((i === 0) === s.heim ? 'plus' : 'minus');
+    $('#laborErgebnis').innerHTML = `<div class="ergebnis3">${rp.map((v, i) => `<div><div class="w ${farbe(i)}">${v}<span class="pz">%</span>${d(i)}</div><div class="lab">${lab[i]}</div></div>`).join('')}</div>
+      ${streifenHG(p, g, true)}<div class="cap t2" style="text-align:center;margin-top:8px">Ohne Kaderinfo ${rb.join(' / ')} % · ${erwartet(p, g)}</div>`;
     $('#laborVerteilung').innerHTML = verteilungSvg(p, basis, g);
-    const seiten = s.dabei ? [fokus, s.gegner] : [g.heim, g.gast];
-    $('#laborWichtig').innerHTML = `<div class="zwei-sp" style="margin:0">${seiten.map(tid => {
+    if (!TRAINERIN || !$('#laborWichtig')) return;
+    $('#laborWichtig').innerHTML = `<div class="zwei-sp" style="margin:0">${[g.heim, g.gast].map(tid => {
       const t = B.teams[tid]; if (!t) return '<div></div>';
-      const sichtVon = q => (g.heim === tid ? q.pHeim : q.pGast);
-      const b0 = sichtVon(p);
-      const l = t.liste.filter(x => labor.dabei[x.id]).map(x => ({ x, d: sichtVon(laborRechne(g, x.id)) - b0 })).sort((a, b) => a.d - b.d).slice(0, 5);
+      const sv = q => (g.heim === tid ? q.pHeim : q.pGast), b0 = sv(p);
+      const l = t.liste.filter(x => labor.dabei[x.id]).map(x => ({ x, d: sv(laborRechne(g, x.id)) - b0 })).sort((a, b) => a.d - b.d).slice(0, 5);
       const mx = Math.max(.01, ...l.map(z => -z.d));
-      return `<div><div class="cap" style="font-weight:600;margin-bottom:6px;display:flex;gap:8px;align-items:center">${logo(tid)} ${esc(kurz(tid))}</div>${l.map(z => `<div class="bl"><span class="nm"><span>${esc(z.x.name)}</span></span><span class="spur"><i class="${tid === fokus ? 'f' : ''}" style="left:0;width:${Math.max(0, -z.d) / mx * 100}%"></i></span><span class="w">${vzGanz(z.d * 100)}</span></div>`).join('')}</div>`;
+      return `<div><div class="cap" style="font-weight:600;margin-bottom:6px;display:flex;gap:8px;align-items:center">${logo(tid)} ${esc(kurz(tid))}</div>${l.map(z => `<div class="bl"><span class="nm"><span>${esc(z.x.name)}</span></span><span class="spur"><i class="${tid === fokus ? 'f' : ''}" style="left:0;width:${Math.max(0, -z.d) / mx * 100}%"></i></span><span class="w">${vzGanz(z.d * 100)}${NB}%</span></div>`).join('')}</div>`;
     }).join('')}</div>`;
   }
 
-  // ---------- Spielerinnen ----------
-  const SORT = { einfluss: ['Einfluss', s => s.einfluss], tore: ['Tore', s => s.tore], tps: ['je Spiel', s => s.toreProSpiel], sm: ['7m', s => s.smVers ? s.sm / s.smVers + s.smVers / 1000 : -1] };
+  // ================= Spielerinnen =================
+  const SORT = { tore: ['Tore', s => s.tore], tps: ['pro Spiel', s => s.toreProSpiel], sm: ['7-Meter', s => s.smVers ? s.sm / s.smVers + s.smVers / 1000 : -1] };
+  if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss];
   function seiteSpielerinnen() {
+    if (!SORT[ui.spSort]) ui.spSort = 'tore';
     const chips = `<div class="chipreihe"><button class="chip${ui.spTeam === 'alle' ? ' an' : ''}" data-ui="spTeam" data-wert="alle">Alle</button>${tabelle.map(z => `<button class="chip${String(ui.spTeam) === String(z.id) ? ' an' : ''}" data-ui="spTeam" data-wert="${z.id}">${logo(z.id, 16)}${esc(kurz(z.id))}</button>`).join('')}</div>`;
     const seg = `<div class="seg">${Object.entries(SORT).map(([k, [l]]) => `<button data-ui="spSort" data-wert="${k}" class="${ui.spSort === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
     const abh = teamIds.filter(id => B.teams[id]).sort((a, b) => B.teams[b].top1 - B.teams[a].top1);
     return `${seitenkopf('Spielerinnen', `${alleSp.length} Spielerinnen aus ${Object.keys(B.teams).length} Teams`)}
-      <input class="chip" style="width:100%;height:40px;border-radius:var(--r-m);padding:0 14px;margin-bottom:12px;font-size:15px" id="spSuche" type="search" placeholder="Name suchen" value="${esc(ui.spSuche)}" autocomplete="off">
+      <input class="chip" style="width:100%;height:44px;border-radius:var(--r-m);padding:0 14px;margin-bottom:12px;font-size:16px" id="spSuche" type="search" placeholder="Name suchen" value="${esc(ui.spSuche)}" autocomplete="off">
       ${chips}${seg}<div id="spListe"></div>
-      ${modul('Abhängigkeit von der besten Torschützin', abh.map(id => { const t = B.teams[id]; const top = t.liste.slice().sort((a, b) => b.tore - a.tore)[0];
-        return `<button class="bl" data-fokus="${id}"><span class="nm">${logo(id)}<span>${esc(kurz(id))}</span></span><span class="spur"><i class="${id === fokus ? 'f' : ''}" style="left:0;width:${Math.min(100, t.top1 * 100 / .5)}%"></i></span><span class="w">${pct(t.top1)}</span></button>`; }).join(''),
-        { fuss: 'Anteil der besten Torschützin an allen Teamtoren. Je höher, desto mehr hängt das Team an ihr.' })}`;
+      ${modul('Wie sehr hängt jedes Team an seiner besten Werferin?', abh.map(id => { const t = B.teams[id];
+        return `<button class="bl" data-team="${id}"><span class="nm">${logo(id)}<span>${esc(kurz(id))}</span></span><span class="spur"><i class="${id === fokus ? 'f' : ''}" style="left:0;width:${Math.min(100, t.top1 * 100 / .5)}%"></i></span><span class="w">${pct(t.top1)}</span></button>`; }).join(''),
+        { fuss: 'Anteil der besten Werferin an allen Toren des Teams.' })}`;
   }
   function spListe() {
     const q = ui.spSuche.trim().toLowerCase(), f = SORT[ui.spSort][1];
     const liste = alleSp.filter(s => (ui.spTeam === 'alle' || String(s.team) === String(ui.spTeam)) && (!q || s.name.toLowerCase().includes(q))).sort((a, b) => f(b) - f(a));
-    const wert = s => ui.spSort === 'einfluss' ? vz(s.einfluss) : ui.spSort === 'tore' ? s.tore : ui.spSort === 'tps' ? dez(s.toreProSpiel) : (s.smVers ? `${s.sm}/${s.smVers}` : '–'.replace('–', ''));
+    const wert = s => ui.spSort === 'einfluss' ? vz(s.einfluss) : ui.spSort === 'tore' ? s.tore : ui.spSort === 'tps' ? dez(s.toreProSpiel) : (s.smVers ? `${s.sm}/${s.smVers}` : '');
     const el = $('#spListe'); if (!el) return;
     el.innerHTML = liste.length ? modul('', `<div class="zeilen">${liste.slice(0, 120).map((s, i) => `<button class="spiel${s.team === fokus ? ' fokus' : ''}" style="grid-template-columns:28px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(s.id)}">
-        <span class="cap t3" style="text-align:right">${i + 1}</span><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${esc(kurz(s.team))} · ${s.tore} Tore in ${s.anz} Sp.</span></div></span>
+        <span class="cap t3" style="text-align:right">${i + 1}</span><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${esc(kurz(s.team))} · ${s.tore} Tore in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}</span></div></span>
         <span style="font-weight:600;font-size:17px">${wert(s)}</span></button>`).join('')}</div>`) :
-      modul('', `<div class="leer">${ico('trikot')}<b>Keine Spielerin gefunden</b><p>Keine Treffer für „${esc(ui.spSuche)}“.</p></div>`);
+      modul('', `<div class="leer">${ico('trikot')}<b>Keine Spielerin gefunden</b><p>Keine Treffer für „${esc(ui.spSuche)}“.</p><button class="textaktion" data-aktion="filterWeg" style="margin:0">Filter zurücksetzen</button></div>`);
   }
 
-  // ---------- Teams ----------
+  // ================= Teams =================
   const TM = [
-    ['name', 'Team', id => kurz(id)], ['staerke', 'Stärke', id => staerke(modell, id)], ['att', 'Angriff', id => modell.att[id] || 0], ['def', 'Abwehr', id => modell.def[id] || 0],
-    ['hz1', '1. HZ', id => muster[id].n ? muster[id].hz1 / muster[id].n : 0], ['hz2', '2. HZ', id => muster[id].n ? muster[id].hz2 / muster[id].n : 0],
-    ['schluss', 'ab 50.', id => muster[id].n ? muster[id].schluss / muster[id].n : 0],
-    ['smq', '7m', id => K[id].smQuote == null ? -1 : K[id].smQuote], ['zwei', "2'/Sp", id => K[id].zweiProSpiel], ['top1', 'Top-Anteil', id => B.teams[id] ? B.teams[id].top1 : 0],
+    ['name', 'Team', id => kurz(id)], ['staerke', 'Teamstärke', id => staerke(modell, id)], ['att', 'Tore mehr', id => modell.att[id] || 0], ['def', 'Gegentore weniger', id => modell.def[id] || 0],
+    ['hz1', '1. Hälfte', id => muster[id].n ? muster[id].hz1 / muster[id].n : 0], ['hz2', '2. Hälfte', id => muster[id].n ? muster[id].hz2 / muster[id].n : 0],
+    ['schluss', 'Letzte 10 Min.', id => muster[id].n ? muster[id].schluss / muster[id].n : 0],
+    ['smq', '7m-Quote', id => K[id].smQuote == null ? -1 : K[id].smQuote], ['zwei', 'Zeitstr./Sp.', id => K[id].zweiProSpiel], ['top1', 'Beste Werferin', id => B.teams[id] ? B.teams[id].top1 : 0],
   ];
   function seiteTeams() {
     const sp = TM.find(c => c[0] === ui.tmSort);
     const liste = teamIds.slice().sort((a, b) => { const x = sp[2](a), y = sp[2](b); const c = typeof x === 'string' ? x.localeCompare(y, 'de') : x - y; return ui.tmAb ? -c : c; });
     const mx = Math.max(1, ...teamIds.map(id => Math.abs(staerke(modell, id))));
     const balken = rang.map(id => { const s = staerke(modell, id), w = Math.abs(s) / mx * 50;
-      return `<button class="bl" data-fokus="${id}"><span class="nm">${logo(id)}<span style="${id === fokus ? 'font-weight:600' : ''}">${esc(kurz(id))}</span></span><span class="spur"><span class="null"></span><i class="${id === fokus ? 'f' : ''}" style="left:${s >= 0 ? 50 : 50 - w}%;width:${w}%"></i></span><span class="w">${vz(s)}</span></button>`; }).join('');
-    const tab = `<div class="scrollx"><table class="tab"><thead><tr>${TM.map(c => `<th class="sort${c[0] === 'name' ? ' l' : ''}${ui.tmSort === c[0] ? ' an' : ''}" data-tmsort="${c[0]}">${c[1]}${ui.tmSort === c[0] ? (ui.tmAb ? ' ↓' : ' ↑') : ''}</th>`).join('')}</tr></thead><tbody>
+      return `<button class="bl" data-team="${id}"><span class="nm">${logo(id)}<span style="${id === fokus ? 'font-weight:600' : ''}">${esc(kurz(id))}</span></span><span class="spur"><span class="null"></span><i class="${id === fokus ? 'f' : ''}" style="left:${s >= 0 ? 50 : 50 - w}%;width:${w}%"></i></span><span class="w">${vz(s)}</span></button>`; }).join('');
+    const tab = `<div class="scroll-hinweis"><div class="scrollx"><table class="tab"><thead><tr>${TM.map(c => `<th class="sort${c[0] === 'name' ? ' l' : ''}${ui.tmSort === c[0] ? ' an' : ''}" data-tmsort="${c[0]}">${c[1]}${ui.tmSort === c[0] ? (ui.tmAb ? ' ↓' : ' ↑') : ''}</th>`).join('')}</tr></thead><tbody>
       ${liste.map(id => { const m = muster[id], k = K[id], t = B.teams[id];
-        return `<tr class="klick${id === fokus ? ' f' : ''}" data-fokus="${id}"><td class="l tw"><span class="team">${logo(id)}<span>${esc(kurz(id))}</span></span></td><td style="font-weight:700">${vz(staerke(modell, id))}</td><td>${vz(modell.att[id] || 0)}</td><td>${vz(modell.def[id] || 0)}</td>
-        <td>${m.n ? vz(m.hz1 / m.n) : ''}</td><td>${m.n ? vz(m.hz2 / m.n) : ''}</td><td>${m.n ? vz(m.schluss / m.n) : ''}</td><td>${k.smQuote == null ? '' : pct(k.smQuote)}</td><td>${k.spiele ? dez(k.zweiProSpiel) : ''}</td><td>${t ? pct(t.top1) : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+        return `<tr class="klick${id === fokus ? ' f' : ''}" data-team="${id}"><td class="l tw"><span class="team">${logo(id)}<span>${esc(kurz(id))}</span></span></td><td style="font-weight:700">${vz(staerke(modell, id))}</td><td>${vz(modell.att[id] || 0)}</td><td>${vz(modell.def[id] || 0)}</td>
+        <td>${m.n ? vz(m.hz1 / m.n) : ''}</td><td>${m.n ? vz(m.hz2 / m.n) : ''}</td><td>${m.n ? vz(m.schluss / m.n) : ''}</td><td>${k.smQuote == null ? '' : pct(k.smQuote)}</td><td>${k.spiele ? dez(k.zweiProSpiel) : ''}</td><td>${t ? pct(t.top1) : ''}</td></tr>`; }).join('')}</tbody></table></div></div>`;
     return `${seitenkopf('Teams', 'Stärke und Profile im Vergleich')}
-      ${modul('Teamstärke laut Modell', balken, { fuss: 'Tore besser oder schlechter als ein Durchschnittsteam auf neutralem Platz.' })}
-      ${modul('Vergleich', tab, { fuss: 'Angriff und Abwehr in Toren gegenüber dem Ligaschnitt. 1. HZ, 2. HZ und ab 50.: durchschnittliche Tordifferenz in diesem Abschnitt. Spaltenkopf sortiert.' })}`;
+      ${modul('Teamstärke in Toren', balken, { fuss: '+0,3 heißt: im Schnitt 0,3 Tore besser als ein Durchschnittsteam auf neutralem Platz.' })}
+      ${modul('Vergleich', tab, { fuss: 'Tore mehr geworfen und Gegentore weniger kassiert als der Ligaschnitt. Hälften und letzte 10 Minuten: durchschnittliche Tordifferenz in diesem Abschnitt. Spaltenkopf sortiert, zur Seite wischen für alle Spalten.' })}`;
   }
 
-  // ---------- Methodik ----------
+  // ================= Methodik =================
   function seiteMethodik() {
     let treffer = 0, summe = 0, brier = 0;
     gewertet.forEach(g => {
@@ -706,73 +775,95 @@
       summe += arr[real]; brier += arr.reduce((s, q, i) => s + (q - (i === real ? 1 : 0)) ** 2, 0);
     });
     const n = gewertet.length || 1;
-    return `${seitenkopf('So rechnet die App', 'Modell, Grenzen und Trefferquote')}
-      <div class="kacheln vier">${kachel('Favorit gewann', `${treffer}/${gewertet.length}`, 'Prognose vor dem Anpfiff')}${kachel('Ø fürs echte Ergebnis', `${Math.round(summe / n * 100)}<span class="pz">%</span>`, 'Wahrscheinlichkeit, die das Modell gab')}${kachel('Brier-Score', dez(brier / n, 2), '0 perfekt, 0,67 Raten')}${kachel('Heimvorteil', vz(modell.heim), `Tore · Streuung ±${dez(modell.sigma)}`)}</div>
-      ${modul('Teamstärke und Siegchance', `<div class="fliess"><p>Aus allen gewerteten Ergebnissen schätzt die App für jedes Team eine Angriffs- und eine Abwehrstärke plus einen Heimvorteil. Am Saisonanfang zieht sie alle Teams Richtung Durchschnitt und wird mit jedem Ergebnis mutiger.</p><p>Daraus ergibt sich für jedes Spiel eine erwartete Tordifferenz. Weil Handball streut, wird sie als Glockenkurve behandelt. Die Flächen links, in der Mitte und rechts sind Niederlage, Remis und Sieg. Die Trefferquote oben ist ehrlich gemessen: Jedes Spiel wurde nur mit den Ergebnissen bewertet, die vor dem Anpfiff feststanden.</p></div>`)}
-      ${modul('Spielerinnen und Aufstellung', `<div class="fliess"><p>Der Einfluss einer Spielerin stützt sich vor allem auf ihre Tore je Spiel. Davon fangen die Mitspielerinnen bei einem Ausfall rechnerisch die Hälfte auf. Bei wenigen Spielen wird der Wert Richtung des halben Teamschnitts gezogen. Ein Vergleich, wie das Team mit und ohne sie abschneidet, zählt erst ab zwei Spielen mit und zwei ohne sie, und auch dann nur gedämpft.</p><p>Die Teamstärke enthält schon, wie oft eine Spielerin sonst dabei ist. Fehlt eine Stammspielerin, wird ihr Einfluss mal ihrer Einsatzquote abgezogen. Zusätzliche Spielerinnen bringen nur so viel, wie sie fehlende ersetzen, plus höchstens ein Tor Kadertiefe, weil nur sieben auf dem Feld stehen. Wer selten dabei war und nie getroffen hat, bekommt keinen Mehrwert zugeschrieben.</p></div>`)}
-      ${modul('Matchplan', `<div class="fliess"><p>Der Matchplan zeigt nur datenbelegte Aussagen: unverzichtbare Spielerinnen, Spielerinnen mit Mehrwert, 7-Meter-Reihenfolge nach Quote, Halbzeitprofile, Zeitstrafen-Risiko, Spielphasen und die wichtigsten Gegnerinnen. Taktische Ratschläge gibt es bewusst nicht, weil die Daten keine Positionen, Einsatzminuten oder Paraden enthalten. Jede Karte trägt die Zahl der Spiele, auf denen sie beruht.</p></div>`)}
-      ${modul('Grenzen', `<div class="fliess"><p>Torhüterinnen sind in den Spielberichten nicht gekennzeichnet, ihre Paraden fehlen. Verletzungen, Trainingsstand und die Vorsaison kennt das Modell nicht. Bei drei bis vier Spielen je Team sind alle Werte Richtwerte.</p></div>`)}
-      ${modul('Daten', `<div class="meta">${esc(datenstand)}. Quelle: handball.net. ${gewertet.length} gewertete Spiele, ${Object.keys(DETAILS).length} Spielberichte mit Aufstellung und Liveticker, ${offen.length} offene Spiele.</div>`)}`;
+    const GLOSSAR = [
+      ['Siegchance', 'Wie wahrscheinlich ein Sieg laut den bisherigen Ergebnissen ist. Remis und Niederlage ergänzen sie auf 100 %.'],
+      ['Prozentpunkte', 'Unterschied zwischen zwei Prozentwerten. Von 42 % auf 27 % sind 15 Prozentpunkte.'],
+      ['Teamstärke', 'So viele Tore ist ein Team im Schnitt besser oder schlechter als ein Durchschnittsteam der Liga, auf neutralem Platz.'],
+      ['Spielbericht', 'Spiel mit Aufstellung, Torschützinnen und Liveticker auf handball.net.'],
+      ['Stammbesetzung', 'Alle, die bei mindestens der Hälfte der Spiele dabei waren.'],
+      ['Torwirkung', 'Nur in der Ansicht für die Trainerin: so viele Tore Unterschied macht eine Spielerin im Schnitt, wenn sie spielt. Torhüterinnen und Abwehrarbeit fehlen darin.'],
+      ['Am grünen Tisch', 'Spiel, das per Urteil gewertet wurde.'],
+    ];
+    return `${seitenkopf(wortmarke(32), 'So rechnet die App und wie gut sie bisher lag')}
+      ${bildDa.keyvisual ? `<div style="border-radius:var(--r-xl);overflow:hidden;margin-bottom:var(--gap);background:var(--tafel)"><img src="bilder/keyvisual-1600x900.png" alt="" style="display:block;width:100%;height:auto"></div>` : ''}
+      <div class="kacheln vier">${kachel('Favorit gewann', `${treffer} von ${gewertet.length}`, 'gemessen vor dem Anpfiff')}${kachel('Chance fürs echte Ergebnis', `${Math.round(summe / n * 100)}<span class="pz">%</span>`, 'im Schnitt')}${kachel('Treffsicherheit', dez(brier / n, 2), '0 wäre perfekt, 0,67 wäre Raten')}${kachel('Heimvorteil', `${vz(modell.heim)}`, 'Tore in dieser Liga')}</div>
+      ${modul('Teamstärke und Siegchance', `<div class="fliess"><p>Aus allen Ergebnissen schätzt ${APP} für jedes Team, wie viele Tore es mehr wirft und weniger kassiert als der Schnitt, dazu den Heimvorteil. Am Saisonanfang zieht die Rechnung alle Teams Richtung Durchschnitt und wird mit jedem Ergebnis mutiger.</p><p>Daraus ergibt sich für jedes Spiel eine erwartete Tordifferenz. Weil Handball streut, wird sie als Glockenkurve behandelt: Die Flächen links, in der Mitte und rechts sind Niederlage, Remis und Sieg. Die Zahlen oben sind ehrlich gemessen, jedes Spiel nur mit dem, was vor dem Anpfiff bekannt war.</p></div>`)}
+      ${modul('Matchplan', `<div class="fliess"><p>Der Matchplan zeigt nur, was die Spielberichte belegen: wer unverzichtbar ist, wen es lohnt anzufragen, die 7-Meter-Reihenfolge nach Quote, in welcher Hälfte wer trifft, Zeitstrafen, Spielphasen und die wichtigsten Gegnerinnen. Taktische Ratschläge gibt es bewusst nicht, weil Positionen, Einsatzzeiten und Paraden fehlen. Jede Karte sagt, aus wie vielen Spielen sie stammt.</p><p>Werte je Spielerin zeigt ${APP} nur in der Ansicht für die Trainerin. Sie ist über einen eigenen Link erreichbar und hat keinen Passwortschutz.</p></div>`)}
+      ${modul('Begriffe', GLOSSAR.map(([k, v]) => `<div class="satz"><b>${k}</b><div class="t2">${v}</div></div>`).join(''))}
+      ${modul('Grenzen', `<div class="fliess"><p>Torhüterinnen sind in den Spielberichten nicht gekennzeichnet, Paraden fehlen. Verletzungen, Trainingsstand und die Vorsaison kennt die Rechnung nicht. Bei drei bis vier Spielen je Team sind alle Werte Richtwerte.</p></div>`)}
+      ${modul('Absender', `<div class="meta">${esc(ABSENDER)}<br>${esc(datenstand)}. ${gewertet.length} gewertete Spiele, ${Object.keys(DETAILS).length} Spielberichte, ${offen.length} offene Spiele.</div>`)}`;
   }
 
   // ================= Detail-Sheets =================
   function spielDetail(id) {
     const g = spielNach[id]; if (!g) return;
-    const v = B.verlaeufe[id], d = DETAILS[id], s = sicht(g);
+    const v = B.verlaeufe[id], d = DETAILS[id];
     const W = Math.min(448, window.innerWidth) - 2 * 16 - 2;
-    const kopfH = `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;text-align:center;align-items:center;margin:4px 0 16px">
-      <button data-fokus="${g.heim}" style="border:0;background:none;color:inherit">${logo(g.heim, 48)}<div style="font-weight:600;margin-top:8px">${esc(kurz(g.heim))}</div></button>
+    let html = `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;text-align:center;align-items:center;margin:4px 0 16px">
+      <button data-team="${g.heim}" style="border:0;background:none;color:inherit">${logo(g.heim, 48)}<div style="font-weight:600;margin-top:8px">${esc(kurz(g.heim))}</div><div class="cap t2">Heim</div></button>
       <div>${g.gewertet ? `<div style="font:700 40px/40px var(--font-display);letter-spacing:-.03em">${stand(g.toreHeim, g.toreGast)}</div>${v ? `<div class="meta">Halbzeit ${stand(v.halbzeit.heim, v.halbzeit.gast)}</div>` : ''}` : `<div class="meta">${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)}<br>${zeit(g.datum)} Uhr`}</div>`}</div>
-      <button data-fokus="${g.gast}" style="border:0;background:none;color:inherit">${logo(g.gast, 48)}<div style="font-weight:600;margin-top:8px">${esc(kurz(g.gast))}</div></button></div>`;
-    let html = kopfH;
+      <button data-team="${g.gast}" style="border:0;background:none;color:inherit">${logo(g.gast, 48)}<div style="font-weight:600;margin-top:8px">${esc(kurz(g.gast))}</div><div class="cap t2">Gast</div></button></div>`;
+    if (g.halle) html += `<div class="hinweis" style="margin-bottom:16px">${ico('ort')}<span>${esc(normalisiere(g.halle))}${g.adresse ? `<br><span class="t2">${esc(adresseSchoen(g.adresse))}</span>` : ''}</span>${routeLink(g) ? `<span style="margin-left:auto">${routeLink(g)}</span>` : ''}</div>`;
     if (g.gewertet) {
-      const w = ausFokus(vorher[g.id], g), r = drei(w.a, w.u, w.b);
-      html += `<div class="micro">Prognose vor dem Spiel</div><div class="meta" style="margin:4px 0 6px">${w.neutral ? `Heim ${r[0]} · Remis ${r[1]} · Gast ${r[2]}` : `Sieg ${r[0]} · Remis ${r[1]} · Niederlage ${r[2]}`} %</div>${streifen(w, true)}`;
+      html += `<div class="micro">Chance vor dem Spiel</div>${dreiHG(vorher[g.id], g)}${streifenHG(vorher[g.id], g, true)}`;
       if (v && v.tore.length) html += `<div class="micro" style="margin:20px 0 4px">Spielverlauf</div>${spielverlaufSvg(g, v, W)}`;
       if (d && d.l && d.l.data) {
         const spalte = (seite, tid) => {
           const ps = (d.l.data[seite].players || []).filter(p => !p.is_staff).sort((a, b) => b.goals - a.goals || a.number - b.number);
-          return `<div class="micro" style="margin:20px 0 4px;display:flex;gap:8px;align-items:center">${logo(tid, 16)} ${esc(kurz(tid))}</div><table class="tab"><thead><tr><th>#</th><th class="l">Spielerin</th><th>Tore</th><th>7m</th><th>2'</th></tr></thead><tbody>
-            ${ps.map(p => `<tr class="klick" data-spielerin="${esc(p.player.id)}"><td class="t3">${p.number}</td><td class="l" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(p.player.first_name + ' ' + p.player.last_name)}</td><td style="font-weight:600">${p.goals || ''}</td><td class="t2">${p.seven_meter_attempts ? p.seven_meter_goals + '/' + p.seven_meter_attempts : ''}</td><td class="t2">${p.two_minutes || ''}</td></tr>`).join('')}</tbody></table>`;
+          return `<div class="micro" style="margin:20px 0 4px;display:flex;gap:8px;align-items:center">${logo(tid, 16)} ${esc(kurz(tid))}</div><table class="tab"><thead><tr><th>#</th><th class="l">Spielerin</th><th>Tore</th><th>7m</th><th>Zeitstr.</th></tr></thead><tbody>
+            ${ps.map(p => `<tr class="klick" data-spielerin="${esc(p.player.id)}"><td class="t3">${p.number}</td><td class="l" style="max-width:170px;overflow:hidden;text-overflow:ellipsis">${esc(p.player.first_name + ' ' + p.player.last_name)}</td><td style="font-weight:600">${p.goals || ''}</td><td class="t2">${p.seven_meter_attempts ? p.seven_meter_goals + '/' + p.seven_meter_attempts : ''}</td><td class="t2">${p.two_minutes || ''}</td></tr>`).join('')}</tbody></table>`;
         };
         html += spalte('local', g.heim) + spalte('visitor', g.gast);
-      } else html += `<div class="leer">${ico('info')}<b>Kein Spielbericht</b><p>Für dieses Spiel gibt es keinen Spielbericht. Ergebnis und Prognose stehen oben.</p></div>`;
+      } else html += `<div class="leer">${ico('info')}<b>Kein Spielbericht</b><p>Für dieses Spiel gibt es keinen Spielbericht. Ergebnis und Chance stehen oben.</p></div>`;
     } else if (g.urteil) {
-      html += '<p class="meta">Dieses Spiel wurde per Urteil gewertet. handball.net zeigt dazu kein Ergebnis.</p>';
+      html += '<p class="meta">Dieses Spiel wurde am grünen Tisch gewertet. handball.net zeigt dazu kein Ergebnis.</p>';
     } else {
-      const p = prognose(modell, g.heim, g.gast), w = ausFokus(p, g), r = drei(w.a, w.u, w.b);
-      const lab = w.neutral ? ['Heimsieg', 'Remis', 'Gastsieg'] : ['Sieg', 'Remis', 'Niederlage'];
-      html += `<div class="ergebnis3">${r.map((x, i) => `<div><div class="w">${x}<span class="pz">%</span></div><div class="lab">${lab[i]}</div></div>`).join('')}</div>${streifen(w, true)}
-        <div class="cap t2" style="text-align:center;margin-top:8px">Erwartet ${stand(dez(p.eHeim), dez(p.eGast))}${g.halle ? ' · ' + esc(normalisiere(g.halle)) : ''}</div>
-        <div class="kacheln" style="margin-top:20px">${[g.heim, g.gast].map(tid => kachel(esc(kurz(tid)), `${platz(tid)}.`, `Stärke ${vz(staerke(modell, tid))} · Form ${spieleVon(tid).slice(-3).map(x => ergebnisAus(x, tid)).join(' ') || 'offen'}`)).join('')}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${s.dabei ? '<button class="btn prim" data-bereich="matchplan">Matchplan</button>' : ''}<button class="btn${s.dabei ? '' : ' prim'}" data-labor="${g.id}" style="${s.dabei ? '' : 'grid-column:1/-1'}">Im Labor durchspielen</button></div>`;
+      const p = prognose(modell, g.heim, g.gast), s = sicht(g);
+      html += `${dreiHG(p, g)}${streifenHG(p, g, true)}<div class="cap t2" style="text-align:center;margin-top:8px">${erwartet(p, g)}</div>
+        <div class="kacheln" style="margin-top:20px">${[g.heim, g.gast].map(tid => kachel(esc(kurz(tid)), `${platz(tid)}.`, `Teamstärke ${vz(staerke(modell, tid))} Tore · zuletzt ${spieleVon(tid).slice(-3).reverse().map(x => ergebnisAus(x, tid)).join(' ') || 'noch nichts'}`)).join('')}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${s.dabei ? '<button class="btn prim" data-bereich="matchplan">Matchplan</button>' : ''}<button class="btn${s.dabei ? '' : ' prim'}" data-labor="${g.id}" style="${s.dabei ? '' : 'grid-column:1/-1'}">Durchspielen</button></div>`;
     }
-    oeffneSheet(`Spieltag ${g.runde}`, html);
+    oeffneSheet(`${g.gewertet ? 'Ergebnis' : 'Vorschau'} · Spieltag ${g.runde}`, html);
+  }
+
+  function teamDetail(id) {
+    const z = tabelle.find(x => x.id === id) || { pkt: 0, tp: 0, tm: 0, sp: 0 };
+    const nx = naechstes(id), letzte = spieleVon(id).slice(-5).reverse();
+    oeffneSheet(`${esc(kurz(id))}`, `<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">${logo(id, 48)}<div><div style="font-weight:600">${esc(lang(id))}</div><div class="meta">Platz ${platz(id)} · ${z.pkt} Punkte · ${stand(z.tp, z.tm)} Tore</div></div></div>
+      <div class="kacheln">${kachel('Teamstärke', vz(staerke(modell, id)), 'Tore gegenüber dem Schnitt')}${kachel('Platz 1 am Ende', `${Math.round(simBasis.plaetze[id][0] * 100)}<span class="pz">%</span>`, `unter die ersten 3: ${pct(simBasis.plaetze[id][0] + simBasis.plaetze[id][1] + simBasis.plaetze[id][2])}`)}</div>
+      ${letzte.length ? `<div class="micro" style="margin:4px 0 8px">Zuletzt, neuestes zuerst</div><div class="formreihe" style="margin-bottom:16px">${letzte.map(g => `<button data-spiel="${g.id}">${formSun(g, id, true)}<span>${esc(kurz(g.heim === id ? g.gast : g.heim).split(' ')[0])}</span><span class="t3">${g.heim === id ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)}</span></button>`).join('')}</div>` : ''}
+      ${nx ? `<div class="micro" style="margin-bottom:4px">Nächstes Spiel</div><div class="zeilen" style="margin:0 -16px 16px">${spielZeile(nx, { ohneMarke: true })}</div>` : ''}
+      <div style="display:grid;gap:8px">${id !== fokus ? `<button class="btn" data-fokus="${id}">Aus Sicht von ${esc(kurz(id))} ansehen</button>` : ''}<button class="btn" data-kader="${id}">Kader ansehen</button></div>`);
   }
 
   function spielerinDetail(pid) {
     const s = spNach[pid]; if (!s) return;
     const t = B.teams[s.team];
-    const zeilen = t.spiele.map(mid => spielNach[mid]).sort((a, b) => a.datum - b.datum).map(g => {
+    const zeilen = t.spiele.map(mid => spielNach[mid]).sort((a, b) => b.datum - a.datum).map(g => {
       const dabei = s.spiele.includes(g.id);
       let tore = '';
       if (dabei && DETAILS[g.id]) { const seite = g.heim === s.team ? 'local' : 'visitor'; const p = DETAILS[g.id].l.data[seite].players.find(x => x.player.id === pid); tore = p ? p.goals : ''; }
-      const e = ergebnisAus(g, s.team), geg = g.heim === s.team ? g.gast : g.heim;
-      return `<tr class="klick" data-spiel="${g.id}" style="${dabei ? '' : 'opacity:.45'}"><td class="l t2">${tagKurz(g.datum)}</td><td class="l" style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${g.heim === s.team ? 'gegen' : 'bei'} ${esc(kurz(geg))}</td><td><span class="sun ${e}" style="width:18px;height:18px;font-size:11px">${e}</span></td><td style="font-weight:600">${dabei ? tore : '<span class="cap t3">nicht dabei</span>'}</td></tr>`;
+      const geg = g.heim === s.team ? g.gast : g.heim;
+      return `<tr class="klick" data-spiel="${g.id}" style="${dabei ? '' : 'opacity:.5'}"><td class="l t2">${tagKurz(g.datum)}</td><td class="l" style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${g.heim === s.team ? 'gegen' : 'bei'} ${esc(kurz(geg))}</td><td>${formSun(g, s.team)}</td><td style="font-weight:600">${dabei ? `${tore} Tore` : '<span class="cap t3">nicht dabei</span>'}</td></tr>`;
     }).join('');
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
     oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:8px;align-items:center;margin-bottom:16px">${logo(s.team)} ${esc(lang(s.team))}</div>
-      <div class="kacheln">${kachel('Tore je Spiel', dez(s.toreProSpiel), `${s.tore} Tore in ${s.anz} von ${t.spiele.length} Spielen`)}${kachel('Anteil Teamtore', `${Math.round(s.anteil * 100)}<span class="pz">%</span>`, `Halbzeiten ${hz[0]} / ${hz[1]}`)}${kachel('7-Meter', s.smVers ? `${s.sm}/${s.smVers}` : '0', s.smVers ? pct(s.sm / s.smVers) + ' Quote' : 'keine Versuche')}${kachel('Einfluss', vz(s.einfluss), 'Tore auf die Tordifferenz')}</div>
-      <div class="fussnote" style="margin-top:0">Torbeitrag über Ersatzniveau ${vz(s.torbeitrag)}. ${s.mitOhne == null ? 'Noch kein Spiel ohne sie, deshalb zählt nur der Torbeitrag.' : !s.gewichtMitOhne ? `Mit/Ohne-Vergleich ${vz(s.mitOhne)} Tore, zählt erst ab zwei Spielen mit und zwei ohne sie.` : `Mit/Ohne-Vergleich ${vz(s.mitOhne)} Tore, Gewicht ${pct(s.gewichtMitOhne)}.`}</div>
-      <div class="micro" style="margin:20px 0 4px">Spiele</div><table class="tab"><tbody>${zeilen}</tbody></table>`);
+      <div class="kacheln">${kachel('Tore pro Spiel', dez(s.toreProSpiel), `${s.tore} Tore in ${s.anz} von ${t.spiele.length} Spielen`)}${kachel('Anteil an den Teamtoren', `${Math.round(s.anteil * 100)}<span class="pz">%</span>`, `erste Hälfte ${hz[0]}, zweite ${hz[1]}`)}${kachel('7-Meter', s.smVers ? `${s.sm} von ${s.smVers}` : 'keine', s.smVers ? pct(s.sm / s.smVers) + ' Quote' : 'noch keine Würfe')}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), 'Tore Unterschied, wenn sie spielt') : kachel('Zeitstrafen', `${s.zwei}`, `in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`)}</div>
+      ${TRAINERIN ? `<div class="fussnote" style="margin-top:0">Tore mehr als eine Ersatzspielerin: ${vz(s.torbeitrag)}. ${s.mitOhne == null ? 'Noch kein Spiel ohne sie.' : !s.gewichtMitOhne ? `So lief es mit und ohne sie: ${vz(s.mitOhne)} Tore, zählt erst ab zwei Spielen mit und zwei ohne sie.` : `So lief es mit und ohne sie: ${vz(s.mitOhne)} Tore.`}</div>` : ''}
+      <div class="micro" style="margin:20px 0 4px">Spiele, neuestes zuerst</div><table class="tab"><tbody>${zeilen}</tbody></table>`);
   }
 
   function teamWechsler() {
-    oeffneSheet('Team wählen', tabelle.map(z => `<button class="listezeile" data-fokus="${z.id}"><span class="platz">${platz(z.id)}</span>${logo(z.id, 28)}<span class="nm">${esc(kurz(z.id))} ${z.id === UNSER ? etikett('Unser Team') : ''}</span>${z.id === fokus ? ico('haken', 1) : ''}</button>`).join(''));
+    oeffneSheet('Team wählen', tabelle.map(z => `<button class="listezeile" data-fokus="${z.id}"><span class="platz">${platz(z.id)}</span>${logo(z.id, 28)}<span class="nm">${esc(kurz(z.id))} ${z.id === UNSER ? etikett('eigenes Team') : ''}</span>${z.id === fokus ? ico('haken', 1) : ''}</button>`).join('') + `<p class="cap t2" style="margin:12px 0 0">Beim nächsten Öffnen zeigt ${APP} wieder ${esc(kurz(UNSER))}.</p>`);
   }
   function mehrSheet() {
-    oeffneSheet('Mehr', BEREICHE.slice(4).map(b => `<button class="listezeile" data-bereich="${b.id}">${ico(b.ico)}<span class="nm">${b.name}</span>${bereich === b.id ? ico('haken', 1) : ico('chevr', 1).replace('class="ico k"', 'class="ico k t3"')}</button>`).join(''));
+    oeffneSheet('Mehr', BEREICHE.slice(4).map(b => `<button class="listezeile" data-bereich="${b.id}">${ico(b.ico)}<span class="nm">${b.name}</span>${bereich === b.id ? ico('haken', 1) : ico('chevr', 1).replace('class="ico k"', 'class="ico k t3"')}</button>`).join('') +
+      `<button class="listezeile" data-aktion="${TRAINERIN ? 'trainerinAus' : 'trainerin'}">${ico('schloss')}<span class="nm">${TRAINERIN ? 'Ansicht Trainerin verlassen' : 'Ansicht für die Trainerin'}</span></button>`);
   }
+
+  // ================= Bilder vorhanden? =================
+  const bildDa = { keyvisual: false };
+  (function () { const i = new Image(); i.onload = () => { bildDa.keyvisual = true; if (bereich === 'heute' || bereich === 'methodik') zeichne(); }; i.src = 'bilder/keyvisual-1600x900.png'; })();
 
   // ================= Zeichnen =================
   let letzteBreite = 0;
@@ -781,34 +872,42 @@
     if (!seiten[bereich]) bereich = 'heute';
     gerüst();
     $('#inhalt').innerHTML = seiten[bereich]();
-    document.title = `${(BEREICHE.find(b => b.id === bereich) || {}).name} · ${kurz(fokus)}`;
+    document.title = `${(BEREICHE.find(b => b.id === bereich) || {}).name} · ${APP}`;
     if (bereich === 'labor') laborErgebnis();
     if (bereich === 'spielerinnen') spListe();
     letzteBreite = window.innerWidth;
     if (scrollOben) {
       window.scrollTo(0, 0);
-      if (bereich === 'spiele') { const el = document.querySelector('[data-naechste]'); if (el && el.id !== 'runde1') el.scrollIntoView({ block: 'start' }); window.scrollBy(0, -60); }
+      if (bereich === 'spiele') { const el = document.querySelector('[data-naechste]'); if (el) { el.scrollIntoView({ block: 'start' }); window.scrollBy(0, -60); } }
     }
   }
   function wechsle(b) { bereich = b; merk.set('bereich', b); schliesseSheet(); zeichne(true); }
-  function setzeFokus(id) { fokus = id; merk.set('fokus', id); labor.spiel = null; schliesseSheet(); zeichne(true); }
+  function setzeFokus(id) { fokus = id; labor.spiel = null; schliesseSheet(); zeichne(true); }
 
   // ================= Ereignisse =================
   document.addEventListener('click', e => {
     if (e.target.matches('input')) return;
-    const el = e.target.closest('[data-aktion],[data-bereich],[data-fokus],[data-spiel],[data-spielerin],[data-labor],[data-ui],[data-fest],[data-tmsort],[data-einfluss],[data-pin],[data-wert]');
+    const el = e.target.closest('[data-aktion],[data-bereich],[data-fokus],[data-team],[data-kader],[data-spiel],[data-spielerin],[data-labor],[data-ui],[data-fest],[data-tmsort],[data-einfluss],[data-pin],[data-wert]');
     if (!el) return;
     const ds = el.dataset;
-    if (ds.wert && el.closest('.pkt') == null && !ds.ui && !ds.fest && el.tagName !== 'BUTTON') {
+    if (ds.wert && !el.closest('.pkt') && !ds.ui && !ds.fest && el.tagName !== 'BUTTON') {
       const z = el.closest('.modul, .sinhalt'); const wz = z && z.querySelector('[data-wertzeile]'); if (wz) wz.textContent = ds.wert; return;
     }
+    if (ds.pin) { e.preventDefault(); const kd = kaderVon(UNSER === fokus ? fokus : fokus); kd.pins[ds.pin] = !kd.pins[ds.pin]; merk.set('kader', kader); const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
+    if (ds.einfluss) { e.preventDefault(); labor.offen = labor.offen === ds.einfluss ? null : ds.einfluss; const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
     if (ds.aktion) {
       const a = ds.aktion;
       if (a === 'zu') return schliesseSheet();
       if (a === 'team') return teamWechsler();
       if (a === 'mehr') return mehrSheet();
-      if (a === 'drucken') return window.print();
+      if (a === 'kabine') { document.body.classList.add('druck-kabine'); window.print(); return; }
+      if (a === 'teilen') { navigator.share({ title: `${APP}: Matchplan`, url: location.href.split('#')[0] }).catch(() => {}); return; }
+      if (a === 'trainerin') { location.hash = 'trainerin'; return; }
+      if (a === 'trainerinAus') { history.replaceState(null, '', location.pathname + location.search); TRAINERIN = false; delete SORT.einfluss; schliesseSheet(); return zeichne(); }
+      if (a === 'introWeg') { merk.set('intro', true); return zeichne(); }
       if (a === 'alleInsights') return oeffneSheet('Auffälligkeiten', auffaelligkeiten(fokus).map(x => `<div class="satz">${x}</div>`).join(''));
+      if (a === 'alleSpiele') { ui.spieleTeam = 'alle'; return wechsle('spiele'); }
+      if (a === 'filterWeg') { ui.spSuche = ''; ui.spTeam = 'alle'; return zeichne(); }
       if (a === 'festWeg') { fest = {}; merk.set('fest', fest); return zeichne(); }
       if (a === 'fokusSiegt') { offen.forEach(o => { if (o.heim === fokus) fest[o.id] = 'H'; if (o.gast === fokus) fest[o.id] = 'G'; }); merk.set('fest', fest); return zeichne(); }
       if (a === 'alleVerf') { kaderVon(fokus).verf = {}; merk.set('kader', kader); return zeichne(); }
@@ -817,24 +916,24 @@
     }
     if (ds.bereich) return wechsle(ds.bereich);
     if (ds.fokus) return setzeFokus(Number(ds.fokus));
+    if (ds.team) return teamDetail(Number(ds.team));
+    if (ds.kader) { ui.spTeam = ds.kader; ui.spSuche = ''; return wechsle('spielerinnen'); }
     if (ds.labor) { const g = spielNach[ds.labor]; labor.spiel = g.id; laborStandard(g); labor.offen = null; if (bereich !== 'labor') return wechsle('labor'); return zeichne(); }
     if (el.closest('.pkt')) { const p = el.closest('.pkt'); const z = p.closest('.modul'); const wz = z && z.querySelector('[data-wertzeile]'); if (wz && wz.textContent !== p.dataset.wert) { wz.textContent = p.dataset.wert; return; } return spielDetail(Number(p.dataset.spiel)); }
     if (ds.spiel) return spielDetail(Number(ds.spiel));
     if (ds.spielerin) return spielerinDetail(ds.spielerin);
     if (ds.ui) {
-      const k = ds.ui; ui[k] = ds.wert; if (k === 'spieleTeam') merk.set('spieleTeam', ds.wert);
+      const k = ds.ui; ui[k] = ds.wert;
       if (k === 'spTeam' || k === 'spSort') { $$(`[data-ui="${k}"]`).forEach(b => b.classList.toggle('an', b.dataset.wert === ds.wert)); return spListe(); }
-      return zeichne();
+      return zeichne(k === 'spieleTeam');
     }
     if (ds.fest) { if (fest[ds.fest] === ds.wert) delete fest[ds.fest]; else fest[ds.fest] = ds.wert; merk.set('fest', fest); const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
     if (ds.tmsort) { if (ui.tmSort === ds.tmsort) ui.tmAb = !ui.tmAb; else { ui.tmSort = ds.tmsort; ui.tmAb = ds.tmsort !== 'name'; } return zeichne(); }
-    if (ds.einfluss) { labor.offen = labor.offen === ds.einfluss ? null : ds.einfluss; const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
-    if (ds.pin) { const kd = kaderVon(fokus); kd.pins[ds.pin] = !kd.pins[ds.pin]; merk.set('kader', kader); const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
   });
   document.addEventListener('change', e => {
     const t = e.target, y = window.scrollY;
-    if (t.dataset.verf) { kaderVon(fokus).verf[t.dataset.verf] = t.checked ? undefined : false; if (t.checked) delete kaderVon(fokus).verf[t.dataset.verf]; merk.set('kader', kader); zeichne(); window.scrollTo(0, y); return; }
-    if (t.dataset.dabei) { labor.dabei[t.dataset.dabei] = t.checked; t.closest('.sz').classList.toggle('aus', !t.checked); const kopf = t.closest('.modul').querySelector('.listenkopf .meta'); if (kopf) { const alle = t.closest('.modul').querySelectorAll('[data-dabei]'); kopf.textContent = `${[...alle].filter(x => x.checked).length} von ${alle.length} dabei`; } return laborErgebnis(); }
+    if (t.dataset.verf) { const kd = kaderVon(fokus); if (t.checked) delete kd.verf[t.dataset.verf]; else kd.verf[t.dataset.verf] = false; merk.set('kader', kader); zeichne(); window.scrollTo(0, y); return; }
+    if (t.dataset.dabei) { labor.dabei[t.dataset.dabei] = t.checked; t.closest('.sz').classList.toggle('aus', !t.checked); const m = t.closest('.modul'); const kopf = m.querySelector('.listenkopf .meta'); if (kopf) { const alle = m.querySelectorAll('[data-dabei]'); kopf.textContent = `${[...alle].filter(x => x.checked).length} von ${alle.length} dabei`; } return laborErgebnis(); }
     if (t.id === 'neutral') { labor.neutral = t.checked; return laborErgebnis(); }
     if (t.dataset.eigen) { merk.set('eigene', labor.eigene); return; }
   });
@@ -855,6 +954,8 @@
     }
     if (t.id === 'spSuche') { ui.spSuche = t.value; return spListe(); }
   });
+  window.addEventListener('hashchange', () => { TRAINERIN = /trainerin/i.test(location.hash); if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss]; else delete SORT.einfluss; schliesseSheet(); zeichne(); });
+  window.addEventListener('afterprint', () => document.body.classList.remove('druck-kabine'));
   document.addEventListener('keydown', e => {
     if (e.target.matches('input, select, textarea')) return;
     if (e.key >= '1' && e.key <= '8' && !e.metaKey && !e.ctrlKey) wechsle(BEREICHE[Number(e.key) - 1].id);

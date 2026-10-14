@@ -1,5 +1,10 @@
-TEUTONIA PROGNOSE
-Spielplan, Tabelle und Siegchancen für die Bezirksoberliga Frauen Gruppe 2
+ANWURF
+Handball-Prognose: Siegchance, Matchplan, Spielplan und Tabelle.
+Privates Fan-Projekt, kein Angebot von SC Teutonia 10 oder handball.net. Daten: handball.net.
+
+Online: https://fnnshle.github.io/teutonia-prognose/
+Ansicht für die Trainerin: https://fnnshle.github.io/teutonia-prognose/app/index.html#trainerin
+(Diese Ansicht zeigt Werte je Spielerin. Sie hat keinen Passwortschutz.)
 
 STARTEN
 Mac:      Doppelklick auf "Start (Mac).command"
@@ -27,7 +32,7 @@ Spiele:        Spielplan, jedes Spiel antippen für Verlauf und Aufstellungen
 Tabelle:       Tabelle, Verlauf, Saisonprognose und "Was wäre wenn"
 Mehr:          Spiel-Labor, Spielerinnen, Teams, So rechnet die App
 
-Oben links lässt sich jedes Team der Liga in den Fokus nehmen.
+Oben links lässt sich jedes Team der Liga ansehen. Beim nächsten Öffnen zeigt die App wieder das eigene Team.
 Hell oder dunkel folgt automatisch der Einstellung des Geräts.
 
 ANDERES TEAM ALS STANDARD
