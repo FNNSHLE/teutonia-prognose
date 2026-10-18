@@ -140,7 +140,7 @@ function besetzungsEffekt(teamInfo, dabei, eigene) {
 // Belegschranke: Wer selten dabei war und nie getroffen hat, bekommt keinen Mehrwert zugeschrieben,
 // außer die Trainerin setzt eine eigene Einschätzung.
 function belegt(s, eigene) {
-  return ueblichDabei(s) || s.tore > 0 || (eigene && eigene[s.id] != null);
+  return ueblichDabei(s) || s.tore > 0 || (eigene && eigene[s.id] != null) || !!(s.tw && s.tw.reliable);
 }
 
 function prognoseMitBesetzung(m, heimId, gastId, effHeim, effGast) {

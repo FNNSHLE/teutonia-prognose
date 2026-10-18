@@ -524,6 +524,8 @@
     if (au1.length) wichtig.push(['Einplanen', au1.map(e => esc(e.person.name)).join(', ')]);
     if (au2.length) wichtig.push(['Anfragen', au2.map(e => esc(e.person.name)).join(', ')]);
     if (au6) wichtig.push(['7-Meter', au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${esc(kurzName(x.s.name))}`).join(' · ')]);
+    const tw1 = mp.empfehlungen.find(e => e.id === 'TW1'), tw3 = mp.empfehlungen.find(e => e.id === 'TW3');
+    if (tw1 || tw3) wichtig.push(['Im Tor', [tw1 ? esc(tw1.person.name) : '', tw3 ? `bei 7 m ${esc(tw3.person.name)}` : ''].filter(Boolean).join(' · ')]);
     if (ph1) wichtig.push(['Achtung', esc(ph1.titel)]);
     const kopf = seitenkopf('Matchplan', `${s.heim ? 'gegen' : 'bei'} ${esc(kurz(mp.gegner))} · ${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr`}`,
       `<div style="text-align:right"><div class="kpi">${r[0]}<span class="pz">%</span></div><div class="cap t2">Siegchance</div></div>`);
@@ -540,6 +542,7 @@
       else if (e.id === 'DI1') links = `<span class="kpi">${e.text.match(/hat (\d+)/)[1]}</span><small>Zeitstrafen</small>`;
       else if (e.id === 'DI2') links = `<span class="kpi">${dez(K[fokus].zweiProSpiel)}</span><small>Zeitstrafen pro Spiel</small>`;
       else if (e.id === 'TW1') links = `<span class="kpi gut">${pct(e.person.tw.rate)}</span><small>Paradenquote</small>`;
+      else if (e.id === 'TW3') links = `<span class="kpi gut">${e.person.tw.sevenMeter.saves}/${e.person.tw.sevenMeter.onTarget}</span><small>7 m gehalten</small>`;
       return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3>${esc(e.titel)}</h3><p>${esc(e.text)}</p><div class="belege">${ausSpielen(e.n)}</div></div></article>`;
     };
     const karten = mp.empfehlungen.filter(e => e.id !== 'AU6');
@@ -547,15 +550,22 @@
     const siebenmeter = au6 ? modul('7-Meter-Reihenfolge', `<div class="siebenmeter">${au6.siebenmeter.slice(0, 4).map((x, i) => `<div class="platz7"><span class="nr">${i + 1}.</span><span><b style="font-weight:600">${esc(x.s.name)}</b><span class="cap t2" style="display:block">#${x.s.nummer}</span></span><span style="font-weight:600">${x.s.sm} von ${x.s.smVers}</span></div>`).join('')}</div>`,
       { id: 'mp7m', fuss: `Reihenfolge nach Trefferquote, bei wenigen Würfen vorsichtig Richtung Ligaschnitt (${pct(LIGA.smQuote)}) gezogen. Das Team trifft ${B.teams[fokus].liste.reduce((a, x) => a + x.sm, 0)} von ${B.teams[fokus].liste.reduce((a, x) => a + x.smVers, 0)}.` }) : '';
     const befund = b => `<div class="satz"><span class="micro">${b.kat}</span><div style="font-weight:600;margin:2px 0">${esc(b.titel)}</div><div class="t2">${esc(b.text)}</div></div>`;
-    const phasenBef = mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2'), weitere = mp.befunde.filter(b => b.id !== 'PH1' && b.id !== 'PH2');
+    const phasenBef = mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2'), weitere = mp.befunde.filter(b => b.id !== 'PH1' && b.id !== 'PH2' && b.id !== 'TW4');
     const gegnerinnen = mp.gegnerinnen.length ? `<div class="mkopf" style="margin-top:8px"><div><span class="micro">${esc(kurz(mp.gegner))}</span><h2 class="titel">Gegnerinnen im Blick</h2></div></div><div class="karten zwei">${mp.gegnerinnen.map(x => `<article class="karte"><div class="eff"><span class="kpi">#${x.s.nummer}</span></div><div><h3 style="margin-top:0">${esc(x.s.name)}</h3><div class="tags">${x.tags.map(t => etikett(esc(t.replace(/(\d)× 2'/, '$1 Zeitstrafen').replace(' Sp.', ' Spielen').replace('HZ', 'Hälfte')))).join('')}</div></div></article>`).join('')}</div>` : '';
     const twTeam = TW.teams[fokus];
-    const imTor = twTeam ? modul('Im Tor', `<div class="zeilen">${B.teams[fokus].liste.filter(x => x.tw).sort((a, b) => b.tw.onTarget - a.tw.onTarget).map(x => `<button class="spiel" style="grid-template-columns:minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(x.id)}"><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(x.name)}</span></div><div style="height:auto"><span class="cap t2">#${x.nummer} · ${x.tw.matches} Spiel${x.tw.matches === 1 ? '' : 'e'} · ${x.tw.saves} von ${x.tw.onTarget} gehalten</span></div></span><span style="font-weight:600;font-size:17px">${x.tw.onTarget ? pct(x.tw.rate) : '–'}</span></button>`).join('')}</div>`,
-      { eyebrow: 'Eigene Erfassung', fuss: `Paradenquote aus ${twTeam.matches} erfassten Spiel${twTeam.matches === 1 ? '' : 'en'}, Team ${pct(twTeam.rate)}${TW.league.records > twTeam.matches ? `, alle erfassten Teams ${pct(TW.league.rate)}` : ''}. Ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor fließt die Quote in die Torwirkung ein.` }) : '';
+    // Siegchance je Torhüterin: sie im Tor, die anderen Torhüterinnen nicht, sonst die übliche Besetzung
+    const keeperinnen = B.teams[fokus].liste.filter(x => x.tw || x.torwart);
+    const basisDabei = ueblicheBesetzung(B, [fokus, mp.gegner]);
+    const mitIhr = k => { const d = Object.assign({}, basisDabei); keeperinnen.forEach(x => d[x.id] = x.id === k.id); return chanceFokus(modell, g, fokus, B, d, labor.eigene).s; };
+    const belegbar = keeperinnen.some(x => x.tw && x.tw.reliable);
+    const imTor = twTeam ? modul('Im Tor', `<div class="zeilen">${keeperinnen.filter(x => x.tw).sort((a, b) => mitIhr(b) - mitIhr(a) || b.tw.onTarget - a.tw.onTarget).map(x => `<button class="spiel" style="grid-template-columns:minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(x.id)}"><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(x.name)}</span></div><div style="height:auto"><span class="cap t2">#${x.nummer} · ${x.tw.saves} von ${x.tw.onTarget} gehalten (${x.tw.onTarget ? pct(x.tw.rate) : '–'})${x.tw.sevenMeter.onTarget ? ` · 7 m ${x.tw.sevenMeter.saves}/${x.tw.sevenMeter.onTarget}` : ''} · ${x.tw.matches} Spiel${x.tw.matches === 1 ? '' : 'e'}</span></div></span><span style="text-align:right"><span style="font-weight:600;font-size:17px">${pct(mitIhr(x))}</span><span class="cap t3" style="display:block">Siegchance mit ihr</span></span></button>`).join('')}</div>`,
+      { eyebrow: 'Eigene Erfassung', fuss: `Siegchance mit ihr im Tor und der üblichen Besetzung sonst${belegbar ? '' : `, vorerst gleich für alle: ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor zählt die Paradenquote`}. Team hält ${pct(twTeam.rate)} aus ${twTeam.matches} erfassten Spiel${twTeam.matches === 1 ? '' : 'en'}${TW.league.records > twTeam.matches ? `, alle erfassten Teams ${pct(TW.league.rate)}` : ''}.` }) : '';
+    const tw4 = mp.befunde.find(b => b.id === 'TW4');
+    const hinspiel = tw4 ? modul(`Letztes Spiel gegen ${esc(kurz(mp.gegner))}`, `${goalZoneSvg(tw4.zonen, 320)}<div class="satz" style="margin-top:8px"><div style="font-weight:600;margin:2px 0">${esc(tw4.titel)}</div><div class="t2">${esc(tw4.text)}</div></div>`, { eyebrow: 'Wohin die Gegentore kamen', fuss: 'Gehalten von Würfen aufs Tor je Zone aus Sicht der Werferin, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung.' }) : '';
     const trainerin = TRAINERIN ? optimiererModul(g) : modul('Aufstellung durchrechnen', `<p class="meta" style="margin:0 0 12px">Für die Trainerin: Absagen eintragen, Torhüterinnen festlegen und sehen, wie sich die Siegchance verändert. Die Ansicht zeigt Werte je Spielerin und ist deshalb nicht für die ganze Gruppe gedacht.</p><button class="btn" data-aktion="trainerin">${ico('schloss', 1)} Ansicht für die Trainerin öffnen</button>`, { eyebrow: 'Für die Trainerin', klasse: 'nicht-druck', fuss: 'Diese Ansicht hat keinen Passwortschutz. Sie ist über den Link mit #trainerin am Ende erreichbar.' });
     return `${kopf}${aktionen}${das}${hinweis}
       <div class="mkopf" style="margin-top:8px"><div><span class="micro">Aufstellung und Disziplin</span><h2 class="titel">Empfehlungen</h2></div></div>
-      ${empf}${siebenmeter}${imTor}${trainerin}
+      ${empf}${siebenmeter}${imTor}${hinspiel}${trainerin}
       ${mp.phasen.fokus && mp.phasen.gegner ? modul('Spielphasen', `${phasenGrafik(mp)}${phasenBef.map(befund).join('')}`, { eyebrow: 'Befund', fuss: `Tordifferenz je 10 Minuten, Summe aus ${mp.phasen.nF === mp.phasen.nG ? 'je ' + mp.phasen.nF : mp.phasen.nF + ' und ' + mp.phasen.nG} Spielen mit Spielbericht. Gestrichelt: Halbzeit. Warum die Phasen so verlaufen, zeigen die Daten nicht.` }) : ''}
       ${gegnerinnen}
       ${weitere.length ? modul('Weitere Befunde', weitere.map(befund).join('')) : ''}

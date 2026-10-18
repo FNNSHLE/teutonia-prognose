@@ -12,7 +12,20 @@ const GOALKEEPER = {
   MAX_INFLUENCE: 5,    // goals per match, clamp for the estimated impact
   REGULATION: 3600,    // seconds of regular playing time
   MIN_ZONE_SHOTS: 8,   // shots on target in one zone before it counts as a weak or strong zone
+  DEFAULT_7M_RATE: 0.20, // save rate on penalties assumed while nothing is tracked
+  SHRINK_7M: 3,        // pseudo penalties at the reference rate blended into every penalty save rate
+  MIN_7M: 5,           // penalties faced before a goalkeeper counts as the penalty specialist
 };
+
+// Where the goals went: rows and the single worst zone, for a sentence like "7 von 11 Gegentoren unten, 5 unten links".
+function goalPattern(zones) {
+  const rows = { oben: [1, 2, 3], halbhoch: [4, 5, 6], unten: [7, 8, 9] };
+  const goals = z => (zones[z] || { goal: 0 }).goal;
+  const total = [1, 2, 3, 4, 5, 6, 7, 8, 9].reduce((s, z) => s + goals(z), 0);
+  const byRow = Object.entries(rows).map(([name, zs]) => ({ name, goals: zs.reduce((s, z) => s + goals(z), 0) })).sort((a, b) => b.goals - a.goals);
+  const topZone = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(z => ({ zone: z, name: ZONE_NAMES[z], goals: goals(z) })).sort((a, b) => b.goals - a.goals)[0];
+  return { total, row: byRow[0], topZone };
+}
 
 const ZONE_NAMES = ['vorbei', 'oben links', 'oben Mitte', 'oben rechts', 'halbhoch links', 'Mitte', 'halbhoch rechts', 'unten links', 'unten Mitte', 'unten rechts'];
 
@@ -54,19 +67,22 @@ function timeInGoal(record) {
 function evaluateGoalkeepers(bundle) {
   const records = Array.isArray(bundle) ? bundle : (bundle && bundle.records) || [];
   const roster = Array.isArray(bundle) ? {} : (bundle && bundle.goalkeepers) || {};
-  const players = {}, teams = {};
+  const players = {}, teams = {}, opponents = {}; // opponents[teamId][opponentId]: what that opponent did against this team's goal
   const names = {};
   Object.values(roster).flat().forEach(g => { names[g.playerId] = g; });
   (records || []).forEach(r => {
     if (!r || r.format !== 'anwurf-goalkeeper' || !Array.isArray(r.events)) return;
     const team = teams[r.teamId] || (teams[r.teamId] = Object.assign(emptyGoalkeeperStats(), { teamId: r.teamId, keepers: {} }));
     team.matches++; team.matchIds.push(r.matchId);
+    const byOpp = opponents[r.teamId] || (opponents[r.teamId] = {});
+    const opp = byOpp[r.opponentId] || (byOpp[r.opponentId] = Object.assign(emptyGoalkeeperStats(), { opponentId: r.opponentId, dates: [] }));
+    opp.matches++; opp.matchIds.push(r.matchId); opp.dates.push(r.date);
     const seconds = timeInGoal(r);
     const seen = new Set();
     r.goalkeepers.forEach(g => { names[g.playerId] = g; });
     r.events.filter(e => e.type === 'shot').forEach(e => {
       const p = players[e.goalkeeperId] || (players[e.goalkeeperId] = Object.assign(emptyGoalkeeperStats(), { playerId: e.goalkeeperId, teamId: r.teamId }));
-      addShot(p, e); addShot(team, e);
+      addShot(p, e); addShot(team, e); addShot(opp, e);
       seen.add(e.goalkeeperId);
     });
     Object.keys(seconds).forEach(pid => { seen.add(pid); });
@@ -85,15 +101,19 @@ function evaluateGoalkeepers(bundle) {
   };
   league.rate = league.onTarget ? league.saves / league.onTarget : GOALKEEPER.DEFAULT_RATE;
   league.onTargetPerMatch = league.records ? league.onTarget / league.records : 0;
+  league.sevenMeter = { onTarget: all.reduce((s, t) => s + t.sevenMeter.onTarget, 0), saves: all.reduce((s, t) => s + t.sevenMeter.saves, 0) };
+  league.sevenMeter.rate = league.sevenMeter.onTarget ? league.sevenMeter.saves / league.sevenMeter.onTarget : GOALKEEPER.DEFAULT_7M_RATE;
 
   const finish = s => {
     s.rate = s.onTarget ? s.saves / s.onTarget : null;
     s.shrunkRate = (s.saves + GOALKEEPER.SHRINK_SHOTS * league.rate) / (s.onTarget + GOALKEEPER.SHRINK_SHOTS);
     s.sevenMeter.rate = s.sevenMeter.onTarget ? s.sevenMeter.saves / s.sevenMeter.onTarget : null;
+    s.sevenMeter.shrunkRate = (s.sevenMeter.saves + GOALKEEPER.SHRINK_7M * league.sevenMeter.rate) / (s.sevenMeter.onTarget + GOALKEEPER.SHRINK_7M);
     s.onTargetPerMatch = s.matches ? s.onTarget / s.matches : 0;
     s.minutes = Math.round(s.seconds / 60);
   };
   Object.values(teams).forEach(t => { finish(t); t.keepers = Object.keys(t.keepers); });
+  Object.values(opponents).forEach(byOpp => Object.values(byOpp).forEach(finish));
   Object.values(players).forEach(p => {
     finish(p);
     const team = teams[p.teamId];
@@ -107,7 +127,7 @@ function evaluateGoalkeepers(bundle) {
     p.reliable = p.onTarget >= GOALKEEPER.MIN_SHOTS;
     p.weakZones = weakZones(p, league.rate);
   });
-  return { players, teams, league, records: records.length, roster };
+  return { players, teams, opponents, league, records: records.length, roster };
 }
 
 // Everyone who counts as a goalkeeper: the permanent list plus anyone named as goalkeeper in a record.

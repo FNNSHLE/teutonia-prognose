@@ -233,8 +233,15 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
    (= (shrunk save rate − league rate) × team shots on target per match, clamped), then re-sorts the lists.
    That is how goalkeeper quality reaches `besetzungsEffekt()` and the optimiser. Goalkeepers added by
    name in the tracker (`manuell:` ids) are evaluated but cannot be attached to a lineup player.
-   `matchplan.js` gets `ctx.tw` and adds TW1 (better goalkeeper by shrunk rate, ≥ 5 pp apart) and TW2
-   (weakest zone of the team, `weakZones()`); `seiteMatchplan()` adds the "Im Tor" module. The player
+   `matchplan.js` gets `ctx.tw` and adds TW1 (better goalkeeper by shrunk save rate, ≥ 5 pp apart), TW2
+   (weakest zone of the team, `weakZones()`), TW3 (penalty specialist: shrunk 7m save rate ≥ 15 pp apart,
+   best one faced ≥ `MIN_7M`; names the opponent's usual taker from the lineups) and TW4 (first-leg
+   memory: `tw.opponents[team][opponent]` aggregated over earlier records against the next opponent,
+   `goalPattern()` for the sentence, zones carried on the finding). `seiteMatchplan()` adds the "Im Tor"
+   module with the **win chance per goalkeeper** (`chanceFokus()` with her in and the other goalkeepers
+   out of the usual lineup; `belegt()` treats a reliable tracked goalkeeper as evidenced so a rarely listed
+   one still counts), the "Letztes Spiel gegen …" module with `goalZoneSvg()`, and an "Im Tor" line in
+   "Das Wichtigste" (and therefore on the locker-room sheet). The player
    sheet swaps the scoring tiles for goalkeeper tiles plus `goalZoneSvg()`; the player list gets the sort
    "Paraden"; Methodik counts the records. The starter is logged by the tracker as a `goalkeeperChange`
    at second 0; `timeInGoal()` falls back to the first shot's goalkeeper for older files.

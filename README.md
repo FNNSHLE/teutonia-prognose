@@ -145,8 +145,10 @@ dedicated step (see backlog); htm templates convert to TSX mechanically, so noth
       7 m, minutes in goal, zone picture, weak zones, and an estimated goal impact per goalkeeper that
       replaces the generic "Torwirkung" from 20 shots on target, so the optimiser values goalkeepers
       without pins. Shown in the player sheet (tiles + zone SVG), the player list (sort "Paraden"), the
-      match plan ("Im Tor" module, rules TW1 "X ins Tor" and TW2 "Gegentore vor allem …") and the method
-      page. Tracker shortcuts on a keyboard: 1–9 zone, 0 miss, Y save, N goal, Escape.
+      match plan ("Im Tor" module with the win chance per goalkeeper, rules TW1 "X ins Tor", TW2
+      "Gegentore vor allem …", TW3 "Bei 7 m: X ins Tor" and TW4 first-leg memory with a zone picture of
+      what the same opponent did last time) and the method page. Tracker shortcuts on a keyboard: 1–9
+      zone, 0 miss, Y save, N goal, Escape.
 - [x] **Permanent goalkeepers**: `daten/torwart/goalkeepers.json` lists who is a goalkeeper per team
       (`scripts/goalkeeper.mjs mark|unmark|list`). They are preselected in the tracker, kept in the squad by
       the optimiser like pinned players, and get no goal-based "Torwirkung" from the field-player evaluation;

@@ -134,6 +134,25 @@ function erzeugeMatchplan(ctx) {
       empf.push({ id: 'TW1', kat: 'Aufstellung', p: d * H, eff: null, titel: `${name(a)} ins Tor`,
         text: `Sie hält ${pr(a.tw.rate)} % der Würfe aufs Tor (${a.tw.saves} von ${a.tw.onTarget}), ${name(b)} ${pr(b.tw.rate)} % (${b.tw.saves} von ${b.tw.onTarget}). Bei ${Math.round(tTeam.onTargetPerMatch)} Würfen aufs Tor pro Spiel sind das etwa ${dez1(d)} Tore.`, n: a.tw.matches, person: a });
     }
+    // TW3 Siebenmeter-Spezialistin: fürs Siebenmeter einwechseln
+    const smKeepers = tF.liste.filter(s => s.tw && s.tw.sevenMeter.onTarget >= 3).sort((a, b) => b.tw.sevenMeter.shrunkRate - a.tw.sevenMeter.shrunkRate);
+    if (smKeepers.length >= 2 && smKeepers[0].tw.sevenMeter.onTarget >= GOALKEEPER.MIN_7M && smKeepers[0].tw.sevenMeter.shrunkRate - smKeepers[1].tw.sevenMeter.shrunkRate >= 0.15) {
+      const [a, b] = smKeepers, d = a.tw.sevenMeter.shrunkRate - b.tw.sevenMeter.shrunkRate;
+      const smProSpiel = kG && kG.spiele ? (kG.smTor + kG.smFehl) / kG.spiele : 3;
+      const schuetzin = tG ? tG.liste.filter(s => s.smVers >= 3).sort((a, b) => b.sm / b.smVers - a.sm / a.smVers)[0] : null;
+      empf.push({ id: 'TW3', kat: 'Aufstellung', p: d * smProSpiel * H, eff: null, titel: `Bei 7 m: ${name(a)} ins Tor`,
+        text: `Sie hält ${a.tw.sevenMeter.saves} von ${a.tw.sevenMeter.onTarget} Siebenmetern, ${name(b)} ${b.tw.sevenMeter.saves} von ${b.tw.sevenMeter.onTarget}. ${kurzname(gegner)} bekommt ${dez1(smProSpiel)} Siebenmeter pro Spiel${schuetzin ? `, meist wirft ${schuetzin.name} (${schuetzin.sm} von ${schuetzin.smVers})` : ''}.`, n: a.tw.matches, person: a });
+    }
+    // TW4 Letztes Spiel gegen diese Gegnerin: wohin die Gegentore kamen
+    const frueher = tw.opponents[fokus] && tw.opponents[fokus][gegner];
+    if (frueher && frueher.matchIds.some(id => id !== g.id)) {
+      // nur Spiele vor dem jetzigen zählen; das Spiel selbst (falls schon erfasst) nicht
+      const muster = goalPattern(frueher.zones);
+      const datum = frueher.dates.slice().sort().filter(Boolean).pop();
+      const sm = frueher.sevenMeter;
+      bef.push({ id: 'TW4', kat: 'Gegnerin', p: 3 + muster.total / 10, titel: `Letztes Spiel gegen ${kurzname(gegner)}: ${muster.total} Gegentore aus ${frueher.onTarget} Würfen aufs Tor`,
+        text: `${muster.row.goals} von ${muster.total} Gegentoren kamen ${muster.row.name}${muster.topZone && muster.topZone.goals >= 2 ? `, ${muster.topZone.goals} davon ${muster.topZone.name}` : ''} (aus Sicht der Werferin). ${frueher.misses} Würfe gingen vorbei${sm.onTarget ? `, ${sm.onTarget - sm.saves} von ${sm.onTarget} Siebenmetern saßen` : ''}.${datum ? ` Erfasst am ${datum.slice(8, 10)}.${datum.slice(5, 7)}.` : ''}`, n: frueher.matches, zonen: frueher.zones });
+    }
     if (tTeam.onTarget >= GOALKEEPER.MIN_SHOTS) {
       const weak = weakZones(tTeam, tw.league.rate)[0];
       if (weak) bef.push({ id: 'TW2', kat: 'Im Tor', p: (tw.league.rate - weak.rate) * weak.onTarget / tTeam.matches * 10, titel: `Gegentore vor allem ${weak.name}`,
