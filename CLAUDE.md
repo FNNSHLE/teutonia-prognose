@@ -19,6 +19,7 @@ as focus; the own team is the default.
 
 ```
 index.html                 Redirect + Open Graph metadata -> app/index.html
+README.md                  Developer readme with the to-do list
 LIESMICH.txt               End-user readme (German)
 abruf.sh                   Data fetch for CI and Linux/Mac (no browser opening)
 Start (Mac).command        Same fetch as abruf.sh, then opens the app. Double-click entry for users.
@@ -168,15 +169,7 @@ handball.net has no goalkeeper data at all (see "Known gaps"). The plan is a thr
 
 When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.txt`.
 
-## Open ideas and weak spots
+## To-dos
 
-- Three copies of the fetch logic; consider one shell script that the Mac launcher calls, and keep only
-  the PowerShell port separate.
-- `app.js` is a single ~1000-line IIFE mixing data prep, rendering and events; splitting rendering per
-  area would ease the goalkeeper work.
-- No automated checks at all; a tiny Node script that loads the data files and runs the model would catch
-  regressions in `modell.js` and `spielerinnen.js` cheaply.
-- Match list parsing in the shell scripts relies on `grep`/`sed` over raw JSON; `jq` or Python would be
-  more robust if the API shape changes.
-- The GitHub Action pushes directly to `main` daily, so every feature branch drifts; consider writing data
-  to a separate branch or folder, or rebasing in CI.
+The working to-do list (goalkeeper tracking plus backlog) lives in `README.md`. Tick items there when
+they are done and keep this file's roadmap section consistent with it.

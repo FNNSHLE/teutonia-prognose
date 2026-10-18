@@ -1,0 +1,142 @@
+# Anwurf · Handball-Prognose
+
+Win probability, match plan, fixtures and table for the next handball match. Built for the women's team of
+**SC Teutonia 10** (Bezirksoberliga Frauen, Hamburg), works for any team in that league.
+
+Private fan project, not an offering of SC Teutonia 10 or handball.net. Data: [handball.net](https://www.handball.net).
+
+- **Live app:** https://fnnshle.github.io/teutonia-prognose/
+- **Coach view:** https://fnnshle.github.io/teutonia-prognose/app/index.html#trainerin
+  (shows per-player values; no password, only an unlisted link)
+- **End-user guide in German:** [`LIESMICH.txt`](LIESMICH.txt)
+- **Developer orientation:** [`CLAUDE.md`](CLAUDE.md)
+
+## What the app shows
+
+| Area | Content |
+| --- | --- |
+| Start | Next match with win probability, table position, form, notable patterns |
+| Matchplan | Data-backed recommendations for the next match: who is indispensable, who to ask, 7-metre order, half-time profiles, suspension risk, match phases, key opponents. Lineup optimiser for the coach (absences, pinned goalkeepers, best squad, resulting win chance). Printable as a locker-room sheet. |
+| Spiele | Fixtures and results; tap a match for the timeline and lineups |
+| Tabelle | Table, position history, season forecast, "what if" with fixed outcomes |
+| Mehr | Durchspielen (lineup lab), Spielerinnen (player stats), Teams, "So rechnet Anwurf" (method and backtest) |
+
+Any team of the league can be chosen top left; the own team is restored on the next open. Light and dark
+mode follow the device setting. Keys 1–8 switch areas on a keyboard.
+
+## Getting started
+
+### As a user
+
+- **Mac:** double-click `Start (Mac).command`
+- **Windows:** double-click `Start (Windows).bat`
+
+The launcher fetches the current state from handball.net (a few seconds) and opens the app in the browser.
+Without internet it shows the last fetched state and warns when the data is older than a week.
+
+First start on macOS: Gatekeeper blocks downloaded scripts. Right-click the `.command` file, choose
+"Open", confirm. On newer macOS versions: System Settings → Privacy & Security → "Open Anyway". Once is enough.
+
+### As a developer
+
+No build, no dependencies. Plain HTML, CSS and JavaScript.
+
+```sh
+# serve the repo root, then open http://localhost:8000/app/
+python3 -m http.server
+
+# refresh data from handball.net (rewrites daten/ and the ?t= cache-busters in app/index.html)
+bash abruf.sh
+
+# syntax check without a browser
+for f in app/*.js; do node --check "$f"; done
+```
+
+Opening `app/index.html` straight from the file system also works.
+
+## Data updates
+
+A GitHub Action (`.github/workflows/daten.yml`) runs `abruf.sh` daily at 05:00 UTC and commits the result as
+`Daten aktualisiert YYYY-MM-DD` to `main`. It can also be triggered by hand from the Actions tab. Match
+reports (lineups and live ticker) are cached in `daten/cache/` and re-fetched for a week after the match, as
+reports get corrected after the fact.
+
+## Configuration
+
+`daten/team_id.txt` holds the handball.net team id (`86088` = SC Teutonia 10). The id is in the URL of the
+team page, e.g. `handball.net/team/86088`. The league and current phase are detected automatically.
+
+## How it works
+
+Short version; the "So rechnet Anwurf" page in the app and [`CLAUDE.md`](CLAUDE.md) have the details.
+
+- **Team strength:** from all results, each team gets an attack and a defence value in goals relative to
+  the league average, plus a home advantage. Early in the season everything is pulled towards the average.
+  The goal difference of a match is modelled as a normal distribution around the expected difference,
+  which yields win, draw and loss probabilities.
+- **Players:** from the match reports, each player gets a "Torwirkung" (goal impact): a blend of shrunken
+  goals per game and how the team performed with and without her. Lineup changes shift the expected goals
+  and therefore the win chance.
+- **Matchplan:** a small rule engine turns these numbers plus live-ticker metrics (phases, 7 m, suspensions)
+  into a capped list of recommendations and findings with minimum sample sizes.
+- **Season:** 5000 simulated seasons with a fixed seed, optionally with outcomes fixed by the user.
+- **Backtest:** every played match is predicted with a model trained only on earlier matches; the method
+  page reports hit rate, assigned probability and Brier score.
+
+Known limits: handball.net reports contain no goalkeeper data (no saves, no minutes, goalkeepers are not
+even flagged), no missed field shots and no defensive actions. See the to-dos.
+
+## Project layout
+
+```
+app/            the app: index.html (CSS, skeleton), app.js (UI), modell.js, spielerinnen.js,
+                kennzahlen.js, matchplan.js, PWA icons, images
+daten/          generated data (daten.js, spielberichte.js), raw cache, team_id.txt
+abruf.sh        data fetch for CI and Mac/Linux
+Start (Mac).command, Start (Windows).bat, app/abruf.ps1   user launchers (fetch + open)
+.github/        daily data workflow
+```
+
+## To-dos
+
+Checklist we work through together. Tick items when done, add context in the commit that closes them.
+
+### Next iteration: goalkeeper tracking
+
+handball.net has no goalkeeper data at all, so goalkeepers are invisible to the model and the coach has to
+pin them by hand. Plan in three steps:
+
+- [ ] **Capture app** for the person on the visitors' bench: log goalkeeper events live (saves, goals
+      conceded, 7 m, goalkeeper changes, maybe shot zones). Offline-capable on a phone, big touch targets,
+      undo. Same no-build vanilla approach, likely a sibling folder such as `erfassung/`.
+- [ ] **Exchange format** (to be defined, JSON is the natural fit) keyed by handball.net `matchId`,
+      `teamId` and `playerId` so it joins with the existing lineups. Export from the capture app via share
+      sheet or download, import by committing files under something like `daten/torwart/<matchId>.json`.
+- [ ] **Integration**: bundle the files into a generated `window.HB_TORWART`, extend `spielerinnen.js`
+      (goalkeeper stats per player), `kennzahlen.js` (team save rate), `matchplan.js` (new rule ids TW1…),
+      the player sheet and the coach view in `app.js`. Let goalkeeper impact flow into `besetzungsEffekt()`
+      so the optimiser no longer needs manual pins. Then update the "Grenzen" text, `LIESMICH.txt` and
+      `CLAUDE.md`.
+
+### Backlog
+
+- [ ] **Unify the fetch scripts.** `abruf.sh`, `Start (Mac).command` and `app/abruf.ps1` are near-copies;
+      every fix lands three times. One shell script called by the Mac launcher, plus the PowerShell port.
+- [ ] **Minimal regression check.** A Node script that loads `daten/*.js` and runs the model and player
+      evaluation, so changes to `modell.js` and `spielerinnen.js` are caught without clicking through the app.
+- [ ] **Split `app.js` by area.** One ~1000-line IIFE mixes data prep, rendering and events. Per-page
+      renderers make the goalkeeper views easier to add.
+- [ ] **Less disruptive data commits.** The daily bot push to `main` makes every feature branch drift.
+      Write data to its own branch or rebase in CI.
+- [ ] **Parse JSON properly in the fetch scripts.** Match ids are extracted with `grep`/`sed` over raw
+      JSON and break silently if handball.net reorders fields. Use `jq` or Python.
+- [ ] **Decide on a license** and add a `LICENSE` file.
+
+## Conventions
+
+- Everything in the code and UI is German, with feminine forms (Spielerin, Trainerin, Torhüterin).
+- Commit messages are German and short, like the existing ones.
+- Bump `?v=` on the script tags in `app/index.html` whenever app JavaScript changes; GitHub Pages visitors
+  keep the old files otherwise.
+- Do not hand-edit the generated files in `daten/`; change the fetch scripts instead.
+- Keep `LIESMICH.txt` in sync when user-visible behaviour changes.
