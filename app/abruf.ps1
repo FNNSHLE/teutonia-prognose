@@ -86,7 +86,9 @@ Get-ChildItem $cache -Filter '*_l.json' | ForEach-Object {
 $tw = Join-Path $daten 'torwart'
 $teile = @()
 if (Test-Path $tw) { Get-ChildItem $tw -Filter 'torwart-*.json' | Sort-Object Name | ForEach-Object { $teile += [IO.File]::ReadAllText($_.FullName) } }
-[IO.File]::WriteAllText((Join-Path $daten 'torwart.js'), "window.HB_TORWART = [" + ($teile -join ',') + "];`n", $utf8)
+$liste = Join-Path $tw 'goalkeepers.json'
+$kader = if (Test-Path $liste) { [IO.File]::ReadAllText($liste) } else { '{}' }
+[IO.File]::WriteAllText((Join-Path $daten 'torwart.js'), "window.HB_TORWART = {`"goalkeepers`": $kader, `"records`": [" + ($teile -join ',') + "]};`n", $utf8)
 
 # Browser-Cache umgehen: Datenstand als Versionsmerkmal in die Seite schreiben
 $idx = Join-Path $root 'app\index.html'

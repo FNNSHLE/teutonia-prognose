@@ -11,8 +11,10 @@ const SPIELERIN = {
   MIN: -2, MAX: 8,
 };
 
-// details: window.HB_DETAILS, spiele: aufbereitete Spiele, modell: aktuelles Teammodell
-function werteSpielberichteAus(details, spiele, modell) {
+// details: window.HB_DETAILS, spiele: aufbereitete Spiele, modell: aktuelles Teammodell,
+// torhueterinnen: {pid: true} aus der eigenen Erfassung (app/goalkeepers.js). Torhüterinnen bekommen keine
+// Torwirkung aus Toren und Mit/Ohne-Vergleich; die kommt, wenn überhaupt, aus der Paradenquote (app.js).
+function werteSpielberichteAus(details, spiele, modell, torhueterinnen = {}) {
   const teams = {};       // teamId -> { spiele: [matchId], spielerinnen: {pid: {...}} }
   const verlaeufe = {};   // matchId -> { tore: [{min, heim, gast, team, name}], halbzeit: {heim, gast} }
   const nachId = {};
@@ -41,7 +43,7 @@ function werteSpielberichteAus(details, spiele, modell) {
         s.smVers += p.seven_meter_attempts || 0;
         s.zwei += p.two_minutes || 0;
         if (p.sanctions && p.sanctions.disqualification) s.disq++;
-        if (p.is_goalkeeper) s.torwart = true;
+        if (p.is_goalkeeper || torhueterinnen[pid]) s.torwart = true;
       });
     });
 
@@ -98,6 +100,7 @@ function werteSpielberichteAus(details, spiele, modell) {
       }
       const roh = !s.gewichtMitOhne ? s.torbeitrag : (1 - s.gewichtMitOhne) * s.torbeitrag + s.gewichtMitOhne * s.mitOhne;
       s.einfluss = Math.max(SPIELERIN.MIN, Math.min(SPIELERIN.MAX, roh));
+      if (s.torwart) { s.torbeitrag = 0; s.mitOhne = null; s.gewichtMitOhne = 0; s.einfluss = 0; }
       s.ohneMit = ohne.length;
     });
 

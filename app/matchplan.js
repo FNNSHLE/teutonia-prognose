@@ -38,7 +38,8 @@ function optimiereAufstellung(m, g, fokus, B, verf, pins, eigene, K = MATCHPLAN.
     if (ueblichDabei(s)) return w * s.verfuegbar;
     return belegt(s, eigene) ? w * (1 - s.verfuegbar) : 0;
   };
-  const sortiert = verfuegbar.slice().sort((a, b) => (pins[b.id] ? 1 : 0) - (pins[a.id] ? 1 : 0) || (ueblichDabei(b) ? 1 : 0) - (ueblichDabei(a) ? 1 : 0) || beitrag(b) - beitrag(a));
+  const fest = s => pins[s.id] || s.torwart; // Torhüterinnen bleiben wie angepinnte im Kader
+  const sortiert = verfuegbar.slice().sort((a, b) => (fest(b) ? 1 : 0) - (fest(a) ? 1 : 0) || (ueblichDabei(b) ? 1 : 0) - (ueblichDabei(a) ? 1 : 0) || beitrag(b) - beitrag(a));
   const auswahl = sortiert.slice(0, K);
   const dabei = Object.assign({}, basisGegner);
   t.liste.forEach(s => dabei[s.id] = false);
@@ -53,7 +54,7 @@ function optimiereAufstellung(m, g, fokus, B, verf, pins, eigene, K = MATCHPLAN.
     gestrichen: sortiert.slice(K).map(s => ({ s, wert: Math.abs(wert(s)) })),
     fehlen: t.liste.filter(s => verf[s.id] === false).map(s => ({ s })),
     chance, chanceUeblich, dabei,
-    ohnePins: !Object.keys(pins).some(k => pins[k]),
+    ohnePins: !Object.keys(pins).some(k => pins[k]) && !t.liste.some(s => s.torwart),
   };
 }
 

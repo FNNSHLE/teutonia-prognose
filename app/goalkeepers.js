@@ -49,10 +49,14 @@ function timeInGoal(record) {
   return seconds;
 }
 
-// records: window.HB_TORWART; returns { players: {playerId: stats}, teams: {teamId: stats}, league, records }
-function evaluateGoalkeepers(records) {
+// bundle: window.HB_TORWART = { goalkeepers: {teamId: [{playerId, name, number}]}, records: [record] } (an older bundle
+// was a bare array of records). Returns { players: {playerId: stats}, teams: {teamId: stats}, league, records, roster }
+function evaluateGoalkeepers(bundle) {
+  const records = Array.isArray(bundle) ? bundle : (bundle && bundle.records) || [];
+  const roster = Array.isArray(bundle) ? {} : (bundle && bundle.goalkeepers) || {};
   const players = {}, teams = {};
   const names = {};
+  Object.values(roster).flat().forEach(g => { names[g.playerId] = g; });
   (records || []).forEach(r => {
     if (!r || r.format !== 'anwurf-goalkeeper' || !Array.isArray(r.events)) return;
     const team = teams[r.teamId] || (teams[r.teamId] = Object.assign(emptyGoalkeeperStats(), { teamId: r.teamId, keepers: {} }));
@@ -103,7 +107,17 @@ function evaluateGoalkeepers(records) {
     p.reliable = p.onTarget >= GOALKEEPER.MIN_SHOTS;
     p.weakZones = weakZones(p, league.rate);
   });
-  return { players, teams, league, records: (records || []).length };
+  return { players, teams, league, records: records.length, roster };
+}
+
+// Everyone who counts as a goalkeeper: the permanent list plus anyone named as goalkeeper in a record.
+function goalkeeperIds(bundle) {
+  const records = Array.isArray(bundle) ? bundle : (bundle && bundle.records) || [];
+  const roster = Array.isArray(bundle) ? {} : (bundle && bundle.goalkeepers) || {};
+  const ids = {};
+  Object.values(roster).flat().forEach(g => { ids[g.playerId] = true; });
+  records.forEach(r => (r.goalkeepers || []).forEach(g => { ids[g.playerId] = true; }));
+  return ids;
 }
 
 // Zones with enough shots whose save rate is clearly below the reference, worst first.

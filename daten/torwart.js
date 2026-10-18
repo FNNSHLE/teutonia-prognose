@@ -1,4 +1,4 @@
-window.HB_TORWART = [{
+window.HB_TORWART = {"goalkeepers": {"86088":[{"playerId":"1bt1pug","name":"Laura Kähler","number":1},{"playerId":"0jotezw","name":"Silja Paul","number":12}]}, "records": [{
   "format": "anwurf-goalkeeper",
   "version": 1,
   "matchId": 675697,
@@ -99,4 +99,4 @@ window.HB_TORWART = [{
       "at": "2026-10-18T17:59:46.903Z"
     }
   ]
-}];
+}]};

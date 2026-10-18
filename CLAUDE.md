@@ -40,10 +40,11 @@ app/assets/                Icons, favicon, key visual, OG image, 3D icon
 daten/team_id.txt          Focus team id (86088). League/phase is auto-detected from the team page.
 daten/daten.js             Generated: window.HB_DATA (match list pages + standings)
 daten/spielberichte.js     Generated: window.HB_DETAILS (lineups + events per finished match)
-daten/torwart.js           Generated: window.HB_TORWART (array of goalkeeper records, see daten/torwart/)
+daten/torwart.js           Generated: window.HB_TORWART = { goalkeepers: permanent list, records: [...] } (see daten/torwart/)
 daten/cache/<id>_l.json    Raw lineups per match (handball.net response)
 daten/cache/<id>_e.json    Raw live-ticker events per match
 daten/torwart/schema.json  JSON Schema of the goalkeeper record (tracker export)
+daten/torwart/goalkeepers.json  Permanent goalkeeper list per team: { "<teamId>": [{ playerId, name, number }] }
 daten/torwart/torwart-<matchId>-<teamId>.json   Goalkeeper records, one per match and team
 scripts/goalkeeper.mjs     Validate goalkeeper records, create empty ones (Node, no deps, English)
 .github/workflows/daten.yml  Daily 05:00 UTC fetch, commits "Daten aktualisiert YYYY-MM-DD" as daten-bot
@@ -217,8 +218,16 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
    `new [matchId|next] [--team id]` writes an empty record. When the format changes: bump `version` in
    the schema and in `tracker.js`, and keep a migration path for committed files.
 4. **Integration** (done): all three fetch scripts and `scripts/goalkeeper.mjs bundle` write
-   `daten/torwart.js` (`window.HB_TORWART = [record, …]`), loaded after `spielberichte.js`.
-   `app/goalkeepers.js` → `evaluateGoalkeepers(records)` returns `{ players, teams, league, records }`;
+   `daten/torwart.js` (`window.HB_TORWART = { goalkeepers: {teamId: [...]}, records: [record, …] }`;
+   a bare array is still accepted), loaded after `spielberichte.js`.
+   `app/goalkeepers.js` → `evaluateGoalkeepers(bundle)` returns `{ players, teams, league, records, roster }`,
+   `goalkeeperIds(bundle)` the set of everyone who counts as goalkeeper (permanent list ∪ goalkeepers
+   named in any record). That set goes into `werteSpielberichteAus()` as 4th argument: such players get
+   `torwart = true` and **no goal-based Torwirkung** (`einfluss = 0`, no with/without comparison), the
+   optimiser keeps them in the squad like pinned players (`fest()` in `optimiereAufstellung`), the tracker
+   preselects them, and the player list labels them. Owner's rule (2026-10-18): a goalkeeper who sometimes
+   plays in the field is not evaluated as a field player for now. Maintain the list with
+   `scripts/goalkeeper.mjs mark|unmark|list` (resolves names via the cached lineups, then re-bundles).
    `app.js` attaches `s.tw` and `s.torwart = true` to the matching player in `B.teams[].liste` and, once
    `tw.reliable` (≥ `GOALKEEPER.MIN_SHOTS` shots on target), replaces `s.einfluss` with `tw.influence`
    (= (shrunk save rate − league rate) × team shots on target per match, clamped), then re-sorts the lists.

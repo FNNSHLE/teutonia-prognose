@@ -57,6 +57,7 @@ for f in app/*.js sw.js; do node --check "$f"; done
 node scripts/goalkeeper.mjs validate
 node scripts/goalkeeper.mjs new next
 node scripts/goalkeeper.mjs bundle     # regenerate daten/torwart.js after adding a record (the fetch scripts do it too)
+node scripts/goalkeeper.mjs mark "Laura Kähler"   # permanent goalkeeper list (daten/torwart/goalkeepers.json); also unmark, list
 ```
 
 Opening `app/index.html` straight from the file system also works.
@@ -103,7 +104,7 @@ app/            the app: index.html (CSS, skeleton), app.js (UI), modell.js, spi
 app/lib/        vendored Preact, Preact hooks and htm (pinned UMD builds, see LIESMICH.txt there)
 sw.js           service worker for offline use; must stay at the root so its scope covers app/ and daten/
 daten/          generated data (daten.js, spielberichte.js, torwart.js), raw cache, team_id.txt,
-                torwart/ (goalkeeper records from the tracker + schema.json)
+                torwart/ (goalkeeper records from the tracker, schema.json, goalkeepers.json = permanent list)
 scripts/        goalkeeper.mjs (validate records, create empty ones); plain Node, no dependencies
 abruf.sh        data fetch for CI and Mac/Linux
 Start (Mac).command, Start (Windows).bat, app/abruf.ps1   user launchers (fetch + open)
@@ -146,6 +147,11 @@ dedicated step (see backlog); htm templates convert to TSX mechanically, so noth
       without pins. Shown in the player sheet (tiles + zone SVG), the player list (sort "Paraden"), the
       match plan ("Im Tor" module, rules TW1 "X ins Tor" and TW2 "Gegentore vor allem …") and the method
       page. Tracker shortcuts on a keyboard: 1–9 zone, 0 miss, Y save, N goal, Escape.
+- [x] **Permanent goalkeepers**: `daten/torwart/goalkeepers.json` lists who is a goalkeeper per team
+      (`scripts/goalkeeper.mjs mark|unmark|list`). They are preselected in the tracker, kept in the squad by
+      the optimiser like pinned players, and get no goal-based "Torwirkung" from the field-player evaluation;
+      their value comes from the save rate once tracked. A goalkeeper who occasionally plays in the field is
+      not evaluated as a field player for now.
 
 ### Backlog
 

@@ -86,7 +86,7 @@
     if (!cache[tag]) cache[tag] = schaetzeModell(gewertet.filter(x => x.datum.toISOString().slice(0, 10) < tag), teamIds);
     vorher[g.id] = prognose(cache[tag], g.heim, g.gast);
   });
-  const B = werteSpielberichteAus(DETAILS, spiele, modell);
+  const B = werteSpielberichteAus(DETAILS, spiele, modell, goalkeeperIds(window.HB_TORWART));
   const muster = teamMuster(spiele, B.verlaeufe, teamIds);
   const K = teamKennzahlen(DETAILS, spiele, B.verlaeufe, teamIds);
   const LIGA = ligaKennzahlen(K);
@@ -755,7 +755,7 @@
     const q = ui.spSuche.trim().toLowerCase(), f = SORT[ui.spSort][1];
     const liste = alleSp.filter(s => (ui.spTeam === 'alle' || String(s.team) === String(ui.spTeam)) && (!q || s.name.toLowerCase().includes(q))).sort((a, b) => f(b) - f(a));
     const wert = s => ui.spSort === 'einfluss' ? vz(s.einfluss) : ui.spSort === 'tore' ? s.tore : ui.spSort === 'tps' ? dez(s.toreProSpiel) : ui.spSort === 'tw' ? (s.tw && s.tw.onTarget ? pct(s.tw.rate) : '') : (s.smVers ? `${s.sm}/${s.smVers}` : '');
-    const zeile2 = s => s.tw ? `Torhüterin · ${s.tw.saves} von ${s.tw.onTarget} gehalten` : `${s.tore} Tore in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`;
+    const zeile2 = s => s.tw ? `Torhüterin · ${s.tw.saves} von ${s.tw.onTarget} gehalten` : s.torwart ? `Torhüterin · ${s.anz} Spiel${s.anz > 1 ? 'e' : ''}` : `${s.tore} Tore in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`;
     const el = $('#spListe'); if (!el) return;
     el.innerHTML = liste.length ? modul('', `<div class="zeilen">${liste.slice(0, 120).map((s, i) => `<button class="spiel${s.team === fokus ? ' fokus' : ''}" style="grid-template-columns:28px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(s.id)}">
         <span class="cap t3" style="text-align:right">${i + 1}</span><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${esc(kurz(s.team))} · ${zeile2(s)}</span></div></span>
@@ -773,7 +773,7 @@
     return {
       teamId: fokus, shortName: kurz, longName: lang,
       matches: meine.filter(g => g.offen).map(eintrag).concat(meine.filter(g => g.gewertet).slice(-2).reverse().map(eintrag)),
-      roster: t ? t.liste.map(s => ({ id: s.id, name: s.name, number: s.nummer, pinned: !!kd.pins[s.id] })) : [],
+      roster: t ? t.liste.map(s => ({ id: s.id, name: s.name, number: s.nummer, pinned: !!kd.pins[s.id] || !!s.torwart })) : [],
     };
   }
   function seiteErfassung() {
@@ -886,7 +886,7 @@
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
     oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:8px;align-items:center;margin-bottom:16px">${logo(s.team)} ${esc(lang(s.team))}</div>
       ${s.tw ? `<div class="kacheln">${kachel('Paradenquote', s.tw.rate == null ? '–' : `${Math.round(s.tw.rate * 100)}<span class="pz">%</span>`, `${s.tw.saves} von ${s.tw.onTarget} Würfen aufs Tor`)}${kachel('7-Meter gehalten', s.tw.sevenMeter.onTarget ? `${s.tw.sevenMeter.saves} von ${s.tw.sevenMeter.onTarget}` : 'keine', s.tw.sevenMeter.onTarget ? pct(s.tw.sevenMeter.rate) + ' Quote' : 'noch kein Siebenmeter erfasst')}${kachel('Erfasste Spiele', `${s.tw.matches}`, `${s.tw.minutes} Minuten im Tor`)}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), s.tw.reliable ? 'aus der Paradenquote' : `Paradenquote zählt ab ${GOALKEEPER.MIN_SHOTS} Würfen`) : kachel('Vorbei', `${s.tw.misses}`, 'Würfe neben das Tor')}</div>
-      ${modul('Gehalten je Zone', goalZoneSvg(s.tw.zones, 320), { eyebrow: 'Aus Sicht der Werferin', fuss: 'Gehalten von Würfen aufs Tor je Zone, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung von der Bank.' })}` : `
+      ${modul('Gehalten je Zone', goalZoneSvg(s.tw.zones, 320), { eyebrow: 'Aus Sicht der Werferin', fuss: 'Gehalten von Würfen aufs Tor je Zone, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung von der Bank.' })}` : `${s.torwart ? `<div class="hinweis">${ico('tor')}<span>Torhüterin. Paraden gibt es erst, wenn ein Spiel von der Bank erfasst wurde.</span></div>` : ''}
       <div class="kacheln">${kachel('Tore pro Spiel', dez(s.toreProSpiel), `${s.tore} Tore in ${s.anz} von ${t.spiele.length} Spielen`)}${kachel('Anteil an den Teamtoren', `${Math.round(s.anteil * 100)}<span class="pz">%</span>`, `erste Hälfte ${hz[0]}, zweite ${hz[1]}`)}${kachel('7-Meter', s.smVers ? `${s.sm} von ${s.smVers}` : 'keine', s.smVers ? pct(s.sm / s.smVers) + ' Quote' : 'noch keine Würfe')}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), 'Tore Unterschied, wenn sie spielt') : kachel('Zeitstrafen', `${s.zwei}`, `in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`)}</div>
       ${TRAINERIN ? `<div class="fussnote" style="margin-top:0">Tore mehr als eine Ersatzspielerin: ${vz(s.torbeitrag)}. ${s.mitOhne == null ? 'Noch kein Spiel ohne sie.' : !s.gewichtMitOhne ? `So lief es mit und ohne sie: ${vz(s.mitOhne)} Tore, zählt erst ab zwei Spielen mit und zwei ohne sie.` : `So lief es mit und ohne sie: ${vz(s.mitOhne)} Tore.`}</div>` : ''}
 `}
