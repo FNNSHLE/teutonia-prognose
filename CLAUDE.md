@@ -154,24 +154,26 @@ Teilende (10002). `block` is `" 1. Halbzeit"` (leading space), `"Halbzeitpause"`
 
 handball.net has no goalkeeper data at all (see "Known gaps"). The plan is a three-part extension.
 
-Stack decision (2026-10-18): the tracker is the one place in this repo with a toolchain. Vite +
-TypeScript + Preact, pnpm (not yarn, not npm) with its `package.json` inside the tracker folder, not at the
-repo root. vite-plugin-pwa for offline use on the bench, zod for the exchange format schema so the
-TypeScript type and the validator come from one definition. Built output is committed (GitHub Pages serves
-`main` as-is) until the Pages CI deploy from the backlog exists. `app/` stays vanilla JS and dependency-free;
-a later migration of Anwurf to TypeScript and a build is recorded in the README backlog, not planned now.
+Stack decision (2026-10-18, revised the same day): the tracker is part of this app, not a separate
+project. It is rendered with Preact + htm, vendored as pinned UMD scripts in `app/lib/` and loaded as
+classic scripts, so there is still no build step, no `package.json`, and the app keeps working from
+`file://` and offline. The tracker mounts a Preact tree into `#inhalt` while its area is active and unmounts
+when `zeichne()` switches away; the other pages stay string-rendered. The exchange format is defined as a
+JSON Schema with a Node validation script. The migration to Vite, TypeScript and TSX (pnpm, not yarn) is a
+later dedicated step recorded in the README backlog; htm templates convert to TSX mechanically.
 
-1. **Capture app**: a small, separate app used live by someone on the visitors' bench to log goalkeeper
-   events (saves, goals conceded, 7m, maybe shot zones and goalkeeper changes) per match. Must work
-   offline on a phone, with big touch targets, an undo, and a draft persisted after every event so a
-   reload loses nothing. Sibling folder, e.g. `erfassung/`, with the stack above.
-2. **Exchange format**: a file format (still to be defined, JSON is the natural fit) keyed by handball.net
-   `matchId`, `teamId` and `playerId` so it joins cleanly with `HB_DETAILS`. Export from the capture app
-   (share sheet / download), import into this repo by committing files under something like
-   `daten/torwart/<matchId>.json` and bundling them into a generated `window.HB_TORWART` alongside the
-   other data files.
-3. **Integration**: extend `spielerinnen.js` (goalkeeper stats per player), `kennzahlen.js` (team-level
-   save rate), `matchplan.js` (new rule ids, e.g. TW1…), the player sheet and the Trainerin view in `app.js`.
+1. **Groundwork**: vendor Preact and htm into `app/lib/`, add a service worker so the app opens in a hall
+   without reception.
+2. **Capture app** in `app/erfassung.js`, reached from the Trainerin view. Uses the next match and the
+   roster already on the page; the coach's goalkeeper pins (`kader[teamId].pins`) preselect the
+   goalkeepers. Logs saves, goals conceded, 7m, goalkeeper changes, maybe shot zones. Big touch targets,
+   undo, draft persisted after every event.
+3. **Exchange format**: JSON Schema keyed by handball.net `matchId`, `teamId` and `playerId` so it joins
+   cleanly with `HB_DETAILS`. Export via share sheet or clipboard; files are committed under
+   `daten/torwart/<matchId>.json` and validated by a Node script.
+4. **Integration**: bundle the files into a generated `window.HB_TORWART` next to the other data files,
+   extend `spielerinnen.js` (goalkeeper stats per player), `kennzahlen.js` (team-level save rate),
+   `matchplan.js` (new rule ids, e.g. TW1…), the player sheet and the Trainerin view in `app.js`.
    Goalkeeper influence should flow into `besetzungsEffekt()` so the optimiser no longer needs manual pins.
 
 When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.txt`.

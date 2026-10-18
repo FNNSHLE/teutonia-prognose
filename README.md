@@ -104,16 +104,24 @@ Checklist we work through together. Tick items when done, add context in the com
 ### Next iteration: goalkeeper tracking
 
 handball.net has no goalkeeper data at all, so goalkeepers are invisible to the model and the coach has to
-pin them by hand. Stack decision (2026-10-18): the tracker lives in its own folder with its own `package.json`, built with
-Vite, TypeScript and Preact, pnpm as package manager, vite-plugin-pwa for offline use, zod for the exchange
-format schema. The existing app stays vanilla JS for now (see backlog). Plan in three steps:
+pin them by hand.
 
-- [ ] **Capture app** for the person on the visitors' bench: log goalkeeper events live (saves, goals
-      conceded, 7 m, goalkeeper changes, maybe shot zones). Offline-capable on a phone, big touch targets,
-      undo. Same no-build vanilla approach, likely a sibling folder such as `erfassung/`.
-- [ ] **Exchange format** (to be defined, JSON is the natural fit) keyed by handball.net `matchId`,
-      `teamId` and `playerId` so it joins with the existing lineups. Export from the capture app via share
-      sheet or download, import by committing files under something like `daten/torwart/<matchId>.json`.
+Stack decision (2026-10-18, revised the same day): the tracker is built **into the existing app**, not as a
+separate project, because the next match, both rosters, player ids and the coach's goalkeeper pins are
+already on the page. Rendering with **Preact + htm**, vendored as two UMD scripts in `app/lib/`, so there
+is still no build step and the app keeps working from `file://` and offline. The exchange format is a
+**JSON Schema** with a Node validation script. The move to Vite, TypeScript and TSX follows as one
+dedicated step (see backlog); htm templates convert to TSX mechanically, so nothing is thrown away.
+
+- [ ] **Vendor Preact and htm** into `app/lib/` and add a **service worker**, so the app opens in a hall
+      without reception. Pin exact versions, note them in `CLAUDE.md`.
+- [ ] **Capture app** as Preact components in `app/erfassung.js`: a new area reached from the Trainerin
+      view, mounted into the content area while active. Uses the next match and roster already loaded;
+      goalkeeper pins preselect the goalkeepers. Logs saves, goals conceded, 7 m, goalkeeper changes, maybe
+      shot zones. Big touch targets, undo, draft persisted after every event so a reload loses nothing.
+- [ ] **Exchange format** as JSON Schema keyed by handball.net `matchId`, `teamId` and `playerId` so it
+      joins with the existing lineups. Export via share sheet or copy to clipboard. A Node script validates
+      files under `daten/torwart/<matchId>.json`.
 - [ ] **Integration**: bundle the files into a generated `window.HB_TORWART`, extend `spielerinnen.js`
       (goalkeeper stats per player), `kennzahlen.js` (team save rate), `matchplan.js` (new rule ids TW1…),
       the player sheet and the coach view in `app.js`. Let goalkeeper impact flow into `besetzungsEffekt()`
@@ -133,8 +141,11 @@ format schema. The existing app stays vanilla JS for now (see backlog). Plan in 
 - [ ] **Parse JSON properly in the fetch scripts.** Match ids are extracted with `grep`/`sed` over raw
       JSON and break silently if handball.net reorders fields. Use `jq` or Python.
 - [ ] **Decide on a license** and add a `LICENSE` file.
-- [ ] **Move Anwurf itself to TypeScript with a build step**, once the tracker has proven the toolchain.
-      Same stack as the tracker (Vite, TypeScript, pnpm), keeping the no-framework rendering if it still fits.
+- [ ] **Move Anwurf to Vite, TypeScript and TSX** in one dedicated step after the tracker ships: tracker
+      first (htm templates become TSX), then the string-rendered pages one by one, then types for the model
+      files. pnpm as package manager. The JSON Schema becomes the TypeScript type of the exchange format.
+      Must keep the `file://` launchers working (relative base, inlined scripts) and the Methodik backtest
+      numbers identical before and after.
 - [ ] **Deploy GitHub Pages from a CI build** instead of serving `main` as-is, so built output no longer
       needs to be committed. Must coexist with the daily data commit.
 
