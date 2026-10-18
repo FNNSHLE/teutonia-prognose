@@ -19,6 +19,7 @@ as focus; the own team is the default.
 
 ```
 index.html                 Redirect + Open Graph metadata -> app/index.html
+sw.js                      Service worker (offline cache). Must stay at the root, see "Vendored libraries and service worker"
 README.md                  Developer readme with the to-do list
 LIESMICH.txt               End-user readme (German)
 abruf.sh                   Data fetch for CI and Linux/Mac (no browser opening)
@@ -26,7 +27,8 @@ Start (Mac).command        Same fetch as abruf.sh, then opens the app. Double-cl
 Start (Windows).bat        Calls app/abruf.ps1
 app/abruf.ps1              Windows port of the fetch (PowerShell, then opens the app)
 app/index.html             Single page: all CSS (design tokens), DOM skeleton, script tags
-app/app.js                 UI, routing, rendering, data preparation (IIFE, ~1000 lines)
+app/lib/                   Vendored UMD builds of Preact, Preact hooks and htm + LIESMICH.txt (versions, URLs, sha256)
+app/app.js                 UI, routing, rendering, data preparation (IIFE, ~1000 lines), registers sw.js at the end
 app/modell.js              Team strength model, win probabilities, season simulation
 app/spielerinnen.js        Player evaluation from match reports, lineup effects, match timelines
 app/kennzahlen.js          Per-team metrics from live ticker (phases, 7m, suspensions, timeouts)
@@ -46,12 +48,41 @@ not in the repo and may not exist locally. Do not rely on it.
 
 ## Architecture in one paragraph
 
-No build step, no package manager, no dependencies, no tests. Plain HTML/CSS/JS, ES2018-ish, loaded as
-classic scripts in a fixed order (see bottom of `app/index.html`): data files first, then `modell.js`,
-`spielerinnen.js`, `kennzahlen.js`, `matchplan.js`, `app.js`. The module files define top-level functions
-and constants that `app.js` consumes as globals. `app.js` wraps everything in an IIFE, prepares the data,
-fits the models once at load, and renders pages as HTML strings into `#inhalt`. Every state change
-re-renders via `zeichne()`. The app works from `file://` (the double-click launchers) and from GitHub Pages.
+No build step, no package manager, no `package.json`, no tests. Plain HTML/CSS/JS, ES2018-ish, loaded as
+classic scripts in a fixed order (see bottom of `app/index.html`): data files first, then the two vendored
+libraries from `app/lib/` (Preact + hooks, htm), then `modell.js`, `spielerinnen.js`, `kennzahlen.js`,
+`matchplan.js`, `app.js`. The module files define top-level functions and constants that `app.js` consumes
+as globals. `app.js` wraps everything in an IIFE, prepares the data, fits the models once at load, and
+renders pages as HTML strings into `#inhalt`. Every state change re-renders via `zeichne()`. The app works
+from `file://` (the double-click launchers) and from GitHub Pages, where a service worker (`sw.js` at the
+repository root) keeps it usable offline once it has been opened online.
+
+## Vendored libraries and service worker
+
+Pinned, unmodified UMD builds in `app/lib/`, file names carry the version; `app/lib/LIESMICH.txt` lists
+source URL and sha256 for each. They define exactly three globals and nothing else:
+
+| File | Version | Global |
+| --- | --- | --- |
+| `preact-10.29.2.umd.js` | Preact 10.29.2 | `window.preact` (`h`, `render`, `Component`, …) |
+| `preact-hooks-10.29.2.umd.js` | Preact hooks 10.29.2 | `window.preactHooks` (`useState`, `useEffect`, …); reads `window.preact`, so it must load after Preact |
+| `htm-3.1.1.umd.js` | htm 3.1.1 | `window.htm`; use as `const html = htm.bind(preact.h)` |
+
+Verified with `node --check` and in a Node `vm` context loaded as classic scripts (no `module`/`define`).
+When updating: add the new file with its version in the name, update `LIESMICH.txt`, the script tags in
+`app/index.html` and the `SHELL` list in `sw.js`, bump `?v=`.
+
+`sw.js` gotcha: a service worker's scope cannot exceed the directory of its script. The page lives under
+`app/` but loads `../daten/daten.js` and `../daten/spielberichte.js`, so the worker **must stay at the
+repository root** (`/teutonia-prognose/sw.js` on GitHub Pages) and is registered from `app.js` as
+`navigator.serviceWorker.register('../sw.js')`. Registration only happens when `'serviceWorker' in
+navigator` and the protocol is not `file:`, wrapped in try/catch; a failed registration never affects the
+app. Strategy: precache the app shell on install (`SHELL` list), delete old caches on activate, `daten/`
+network-first with cache fallback, everything else same-origin stale-while-revalidate, cross-origin
+requests (team logos) untouched. Cache keys drop `?v=`/`?t=`, so a version bump still finds the cached
+file while the network fetch stays cache-busted. Because of stale-while-revalidate, a visitor who is online
+sees new code on the **second** load after a deploy. On `localhost` the worker is active too; use "Update
+on reload" / "Bypass for network" in the browser devtools while developing.
 
 ## Data pipeline
 
@@ -141,7 +172,7 @@ Teilende (10002). `block` is `" 1. Halbzeit"` (leading space), `"Halbzeitpause"`
 - Run locally: open `app/index.html` directly, or `python3 -m http.server` in the repo root and open
   `http://localhost:8000/app/`. Fresh data: `bash abruf.sh` (needs internet, rewrites `daten/` and the
   `?t=` stamps).
-- Syntax check without a browser: `for f in app/*.js; do node --check "$f"; done`. There is no test suite;
+- Syntax check without a browser: `for f in app/*.js sw.js; do node --check "$f"; done`. There is no test suite;
   verify changes by loading the app and clicking through Start, Matchplan, Spiele, Tabelle, Durchspielen,
   Spielerinnen, Teams, Methodik, in light and dark mode, on a phone-sized viewport.
 - Data commits by the bot touch `daten/` and `app/index.html`. Do not hand-edit generated data files; fix
@@ -162,8 +193,8 @@ when `zeichne()` switches away; the other pages stay string-rendered. The exchan
 JSON Schema with a Node validation script. The migration to Vite, TypeScript and TSX (pnpm, not yarn) is a
 later dedicated step recorded in the README backlog; htm templates convert to TSX mechanically.
 
-1. **Groundwork**: vendor Preact and htm into `app/lib/`, add a service worker so the app opens in a hall
-   without reception.
+1. **Groundwork** (done 2026-10-18): vendor Preact and htm into `app/lib/`, add a service worker so the app
+   opens in a hall without reception. See "Vendored libraries and service worker".
 2. **Capture app** in `app/erfassung.js`, reached from the Trainerin view. Uses the next match and the
    roster already on the page; the coach's goalkeeper pins (`kader[teamId].pins`) preselect the
    goalkeepers. Logs saves, goals conceded, 7m, goalkeeper changes, maybe shot zones. Big touch targets,

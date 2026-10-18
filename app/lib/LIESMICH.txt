@@ -1,0 +1,21 @@
+FREMDE BIBLIOTHEKEN
+Unverändert heruntergeladene UMD-Builds, als klassische <script>-Tags in app/index.html eingebunden.
+Kein Build, kein package.json. Beim Aktualisieren: neue Datei mit Versionsnummer im Namen ablegen,
+diese Liste und die Script-Tags anpassen, ?v= in app/index.html hochzählen.
+
+preact-10.29.2.umd.js        Preact 10.29.2 (MIT)
+  Quelle:  https://unpkg.com/preact@10.29.2/dist/preact.umd.js
+  sha256:  08b3e370787c8206405e960a0aad5d605e46f5255346f8e715fbe65b4b8639e3
+  Global:  window.preact
+
+preact-hooks-10.29.2.umd.js  Preact Hooks 10.29.2 (MIT), erwartet window.preact, daher nach Preact laden
+  Quelle:  https://unpkg.com/preact@10.29.2/hooks/dist/hooks.umd.js
+  sha256:  c3f9c0224475e2110202da5fe054f65f04b7aa35932017b08645d1b0d3342748
+  Global:  window.preactHooks
+
+htm-3.1.1.umd.js             htm 3.1.1 (Apache-2.0)
+  Quelle:  https://unpkg.com/htm@3.1.1/dist/htm.umd.js
+  sha256:  7a31776e04bd4afde0d4308177d26f377716fcf7e4bd70be590746d6aa594f08
+  Global:  window.htm
+
+Prüfen: shasum -a 256 app/lib/*.js

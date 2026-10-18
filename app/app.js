@@ -962,5 +962,11 @@
   });
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (Math.abs(window.innerWidth - letzteBreite) > 40) { const y = window.scrollY; zeichne(); window.scrollTo(0, y); } }, 180); });
 
+  // Service Worker für die Halle ohne Empfang. Liegt im Wurzelverzeichnis, weil der Geltungsbereich auf das Verzeichnis
+  // der Datei begrenzt ist und app/ die Daten aus ../daten/ lädt. Scheitert die Registrierung, läuft die App wie bisher.
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    try { navigator.serviceWorker.register('../sw.js').catch(() => {}); } catch (e) {}
+  }
+
   zeichne(true);
 })();

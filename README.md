@@ -39,7 +39,8 @@ First start on macOS: Gatekeeper blocks downloaded scripts. Right-click the `.co
 
 ### As a developer
 
-No build, no dependencies. Plain HTML, CSS and JavaScript.
+No build, no package manager. Plain HTML, CSS and JavaScript; Preact and htm are vendored as pinned UMD
+files in `app/lib/`.
 
 ```sh
 # serve the repo root, then open http://localhost:8000/app/
@@ -49,7 +50,7 @@ python3 -m http.server
 bash abruf.sh
 
 # syntax check without a browser
-for f in app/*.js; do node --check "$f"; done
+for f in app/*.js sw.js; do node --check "$f"; done
 ```
 
 Opening `app/index.html` straight from the file system also works.
@@ -91,6 +92,8 @@ even flagged), no missed field shots and no defensive actions. See the to-dos.
 ```
 app/            the app: index.html (CSS, skeleton), app.js (UI), modell.js, spielerinnen.js,
                 kennzahlen.js, matchplan.js, PWA icons, images
+app/lib/        vendored Preact, Preact hooks and htm (pinned UMD builds, see LIESMICH.txt there)
+sw.js           service worker for offline use; must stay at the root so its scope covers app/ and daten/
 daten/          generated data (daten.js, spielberichte.js), raw cache, team_id.txt
 abruf.sh        data fetch for CI and Mac/Linux
 Start (Mac).command, Start (Windows).bat, app/abruf.ps1   user launchers (fetch + open)
@@ -113,7 +116,7 @@ is still no build step and the app keeps working from `file://` and offline. The
 **JSON Schema** with a Node validation script. The move to Vite, TypeScript and TSX follows as one
 dedicated step (see backlog); htm templates convert to TSX mechanically, so nothing is thrown away.
 
-- [ ] **Vendor Preact and htm** into `app/lib/` and add a **service worker**, so the app opens in a hall
+- [x] **Vendor Preact and htm** into `app/lib/` and add a **service worker**, so the app opens in a hall
       without reception. Pin exact versions, note them in `CLAUDE.md`.
 - [ ] **Capture app** as Preact components in `app/erfassung.js`: a new area reached from the Trainerin
       view, mounted into the content area while active. Uses the next match and roster already loaded;
