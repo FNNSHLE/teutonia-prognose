@@ -591,16 +591,21 @@
     const sortiert = t.liste.slice().sort((a, b) => (kd.verf[a.id] === false) - (kd.verf[b.id] === false) || (wertVon(b) || 0) - (wertVon(a) || 0));
     const zeile = s => {
       const an = kd.verf[s.id] !== false, w = wertVon(s), pin = !!kd.pins[s.id], im = o.auswahl.some(x => x.s === s);
-      const info = [`${s.anz}/${t.spiele.length} Sp.`, `${dez(s.toreProSpiel)} Tore/Sp.`];
+      const info = [`${s.anz}/${t.spiele.length} Sp.`];
+      if (s.torwart) info.push(s.tw && s.tw.onTarget ? `${s.tw.saves} von ${s.tw.onTarget} gehalten (${pct(s.tw.rate)})` : 'noch keine Paraden erfasst');
+      else info.push(`${dez(s.toreProSpiel)} Tore/Sp.`);
       if (s.smVers) info.push(`7m ${s.sm}/${s.smVers}`);
       if (s.zwei) info.push(`${s.zwei}× Zeitstrafe`);
-      const tag = !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
-      const wert = !an ? '<small>nicht dabei</small>' : w == null || w < 1 ? '<small>keine Daten</small>' : `${Math.round(w)}<small>%</small>`;
+      const tag = s.torwart ? 'Torhüterin' : !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
+      const wert = !an ? '<small>nicht dabei</small>' : w == null || w < 1 ? `<small>${s.torwart && !(s.tw && s.tw.reliable) ? 'ohne Erfassung' : 'keine Daten'}</small>` : `${Math.round(w)}<small>%</small>`;
+      // Torhüterinnen aus der festen Liste stehen immer im Kader, die Stecknadel entfällt für sie.
+      const nadel = s.torwart ? `<span class="pin an" title="Torhüterin, steht immer im Kader" aria-label="Torhüterin, immer dabei">${ico('pin')}</span>`
+        : `<button type="button" class="pin${pin ? ' an' : ''}" data-pin="${esc(s.id)}" aria-pressed="${pin}" aria-label="${esc(s.name)} immer dabei" title="Immer dabei, etwa Torhüterin">${ico('pin')}</button>`;
       return `<label class="sz label${an && im ? '' : ' aus'}">
         <input type="checkbox" role="switch" class="schalter" data-verf="${esc(s.id)}" ${an ? 'checked' : ''} aria-label="${esc(s.name)} dabei">
         <span class="nr">#${s.nummer}</span>
-        <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, true) : ''}</b><span class="cap zwei"><span class="nur-mobil">${tag ? tag + ' · ' : ''}</span>${info.join(' · ')}</span></span>
-        <span style="display:flex;align-items:center;gap:4px"><button type="button" class="pin${pin ? ' an' : ''}" data-pin="${esc(s.id)}" aria-pressed="${pin}" aria-label="${esc(s.name)} immer dabei" title="Immer dabei, etwa Torhüterin">${ico('pin')}</button><span class="wirk">${wert}</span></span></label>`;
+        <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, tag !== 'Torhüterin') : ''}</b><span class="cap zwei"><span class="nur-mobil">${tag && tag !== 'Torhüterin' ? tag + ' · ' : ''}</span>${info.join(' · ')}</span></span>
+        <span style="display:flex;align-items:center;gap:4px">${nadel}<span class="wirk">${wert}</span></span></label>`;
     };
     const fehlen = anders.filter(s => kd.verf[s.id] === false), dazu = anders.filter(s => kd.verf[s.id] !== false && belegt(s, labor.eigene));
     const nameListe = l => l.length > 3 ? `${l.slice(0, 2).map(s => esc(s.name)).join(', ')} und ${l.length - 2} weitere` : l.map(s => esc(s.name)).join(', ');
@@ -612,7 +617,7 @@
     return modul('Aufstellung durchrechnen', `${ergebnis}
       <div class="listenkopf"><span class="meta">${verf} von ${t.liste.length} verfügbar</span><button class="textaktion" data-aktion="alleVerf">Alle verfügbar</button></div>
       <div class="zeilen">${sortiert.map(zeile).join('')}</div>`,
-      { eyebrow: 'Ansicht Trainerin', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen und Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
+      { eyebrow: 'Ansicht Trainerin', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen zählen über ihre Paradenquote aus der eigenen Erfassung (ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor), vorher neutral. Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
   }
 
   // ================= Spiele =================
@@ -703,13 +708,13 @@
     return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei</span><button class="textaktion" data-aktion="laborUeblich">Stammbesetzung</button></div>
       <div class="zeilen">${t.liste.slice().sort((a, b) => a.nummer - b.nummer).map(s => {
         const dab = !!labor.dabei[s.id], eig = labor.eigene[s.id], w = eig != null ? eig : s.einfluss;
-        const tagText = !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
-        const rechts = TRAINERIN ? `<button type="button" class="wirk" data-einfluss="${esc(s.id)}" title="Eigene Einschätzung">${vz(w)}<small>Tore</small></button>` : `<span class="wirk"><small>${dez(s.toreProSpiel)} Tore/Sp.</small></span>`;
+        const tagText = s.torwart ? 'Torhüterin' : !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
+        const rechts = TRAINERIN ? `<button type="button" class="wirk" data-einfluss="${esc(s.id)}" title="Eigene Einschätzung">${vz(w)}<small>Tore</small></button>` : `<span class="wirk"><small>${s.torwart ? (s.tw && s.tw.onTarget ? `${pct(s.tw.rate)} gehalten` : 'Torhüterin') : `${dez(s.toreProSpiel)} Tore/Sp.`}</small></span>`;
         return `<label class="sz label${dab ? '' : ' aus'}" data-zeile="${esc(s.id)}"><input type="checkbox" role="switch" class="schalter" data-dabei="${esc(s.id)}" ${dab ? 'checked' : ''} aria-label="${esc(s.name)} spielt mit">
-          <span class="nr">#${s.nummer}</span><span class="wer"><b><span>${esc(s.name)}</span>${tagText ? etikett(tagText, true) : ''}</b><span class="cap"><span class="nur-mobil">${tagText ? tagText + ' · ' : ''}</span>${s.anz} von ${t.spiele.length} Spielen${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
+          <span class="nr">#${s.nummer}</span><span class="wer"><b><span>${esc(s.name)}</span>${tagText ? etikett(tagText, tagText !== 'Torhüterin') : ''}</b><span class="cap"><span class="nur-mobil">${tagText && tagText !== 'Torhüterin' ? tagText + ' · ' : ''}</span>${s.anz} von ${t.spiele.length} Spielen${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
           ${rechts}
           ${TRAINERIN && labor.offen === s.id ? `<div class="regelzeile">${reglerEigen(s.id, w)}</div>` : ''}</label>`;
-      }).join('')}</div>`, { fuss: TRAINERIN ? 'Zahl rechts: Torwirkung, also so viele Tore Unterschied macht sie im Schnitt. Antippen, um sie selbst einzuschätzen, etwa für eine Torhüterin.' : 'Zeile antippen: dabei oder nicht dabei. Die Chancen oben rechnen sofort neu.' });
+      }).join('')}</div>`, { fuss: TRAINERIN ? 'Zahl rechts: Torwirkung, also so viele Tore Unterschied macht sie im Schnitt. Antippen, um sie selbst einzuschätzen. Torhüterinnen bekommen sie aus der Paradenquote der eigenen Erfassung, vorher 0.' : 'Zeile antippen: dabei oder nicht dabei. Die Chancen oben rechnen sofort neu.' });
   }
   function reglerEigen(pid, w) {
     const pos = (w + 2) / 10 * 100;
