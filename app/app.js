@@ -541,8 +541,8 @@
       else if (e.id === 'AU7') links = `<span class="kpi">${e.text.match(/^(\d+)/)[1]}/${e.text.match(/ihrer (\d+)/)[1]}</span><small>Tore ${/zweiten/.test(e.titel) ? '2.' : '1.'} Hälfte</small>`;
       else if (e.id === 'DI1') links = `<span class="kpi">${e.text.match(/hat (\d+)/)[1]}</span><small>Zeitstrafen</small>`;
       else if (e.id === 'DI2') links = `<span class="kpi">${dez(K[fokus].zweiProSpiel)}</span><small>Zeitstrafen pro Spiel</small>`;
-      else if (e.id === 'TW1') links = `<span class="kpi gut">${pct(e.person.tw.rate)}</span><small>Paradenquote</small>`;
-      else if (e.id === 'TW3') links = `<span class="kpi gut">${e.person.tw.sevenMeter.saves}/${e.person.tw.sevenMeter.onTarget}</span><small>7 m gehalten</small>`;
+      else if (e.id === 'TW1') links = `<span class="kpi gut">${Math.round(e.person.tw.rate * 100)}<span class="pz">%</span></span><small>gehalten</small>`;
+      else if (e.id === 'TW3') links = `<span class="kpi gut">${e.person.tw.sevenMeter.saves}<span class="pz">/${e.person.tw.sevenMeter.onTarget}</span></span><small>7 m gehalten</small>`;
       return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3>${esc(e.titel)}</h3><p>${esc(e.text)}</p><div class="belege">${ausSpielen(e.n)}</div></div></article>`;
     };
     const karten = mp.empfehlungen.filter(e => e.id !== 'AU6');
