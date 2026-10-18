@@ -145,7 +145,7 @@ function cmdValidate(files) {
 function cmdNew(args) {
   const teamFlag = args.indexOf('--team');
   const teamId = teamFlag >= 0 ? Number(args[teamFlag + 1]) : readTeamId();
-  const which = args.filter((a, i) => a !== '--team' && i !== teamFlag + 1)[0] || 'next';
+  const which = args.filter((a, i) => a !== '--team' && (teamFlag < 0 || i !== teamFlag + 1))[0] || 'next';
   const data = loadMatches();
   if (!data) { console.error('daten/daten.js not found; run abruf.sh first.'); return 1; }
   const mine = data.matches.filter(m => m.local.id === teamId || m.visitor.id === teamId);
