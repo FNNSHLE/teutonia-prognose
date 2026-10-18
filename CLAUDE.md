@@ -59,7 +59,7 @@ repository root) keeps it usable offline once it has been opened online.
 
 ## Vendored libraries and service worker
 
-Pinned, unmodified UMD builds in `app/lib/`, file names carry the version; `app/lib/LIESMICH.txt` lists
+Pinned, unmodified UMD builds in `app/lib/`, file names carry the version; `app/lib/README.md` lists
 source URL and sha256 for each. They define exactly three globals and nothing else:
 
 | File | Version | Global |
