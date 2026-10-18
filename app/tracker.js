@@ -15,6 +15,7 @@
 
   const STORAGE_KEY = 'hbprog.erfassung';
   const FORMAT = 'anwurf-goalkeeper', VERSION = 1;
+  const SCHEMA = 1; // shape of the stored draft; bump when `state` changes incompatibly and add a migration in load()
   const HALF_SECONDS = 30 * 60;
 
   let state = load();
@@ -22,10 +23,25 @@
   // Transient UI state, not persisted: selected zone, 7m toggle, confirmations, setup form.
   const ui = { zone: null, sevenMeter: false, notice: '', confirmDelete: false, showJson: false, draft: { name: '', number: '' }, picked: {} };
 
-  function load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; } catch (e) { return null; } }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!s) return null;
+      // Anything with another shape is not touched or overwritten; it stays in storage until a migration exists.
+      if (s.schema !== SCHEMA || !s.clock || !Array.isArray(s.events) || !Array.isArray(s.goalkeepers)) { console.warn('Tracker: stored draft has an unknown shape, starting fresh'); return null; }
+      return s;
+    } catch (e) { return null; }
+  }
   function save() { try { if (state) localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); else localStorage.removeItem(STORAGE_KEY); } catch (e) {} }
   function update(fn) { fn(); save(); draw(); }
-  function draw() { if (root) render(html`<${App} />`, root); }
+  function draw() {
+    if (!root) return;
+    try { render(html`<${App} />`, root); }
+    catch (e) {
+      console.error('Tracker:', e);
+      root.innerHTML = '<div class="modul"><b>Die Erfassung konnte nicht gezeichnet werden.</b><p class="meta">Seite neu laden. Bleibt der Fehler, die gespeicherte Erfassung über „Erfassung beenden und löschen“ entfernen oder die Entwicklerkonsole prüfen.</p></div>';
+    }
+  }
   function notify(text) { ui.notice = text; draw(); setTimeout(() => { if (ui.notice === text) { ui.notice = ''; draw(); } }, 1800); }
 
   // ================= Clock =================
@@ -132,7 +148,7 @@
       if (!match || !chosen.length) return;
       update(() => {
         state = {
-          matchId: match.id, teamId: ctx.teamId, opponentId: match.opponentId, isHome: match.isHome, date: match.date, startedAt: new Date().toISOString(),
+          schema: SCHEMA, matchId: match.id, teamId: ctx.teamId, opponentId: match.opponentId, isHome: match.isHome, date: match.date, startedAt: new Date().toISOString(),
           goalkeepers: chosen, active: chosen[0].id,
           clock: { half: 0, running: false, since: null, before: 0 }, events: [],
         };

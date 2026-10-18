@@ -3,13 +3,12 @@
 // begrenzt ist: die Seite unter app/ lädt ihre Daten aus daten/, beide müssen im Geltungsbereich liegen.
 // Registriert wird er am Ende von app/app.js (nur per http/https, nicht von file://).
 //
-// Strategie:
-//   daten/*          Netz zuerst, Cache als Rückfall (täglich neue Daten, offline der letzte Stand)
-//   alles andere     Cache zuerst, im Hintergrund nachladen ("stale-while-revalidate")
-//   fremde Ursprünge (Teamlogos von handball360.isquad.de) werden nicht angefasst
+// Strategie: Netz zuerst, Cache als Rückfall, für alles vom eigenen Ursprung.
+//   Online kommt so immer ein zusammenpassender Stand aller Dateien (kein Mix aus alter index.html und neuem app.js),
+//   offline der zuletzt gesehene. Fremde Ursprünge (Teamlogos von handball360.isquad.de) werden nicht angefasst.
 // Cache-Schlüssel sind die URLs ohne ?v= und ?t=, so finden sich die Dateien auch nach einem Versionswechsel.
 
-const CACHE = 'anwurf-2'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
+const CACHE = 'anwurf-3'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
 const SHELL = [
   'index.html',
   'app/index.html',
@@ -62,10 +61,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   const key = schluessel(req.url);
-  const daten = url.pathname.startsWith(new URL('daten/', self.location.href).pathname);
-  e.respondWith(caches.open(CACHE).then(c => {
-    const holen = fetch(req).then(r => { if (r.ok) c.put(key, r.clone()); return r; });
-    if (daten) return holen.catch(() => c.match(key).then(r => r || Promise.reject(new Error('offline'))));
-    return c.match(key).then(r => { if (r) { holen.catch(() => {}); return r; } return holen; });
-  }));
+  e.respondWith(caches.open(CACHE).then(c =>
+    fetch(req)
+      .then(r => { if (r.ok) c.put(key, r.clone()); return r; })
+      .catch(() => c.match(key).then(r => r || Promise.reject(new Error('offline'))))
+  ));
 });

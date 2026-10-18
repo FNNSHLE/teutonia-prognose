@@ -78,12 +78,15 @@ When updating: add the new file with its version in the name, update `LIESMICH.t
 repository root** (`/teutonia-prognose/sw.js` on GitHub Pages) and is registered from `app.js` as
 `navigator.serviceWorker.register('../sw.js')`. Registration only happens when `'serviceWorker' in
 navigator` and the protocol is not `file:`, wrapped in try/catch; a failed registration never affects the
-app. Strategy: precache the app shell on install (`SHELL` list), delete old caches on activate, `daten/`
-network-first with cache fallback, everything else same-origin stale-while-revalidate, cross-origin
-requests (team logos) untouched. Cache keys drop `?v=`/`?t=`, so a version bump still finds the cached
-file while the network fetch stays cache-busted. Because of stale-while-revalidate, a visitor who is online
-sees new code on the **second** load after a deploy. On `localhost` the worker is active too; use "Update
-on reload" / "Bypass for network" in the browser devtools while developing.
+app. Strategy: precache the app shell on install (`SHELL` list), delete old caches on activate, and serve
+every same-origin GET **network-first with cache fallback**; cross-origin requests (team logos) are
+untouched. Cache keys drop `?v=`/`?t=`, so a version bump still finds the cached file while the network
+fetch stays cache-busted. Network-first was chosen deliberately over stale-while-revalidate: without a
+build step there is no single deploy version, and serving cached files one by one produced a page with
+the new `app.js` and the old `index.html` (blank tracker area). Online visitors therefore always get one
+consistent version; offline they get the last one seen. Bump `CACHE` in `sw.js` when the `SHELL` list
+changes. On `localhost` the worker is active too; use "Update on reload" / "Bypass for network" in the
+browser devtools while developing, and expect one extra reload after changing `sw.js` itself.
 
 ## Data pipeline
 
@@ -223,7 +226,9 @@ When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.
   `pinned` flags. Nothing
   else from `app.js` is reachable from the tracker; extend the context rather than adding globals.
 - State lives in the module (`state`) and in `localStorage` under `hbprog.erfassung`, written after
-  every change. Components only read it and call `update()`. This is deliberate: `zeichne()` remounts
+  every change. Components only read it and call `update()`. The draft carries `schema: 1`; `load()`
+  ignores anything with another shape instead of crashing (add a migration there when the shape changes),
+  and `draw()` catches render errors and shows a message instead of a blank area. This is deliberate: `zeichne()` remounts
   the tree on resize, hash change and tab switches, and nothing may be lost mid-game. Transient UI state
   (selected zone, 7m toggle, confirmations) lives in `ui` and is not persisted.
 - Game clock: `clock = { half 0..3, running, since, before }`, seconds per half, stopped by hand for
