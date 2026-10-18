@@ -152,12 +152,19 @@ Teilende (10002). `block` is `" 1. Halbzeit"` (leading space), `"Halbzeitpause"`
 
 ## Roadmap: goalkeeper tracking (next iteration)
 
-handball.net has no goalkeeper data at all (see "Known gaps"). The plan is a three-part extension:
+handball.net has no goalkeeper data at all (see "Known gaps"). The plan is a three-part extension.
+
+Stack decision (2026-10-18): the tracker is the one place in this repo with a toolchain. Vite +
+TypeScript + Preact, pnpm (not yarn, not npm) with its `package.json` inside the tracker folder, not at the
+repo root. vite-plugin-pwa for offline use on the bench, zod for the exchange format schema so the
+TypeScript type and the validator come from one definition. Built output is committed (GitHub Pages serves
+`main` as-is) until the Pages CI deploy from the backlog exists. `app/` stays vanilla JS and dependency-free;
+a later migration of Anwurf to TypeScript and a build is recorded in the README backlog, not planned now.
 
 1. **Capture app**: a small, separate app used live by someone on the visitors' bench to log goalkeeper
    events (saves, goals conceded, 7m, maybe shot zones and goalkeeper changes) per match. Must work
-   offline on a phone, with big touch targets and an undo. Likely a sibling folder, e.g. `erfassung/`,
-   with the same no-build, vanilla approach.
+   offline on a phone, with big touch targets, an undo, and a draft persisted after every event so a
+   reload loses nothing. Sibling folder, e.g. `erfassung/`, with the stack above.
 2. **Exchange format**: a file format (still to be defined, JSON is the natural fit) keyed by handball.net
    `matchId`, `teamId` and `playerId` so it joins cleanly with `HB_DETAILS`. Export from the capture app
    (share sheet / download), import into this repo by committing files under something like

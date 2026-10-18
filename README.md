@@ -104,7 +104,9 @@ Checklist we work through together. Tick items when done, add context in the com
 ### Next iteration: goalkeeper tracking
 
 handball.net has no goalkeeper data at all, so goalkeepers are invisible to the model and the coach has to
-pin them by hand. Plan in three steps:
+pin them by hand. Stack decision (2026-10-18): the tracker lives in its own folder with its own `package.json`, built with
+Vite, TypeScript and Preact, pnpm as package manager, vite-plugin-pwa for offline use, zod for the exchange
+format schema. The existing app stays vanilla JS for now (see backlog). Plan in three steps:
 
 - [ ] **Capture app** for the person on the visitors' bench: log goalkeeper events live (saves, goals
       conceded, 7 m, goalkeeper changes, maybe shot zones). Offline-capable on a phone, big touch targets,
@@ -131,6 +133,10 @@ pin them by hand. Plan in three steps:
 - [ ] **Parse JSON properly in the fetch scripts.** Match ids are extracted with `grep`/`sed` over raw
       JSON and break silently if handball.net reorders fields. Use `jq` or Python.
 - [ ] **Decide on a license** and add a `LICENSE` file.
+- [ ] **Move Anwurf itself to TypeScript with a build step**, once the tracker has proven the toolchain.
+      Same stack as the tracker (Vite, TypeScript, pnpm), keeping the no-framework rendering if it still fits.
+- [ ] **Deploy GitHub Pages from a CI build** instead of serving `main` as-is, so built output no longer
+      needs to be committed. Must coexist with the daily data commit.
 
 ## Conventions
 
