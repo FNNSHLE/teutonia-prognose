@@ -106,15 +106,16 @@
   }
   function share() {
     const text = exportJson(), title = `Torhüterinnen ${ctx.shortName(state.teamId)} gegen ${ctx.shortName(state.opponentId)}`;
-    // Web Share needs https or localhost and a user gesture; browsers also restrict which file types may be shared.
-    // Anything but a cancel by the user falls back to the clipboard so the data never gets stuck.
-    const fallback = err => { if (!err || err.name !== 'AbortError') { notify('Teilen nicht möglich, stattdessen kopiert'); copy(); } };
+    // Web Share needs https or localhost and a user gesture. Browsers restrict which file types may be shared
+    // (JSON rarely qualifies, Safari may accept and still fail), so: file, then plain text, then the clipboard.
+    // A cancel by the user (AbortError) ends the chain quietly.
+    if (!navigator.share) return copy();
+    const asText = () => navigator.share({ title, text }).catch(err => { if (!err || err.name !== 'AbortError') { notify('Teilen nicht möglich, stattdessen kopiert'); copy(); } });
     try {
       const file = new File([text], fileName(), { type: 'application/json' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title }).catch(fallback);
-      if (navigator.share) return navigator.share({ title, text }).catch(fallback);
+      if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title }).catch(err => { if (!err || err.name !== 'AbortError') return asText(); });
     } catch (e) {}
-    copy();
+    return asText();
   }
   function download() {
     const a = document.createElement('a');
