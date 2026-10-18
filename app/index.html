@@ -409,6 +409,42 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .fliess p:last-child { margin-bottom: 0; }
 .datenfuss { font-size: 12px; line-height: 16px; color: var(--text-3); margin-top: 24px; }
 
+/* ================= Torhüterin erfassen ================= */
+.erf-select, .erf-input { width: 100%; height: 44px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--bg-1); color: var(--text-1); font: 500 15px var(--font); padding: 0 12px; }
+.erf-input.nr { width: 72px; flex: none; }
+.erf-neu { display: flex; gap: 8px; margin-top: 12px; } .erf-neu .erf-input { min-width: 0; }
+.erf-kader { margin: 0 calc(-1 * var(--pad)); }
+.erf-zeile { display: grid; grid-template-columns: 24px 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 52px; padding: 4px var(--pad); cursor: pointer; }
+.erf-zeile + .erf-zeile { border-top: 1px solid var(--line-1); }
+.erf-zeile input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+.erf-zeile .nr { font-size: 13px; color: var(--text-3); } .erf-zeile .nm { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erf-zeile.an .nm { color: var(--text-1); } .erf-zeile:not(.an) .nm { color: var(--text-2); }
+.erf-breit { width: 100%; height: 52px; font-size: 16px; } .erf-breit:disabled { opacity: .45; }
+.erf-uhr { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.erf-zeit { font: 650 44px/48px var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.erf-uhr-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; }
+.erf-chips { display: flex; gap: 8px; flex-wrap: wrap; } .erf-chips .chip { height: 44px; padding: 0 16px; font-size: 15px; }
+.erf-tor { display: block; width: 100%; max-width: 520px; margin: 0 auto; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.erf-aussen { fill: var(--bg-2); cursor: pointer; } .erf-aussen-text { font: 600 11px var(--font); letter-spacing: .06em; text-transform: uppercase; fill: var(--text-3); pointer-events: none; }
+.erf-zelle rect { fill: var(--bg-1); stroke: var(--line-2); stroke-width: 1; cursor: pointer; transition: fill var(--t-fast); }
+.erf-zelle.an rect { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 2; }
+.erf-zelle text { font: 700 13px var(--font); pointer-events: none; } .erf-zelle .p { fill: var(--sieg-text); } .erf-zelle .t { fill: var(--niederlage-text); } .erf-zelle .s { fill: var(--text-3); }
+.erf-pfosten { fill: none; stroke: var(--text-1); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.erf-wahl { display: flex; align-items: center; gap: 10px; margin-top: 12px; min-height: 32px; } .erf-wahl .textaktion { margin: 0 0 0 auto; min-height: 32px; }
+.erf-ergebnis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.erf-ergebnis .btn { height: 68px; font-size: 20px; border-radius: var(--r-l); }
+.btn.parade { background: var(--sieg); color: #fff; } .btn.tor { background: var(--niederlage); color: #fff; }
+.erf-liste { margin: 0 calc(-1 * var(--pad)); }
+.erf-ereignis { display: grid; grid-template-columns: 92px minmax(0, 1fr) 44px; align-items: center; min-height: 44px; padding: 0 4px 0 var(--pad); font-size: 14px; }
+.erf-ereignis + .erf-ereignis { border-top: 1px solid var(--line-1); }
+.erf-ereignis .zeit { font-variant-numeric: tabular-nums; color: var(--text-3); font-size: 13px; }
+.erf-ereignis .was { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erf-ereignis.tor .was { color: var(--niederlage-text); } .erf-ereignis.parade .was { color: var(--sieg-text); } .erf-ereignis.vorbei .was { color: var(--text-2); }
+.erf-x { border: 0; background: none; color: var(--text-3); font-size: 22px; height: 44px; width: 44px; }
+.erf-aktionen { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.erf-meldung { margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--sieg-text); }
+.erf-json { width: 100%; height: 160px; margin-top: 10px; font: 12px/1.4 ui-monospace, Menlo, monospace; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--bg-2); color: var(--text-1); padding: 8px; }
+
 /* ================= Marke Anwurf ================= */
 .wortmarke { display: inline-block; font: 700 28px/1 var(--font-display); letter-spacing: -.035em; color: var(--text-1); }
 .wortmarke .ws { display: flex; gap: 2.5%; height: .125em; margin-top: .22em; margin-right: .035em; }
@@ -498,10 +534,11 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="lib/preact-10.29.2.umd.js"></script>
 <script src="lib/preact-hooks-10.29.2.umd.js"></script>
 <script src="lib/htm-3.1.1.umd.js"></script>
-<script src="modell.js?v=21"></script>
-<script src="spielerinnen.js?v=21"></script>
-<script src="kennzahlen.js?v=21"></script>
-<script src="matchplan.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<script src="modell.js?v=22"></script>
+<script src="spielerinnen.js?v=22"></script>
+<script src="kennzahlen.js?v=22"></script>
+<script src="matchplan.js?v=22"></script>
+<script src="erfassung.js?v=22"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

@@ -33,6 +33,7 @@ app/modell.js              Team strength model, win probabilities, season simula
 app/spielerinnen.js        Player evaluation from match reports, lineup effects, match timelines
 app/kennzahlen.js          Per-team metrics from live ticker (phases, 7m, suspensions, timeouts)
 app/matchplan.js           Rule engine producing recommendations/findings for the next match + lineup optimiser
+app/erfassung.js           Goalkeeper tracker (Preact + htm components, own state, mounted by app.js)
 app/manifest.json, icons   PWA metadata
 app/bilder/                Key visual, OG image, 3D icon
 daten/team_id.txt          Focus team id (86088). League/phase is auto-detected from the team page.
@@ -157,9 +158,9 @@ Teilende (10002). `block` is `" 1. Halbzeit"` (leading space), `"Halbzeitpause"`
 - Escape all data with `esc()` before putting it into HTML strings.
 - Design tokens live at the top of `app/index.html` (light/dark via `prefers-color-scheme`). Reuse
   `modul()`, `kachel()`, `seitenkopf()`, `spielZeile()`, `tabelleHtml()` and the `ico()` icon set.
-- Navigation: `BEREICHE` list in `app.js`; the mobile tab bar shows four of them plus "Mehr". Keys 1–8
+- Navigation: `BEREICHE` list in `app.js`; the mobile tab bar shows four of them plus "Mehr". Keys 1–9
   switch areas. Sheets (`<dialog id="sheet">`) show details for matches, teams and players.
-- State in `localStorage` under `hbprog.*`: `bereich`, `fest`, `eigene`, `kader`, `intro`. Focus team is
+- State in `localStorage` under `hbprog.*`: `bereich`, `fest`, `eigene`, `kader`, `intro`, `erfassung`. Focus team is
   intentionally not persisted.
 - `TRAINERIN` mode is toggled by `#trainerin` in the URL hash; it exposes player influence values, the
   lineup optimiser and influence overrides. Treat it as a privacy courtesy, not security.
@@ -195,12 +196,11 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
 
 1. **Groundwork** (done 2026-10-18): vendor Preact and htm into `app/lib/`, add a service worker so the app
    opens in a hall without reception. See "Vendored libraries and service worker".
-2. **Capture app** in `app/erfassung.js`, reached from the Trainerin view. Uses the next match and the
-   roster already on the page; the coach's goalkeeper pins (`kader[teamId].pins`) preselect the
-   goalkeepers. Logs saves, goals conceded, 7m, goalkeeper changes, maybe shot zones. Big touch targets,
-   undo, draft persisted after every event.
-3. **Exchange format**: JSON Schema keyed by handball.net `matchId`, `teamId` and `playerId` so it joins
-   cleanly with `HB_DETAILS`. Export via share sheet or clipboard; files are committed under
+2. **Capture app** (done, see "Goalkeeper tracker" below): `app/erfassung.js`, area `erfassung`, open to
+   everyone. Uses the next match and the roster already on the page; the coach's goalkeeper pins
+   (`kader[teamId].pins`) preselect the goalkeepers.
+3. **Exchange format**: JSON Schema for the tracker's v1 export, keyed by handball.net `matchId`, `teamId`
+   and `playerId` so it joins cleanly with `HB_DETAILS`. Files are committed under
    `daten/torwart/<matchId>.json` and validated by a Node script.
 4. **Integration**: bundle the files into a generated `window.HB_TORWART` next to the other data files,
    extend `spielerinnen.js` (goalkeeper stats per player), `kennzahlen.js` (team-level save rate),
@@ -208,6 +208,35 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
    Goalkeeper influence should flow into `besetzungsEffekt()` so the optimiser no longer needs manual pins.
 
 When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.txt`.
+
+## Goalkeeper tracker (`app/erfassung.js`)
+
+- Area id `erfassung`, listed last in `BEREICHE`, reachable via "Mehr", key 9, or the deep link
+  `app/index.html#erfassung`. Any area id works as a hash; `wechsle()` clears an area hash when the user
+  switches away so a reload does not drag them back.
+- Boundary with `app.js`: `seiteErfassung()` renders the page header plus an empty `#erfassung-wurzel`;
+  `zeichne()` calls `erfassungUnmount()` before replacing `#inhalt` and `erfassungMount(el, ctx)` after.
+  The context (`erfassungKontext()`) carries `fokus`, `kurz`, `lang`, the focus team's matches (open ones
+  first, then the two most recent played) with ready-made labels, and the roster with pin flags. Nothing
+  else from `app.js` is reachable from the tracker; extend the context rather than adding globals.
+- State lives in the module (`zustand`) and in `localStorage` under `hbprog.erfassung`, written after
+  every change. Components only read it and call `aendere()`. This is deliberate: `zeichne()` remounts
+  the tree on resize, hash change and tab switches, and nothing may be lost mid-game. Transient UI state
+  (selected zone, 7m toggle, confirmations) lives in `ui` and is not persisted.
+- Game clock: `uhr = { halbzeit 0..3, laeuft, seit, vorher }`, seconds per half, stopped by hand for
+  timeouts. Events record `hz` and `sek`; the export converts to a global second (`(hz-1)*1800 + sek`).
+- Shot zones: 1..9 from the shooter's point of view, row by row from top left; 0 = off target. A tap
+  outside the frame logs a miss immediately; a tap inside asks "Gehalten" or "Tor". The goal SVG shows
+  saves (green) and goals (red) per zone for the active goalkeeper.
+- Goalkeepers not in any match report yet can be added by name; they get ids `manuell:<slug>`.
+- Export (provisional v1, to be frozen as JSON Schema in step 3), English keys:
+  `{ format: "anwurf-goalkeeper", version: 1, matchId, teamId, opponentId, isHome, date, startedAt,
+  exportedAt, goalkeepers: [{ playerId, name, number }], events: [...] }` with event types
+  `shot { seq, half, second, goalkeeperId, zone, result: goal|save|miss, sevenMeter, at }` and
+  `goalkeeperChange { seq, half, second, goalkeeperId, at }`. Share sheet (file if supported, else text),
+  clipboard, or download as `torwart-<matchId>-<teamId>.json`.
+- Testing: a CDP script drives a whole session in headless Chrome (setup, clock, shots, undo, reload,
+  export, reset). It lives outside the repo for now; see the regression-check backlog item.
 
 ## To-dos
 

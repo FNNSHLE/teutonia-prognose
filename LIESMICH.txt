@@ -31,7 +31,10 @@ Matchplan:     datenbelegte Tipps für das nächste Spiel: wer unverzichtbar ist
                für die Kabine druckbar.
 Spiele:        Spielplan, jedes Spiel antippen für Verlauf und Aufstellungen
 Tabelle:       Tabelle, Verlauf, Saisonprognose und "Was wäre wenn"
-Mehr:          Spiel-Labor, Spielerinnen, Teams, So rechnet die App
+Mehr:          Spiel-Labor, Spielerinnen, Teams, So rechnet die App, Torhüterin erfassen
+Erfassung:     Für die Bank: Spiel und Torhüterinnen wählen, Uhr starten, bei jedem Wurf ins Tor tippen,
+               wo der Ball hinging, dann "Gehalten" oder "Tor". Neben das Tor tippen heißt vorbei.
+               Am Ende die Datei teilen oder kopieren. Direkter Link: app/index.html#erfassung
 
 Oben links lässt sich jedes Team der Liga ansehen. Beim nächsten Öffnen zeigt die App wieder das eigene Team.
 Hell oder dunkel folgt automatisch der Einstellung des Geräts.

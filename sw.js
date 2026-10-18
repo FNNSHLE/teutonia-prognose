@@ -9,7 +9,7 @@
 //   fremde Ursprünge (Teamlogos von handball360.isquad.de) werden nicht angefasst
 // Cache-Schlüssel sind die URLs ohne ?v= und ?t=, so finden sich die Dateien auch nach einem Versionswechsel.
 
-const CACHE = 'anwurf-1'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
+const CACHE = 'anwurf-2'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
 const SHELL = [
   'index.html',
   'app/index.html',
@@ -18,6 +18,7 @@ const SHELL = [
   'app/spielerinnen.js',
   'app/kennzahlen.js',
   'app/matchplan.js',
+  'app/erfassung.js',
   'app/lib/preact-10.29.2.umd.js',
   'app/lib/preact-hooks-10.29.2.umd.js',
   'app/lib/htm-3.1.1.umd.js',

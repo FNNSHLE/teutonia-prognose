@@ -19,7 +19,8 @@ Private fan project, not an offering of SC Teutonia 10 or handball.net. Data: [h
 | Matchplan | Data-backed recommendations for the next match: who is indispensable, who to ask, 7-metre order, half-time profiles, suspension risk, match phases, key opponents. Lineup optimiser for the coach (absences, pinned goalkeepers, best squad, resulting win chance). Printable as a locker-room sheet. |
 | Spiele | Fixtures and results; tap a match for the timeline and lineups |
 | Tabelle | Table, position history, season forecast, "what if" with fixed outcomes |
-| Mehr | Durchspielen (lineup lab), Spielerinnen (player stats), Teams, "So rechnet Anwurf" (method and backtest) |
+| Mehr | Durchspielen (lineup lab), Spielerinnen (player stats), Teams, "So rechnet Anwurf" (method and backtest), Torhüterin erfassen (live goalkeeper tracker, see below) |
+| Erfassung | Live goalkeeper tracker for the bench: pick the match and the goalkeepers, start the clock, tap the goal where the shot went, then "Gehalten" or "Tor"; a tap outside the frame logs a miss. Undo, keeper changes, half-time, draft survives reloads. Export as JSON via share sheet, clipboard or download. Deep link: `app/index.html#erfassung`. |
 
 Any team of the league can be chosen top left; the own team is restored on the next open. Light and dark
 mode follow the device setting. Keys 1–8 switch areas on a keyboard.
@@ -91,7 +92,7 @@ even flagged), no missed field shots and no defensive actions. See the to-dos.
 
 ```
 app/            the app: index.html (CSS, skeleton), app.js (UI), modell.js, spielerinnen.js,
-                kennzahlen.js, matchplan.js, PWA icons, images
+                kennzahlen.js, matchplan.js, erfassung.js (goalkeeper tracker, Preact), PWA icons, images
 app/lib/        vendored Preact, Preact hooks and htm (pinned UMD builds, see LIESMICH.txt there)
 sw.js           service worker for offline use; must stay at the root so its scope covers app/ and daten/
 daten/          generated data (daten.js, spielberichte.js), raw cache, team_id.txt
@@ -118,13 +119,15 @@ dedicated step (see backlog); htm templates convert to TSX mechanically, so noth
 
 - [x] **Vendor Preact and htm** into `app/lib/` and add a **service worker**, so the app opens in a hall
       without reception. Pin exact versions, note them in `CLAUDE.md`.
-- [ ] **Capture app** as Preact components in `app/erfassung.js`: a new area reached from the Trainerin
-      view, mounted into the content area while active. Uses the next match and roster already loaded;
-      goalkeeper pins preselect the goalkeepers. Logs saves, goals conceded, 7 m, goalkeeper changes, maybe
-      shot zones. Big touch targets, undo, draft persisted after every event so a reload loses nothing.
-- [ ] **Exchange format** as JSON Schema keyed by handball.net `matchId`, `teamId` and `playerId` so it
-      joins with the existing lineups. Export via share sheet or copy to clipboard. A Node script validates
-      files under `daten/torwart/<matchId>.json`.
+- [x] **Capture app** as Preact components in `app/erfassung.js`: a new area "Torhüterin erfassen",
+      open to everyone (not only the Trainerin view), mounted into the content area while active. Uses the
+      next match and roster already loaded; goalkeeper pins preselect the goalkeepers. Logs saves, goals
+      conceded, misses, 7 m and goalkeeper changes with a 3×3 shot zone grid on a tappable goal. Game clock
+      with halves, undo, draft persisted after every event so a reload loses nothing. Exports a provisional
+      v1 JSON (see `CLAUDE.md`, "Exchange format").
+- [ ] **Exchange format**: turn the provisional v1 export of the tracker into a JSON Schema keyed by
+      handball.net `matchId`, `teamId` and `playerId` so it joins with the existing lineups. A Node script
+      validates files under `daten/torwart/<matchId>.json`.
 - [ ] **Integration**: bundle the files into a generated `window.HB_TORWART`, extend `spielerinnen.js`
       (goalkeeper stats per player), `kennzahlen.js` (team save rate), `matchplan.js` (new rule ids TW1…),
       the player sheet and the coach view in `app.js`. Let goalkeeper impact flow into `besetzungsEffekt()`

@@ -172,6 +172,7 @@
       pin: '<path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/>',
       ort: '<path d="M12 21s-6-5.5-6-10a6 6 0 0112 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/>',
       schloss: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+      tor: '<path d="M4 20V6h16v14"/><path d="M4 11h16M9.3 6v14M14.7 6v14M4 15.5h16"/>',
     };
     return `<svg class="ico${k ? ' k' : ''}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || ''}</svg>`;
   }
@@ -207,7 +208,11 @@
     { id: 'spielerinnen', name: 'Spielerinnen', kurz: 'Spielerinnen', ico: 'trikot' },
     { id: 'teams', name: 'Teams', kurz: 'Teams', ico: 'schilde' },
     { id: 'methodik', name: 'So rechnet Anwurf', kurz: 'Methodik', ico: 'info' },
+    { id: 'erfassung', name: 'Torhüterin erfassen', kurz: 'Erfassung', ico: 'tor' },
   ];
+  // Bereich per Link öffnen, z. B. app/index.html#erfassung für die Bank
+  const bereichAusHash = () => { const h = location.hash.replace('#', '').toLowerCase(); return BEREICHE.some(b => b.id === h) ? h : null; };
+  if (bereichAusHash()) bereich = bereichAusHash();
   const geholt = new Date(D.fetchedAt);
   const datenstand = `Datenstand ${geholt.toLocaleDateString('de-DE')} ${geholt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
 
@@ -744,6 +749,22 @@
       modul('', `<div class="leer">${ico('trikot')}<b>Keine Spielerin gefunden</b><p>Keine Treffer für „${esc(ui.spSuche)}“.</p><button class="textaktion" data-aktion="filterWeg" style="margin:0">Filter zurücksetzen</button></div>`);
   }
 
+  // ================= Torhüterin erfassen (Preact, app/erfassung.js) =================
+  function erfassungKontext() {
+    const kd = kaderVon(fokus), t = B.teams[fokus];
+    const label = g => `${g.terminOffen ? 'Termin offen' : tagLang(g.datum)} · ${g.heim === fokus ? 'gegen' : 'bei'} ${kurz(g.heim === fokus ? g.gast : g.heim)}${g.gewertet ? ` (${g.heim === fokus ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)})` : ''}`;
+    const eintrag = g => ({ id: g.id, label: label(g), gegnerId: g.heim === fokus ? g.gast : g.heim, heim: g.heim === fokus, datum: g.datum.toISOString().slice(0, 10) });
+    const meine = spiele.filter(g => g.heim === fokus || g.gast === fokus);
+    return {
+      fokus, kurz, lang,
+      spiele: meine.filter(g => g.offen).map(eintrag).concat(meine.filter(g => g.gewertet).slice(-2).reverse().map(eintrag)),
+      kader: t ? t.liste.map(s => ({ id: s.id, name: s.name, nummer: s.nummer, pin: !!kd.pins[s.id] })) : [],
+    };
+  }
+  function seiteErfassung() {
+    return `${seitenkopf('Torhüterin erfassen', `${esc(kurz(fokus))} · Würfe aufs eigene Tor live von der Bank`)}${hinweisFokus()}<div id="erfassung-wurzel"></div>`;
+  }
+
   // ================= Teams =================
   const TM = [
     ['name', 'Team', id => kurz(id)], ['staerke', 'Teamstärke', id => staerke(modell, id)], ['att', 'Tore mehr', id => modell.att[id] || 0], ['def', 'Gegentore weniger', id => modell.def[id] || 0],
@@ -868,10 +889,12 @@
   // ================= Zeichnen =================
   let letzteBreite = 0;
   function zeichne(scrollOben) {
-    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik };
+    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik, erfassung: seiteErfassung };
     if (!seiten[bereich]) bereich = 'heute';
+    if (window.erfassungUnmount) erfassungUnmount(); // Preact-Baum sauber abbauen, bevor der Inhalt ersetzt wird
     gerüst();
     $('#inhalt').innerHTML = seiten[bereich]();
+    if (bereich === 'erfassung' && window.erfassungMount) erfassungMount($('#erfassung-wurzel'), erfassungKontext());
     document.title = `${(BEREICHE.find(b => b.id === bereich) || {}).name} · ${APP}`;
     if (bereich === 'labor') laborErgebnis();
     if (bereich === 'spielerinnen') spListe();
@@ -881,7 +904,7 @@
       if (bereich === 'spiele') { const el = document.querySelector('[data-naechste]'); if (el) { el.scrollIntoView({ block: 'start' }); window.scrollBy(0, -60); } }
     }
   }
-  function wechsle(b) { bereich = b; merk.set('bereich', b); schliesseSheet(); zeichne(true); }
+  function wechsle(b) { bereich = b; merk.set('bereich', b); if (bereichAusHash() && bereichAusHash() !== b) history.replaceState(null, '', location.pathname + location.search); schliesseSheet(); zeichne(true); }
   function setzeFokus(id) { fokus = id; labor.spiel = null; schliesseSheet(); zeichne(true); }
 
   // ================= Ereignisse =================
@@ -954,11 +977,11 @@
     }
     if (t.id === 'spSuche') { ui.spSuche = t.value; return spListe(); }
   });
-  window.addEventListener('hashchange', () => { TRAINERIN = /trainerin/i.test(location.hash); if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss]; else delete SORT.einfluss; schliesseSheet(); zeichne(); });
+  window.addEventListener('hashchange', () => { TRAINERIN = /trainerin/i.test(location.hash); if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss]; else delete SORT.einfluss; if (bereichAusHash()) { bereich = bereichAusHash(); merk.set('bereich', bereich); } schliesseSheet(); zeichne(); });
   window.addEventListener('afterprint', () => document.body.classList.remove('druck-kabine'));
   document.addEventListener('keydown', e => {
     if (e.target.matches('input, select, textarea')) return;
-    if (e.key >= '1' && e.key <= '8' && !e.metaKey && !e.ctrlKey) wechsle(BEREICHE[Number(e.key) - 1].id);
+    if (e.key >= '1' && e.key <= '9' && !e.metaKey && !e.ctrlKey && BEREICHE[Number(e.key) - 1]) wechsle(BEREICHE[Number(e.key) - 1].id);
   });
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (Math.abs(window.innerWidth - letzteBreite) > 40) { const y = window.scrollY; zeichne(); window.scrollTo(0, y); } }, 180); });
 
