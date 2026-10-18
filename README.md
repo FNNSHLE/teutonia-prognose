@@ -52,6 +52,10 @@ bash abruf.sh
 
 # syntax check without a browser
 for f in app/*.js sw.js; do node --check "$f"; done
+
+# goalkeeper records: validate all files in daten/torwart/, or create an empty one for the next match
+node scripts/goalkeeper.mjs validate
+node scripts/goalkeeper.mjs new next
 ```
 
 Opening `app/index.html` straight from the file system also works.
@@ -96,7 +100,9 @@ app/            the app: index.html (CSS, skeleton), app.js (UI), modell.js, spi
                 lib/ (vendored Preact, htm), assets/ (icons, images), PWA icons, images
 app/lib/        vendored Preact, Preact hooks and htm (pinned UMD builds, see LIESMICH.txt there)
 sw.js           service worker for offline use; must stay at the root so its scope covers app/ and daten/
-daten/          generated data (daten.js, spielberichte.js), raw cache, team_id.txt
+daten/          generated data (daten.js, spielberichte.js), raw cache, team_id.txt,
+                torwart/ (goalkeeper records from the tracker + schema.json)
+scripts/        goalkeeper.mjs (validate records, create empty ones); plain Node, no dependencies
 abruf.sh        data fetch for CI and Mac/Linux
 Start (Mac).command, Start (Windows).bat, app/abruf.ps1   user launchers (fetch + open)
 .github/        daily data workflow
@@ -126,9 +132,11 @@ dedicated step (see backlog); htm templates convert to TSX mechanically, so noth
       conceded, misses, 7 m and goalkeeper changes with a 3×3 shot zone grid on a tappable goal. Game clock
       with halves, undo, draft persisted after every event so a reload loses nothing. Exports a provisional
       v1 JSON (see `CLAUDE.md`, "Exchange format").
-- [ ] **Exchange format**: turn the provisional v1 export of the tracker into a JSON Schema keyed by
-      handball.net `matchId`, `teamId` and `playerId` so it joins with the existing lineups. A Node script
-      validates files under `daten/torwart/<matchId>.json`.
+- [x] **Exchange format**: `daten/torwart/schema.json` (JSON Schema 2020-12) describes the tracker's
+      export, keyed by handball.net `matchId`, `teamId` and `playerId`. `scripts/goalkeeper.mjs validate`
+      checks every `daten/torwart/torwart-<matchId>-<teamId>.json` against the schema and the fixture
+      list; `scripts/goalkeeper.mjs new next` creates an empty record for the next match. First real file:
+      the 8 November 2026 match at TV Fischbek II.
 - [ ] **Integration**: bundle the files into a generated `window.HB_TORWART`, extend `spielerinnen.js`
       (goalkeeper stats per player), `kennzahlen.js` (team save rate), `matchplan.js` (new rule ids TW1…),
       the player sheet and the coach view in `app.js`. Let goalkeeper impact flow into `besetzungsEffekt()`

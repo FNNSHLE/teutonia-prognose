@@ -41,6 +41,9 @@ daten/daten.js             Generated: window.HB_DATA (match list pages + standin
 daten/spielberichte.js     Generated: window.HB_DETAILS (lineups + events per finished match)
 daten/cache/<id>_l.json    Raw lineups per match (handball.net response)
 daten/cache/<id>_e.json    Raw live-ticker events per match
+daten/torwart/schema.json  JSON Schema of the goalkeeper record (tracker export)
+daten/torwart/torwart-<matchId>-<teamId>.json   Goalkeeper records, one per match and team
+scripts/goalkeeper.mjs     Validate goalkeeper records, create empty ones (Node, no deps, English)
 .github/workflows/daten.yml  Daily 05:00 UTC fetch, commits "Daten aktualisiert YYYY-MM-DD" as daten-bot
 ```
 
@@ -178,7 +181,8 @@ Teilende (10002). `block` is `" 1. Halbzeit"` (leading space), `"Halbzeitpause"`
 - Run locally: open `app/index.html` directly, or `python3 -m http.server` in the repo root and open
   `http://localhost:8000/app/`. Fresh data: `bash abruf.sh` (needs internet, rewrites `daten/` and the
   `?t=` stamps).
-- Syntax check without a browser: `for f in app/*.js sw.js; do node --check "$f"; done`. There is no test suite;
+- Syntax check without a browser: `for f in app/*.js sw.js; do node --check "$f"; done`. Goalkeeper
+  records: `node scripts/goalkeeper.mjs validate`, also before committing a new record. There is no test suite;
   verify changes by loading the app and clicking through Start, Matchplan, Spiele, Tabelle, Durchspielen,
   Spielerinnen, Teams, Methodik, in light and dark mode, on a phone-sized viewport.
 - Data commits by the bot touch `daten/` and `app/index.html`. Do not hand-edit generated data files; fix
@@ -204,9 +208,12 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
 2. **Capture app** (done, see "Goalkeeper tracker" below): `app/tracker.js`, area `erfassung`, open to
    everyone. Uses the next match and the roster already on the page; the coach's goalkeeper pins
    (`kader[teamId].pins`) preselect the goalkeepers.
-3. **Exchange format**: JSON Schema for the tracker's v1 export, keyed by handball.net `matchId`, `teamId`
-   and `playerId` so it joins cleanly with `HB_DETAILS`. Files are committed under
-   `daten/torwart/<matchId>.json` and validated by a Node script.
+3. **Exchange format** (done): `daten/torwart/schema.json`, JSON Schema 2020-12, is the source of truth
+   for the record shape; `scripts/goalkeeper.mjs` contains a validator for the schema subset used plus
+   the checks a schema cannot express (goalkeeper ids referenced by events, seq order, miss ⇔ zone 0,
+   match/team/home/date against `daten/daten.js`, file name). `validate` runs over all records,
+   `new [matchId|next] [--team id]` writes an empty record. When the format changes: bump `version` in
+   the schema and in `tracker.js`, and keep a migration path for committed files.
 4. **Integration**: bundle the files into a generated `window.HB_TORWART` next to the other data files,
    extend `spielerinnen.js` (goalkeeper stats per player), `kennzahlen.js` (team-level save rate),
    `matchplan.js` (new rule ids, e.g. TW1…), the player sheet and the Trainerin view in `app.js`.
@@ -238,7 +245,7 @@ When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.
   outside the frame logs a miss immediately; a tap inside asks "Gehalten" or "Tor". The goal SVG shows
   saves (green) and goals (red) per zone for the active goalkeeper.
 - Goalkeepers not in any match report yet can be added by name; they get ids `manuell:<slug>`.
-- Export (provisional v1, to be frozen as JSON Schema in step 3), English keys:
+- Export (format `anwurf-goalkeeper` v1, frozen in `daten/torwart/schema.json`), English keys:
   `{ format: "anwurf-goalkeeper", version: 1, matchId, teamId, opponentId, isHome, date, startedAt,
   exportedAt, goalkeepers: [{ playerId, name, number }], events: [...] }` with event types
   `shot { seq, half, second, goalkeeperId, zone, result: goal|save|miss, sevenMeter, at }` and
