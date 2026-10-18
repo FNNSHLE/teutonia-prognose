@@ -18,7 +18,7 @@ const SHELL = [
   'app/spielerinnen.js',
   'app/kennzahlen.js',
   'app/matchplan.js',
-  'app/erfassung.js',
+  'app/tracker.js',
   'app/lib/preact-10.29.2.umd.js',
   'app/lib/preact-hooks-10.29.2.umd.js',
   'app/lib/htm-3.1.1.umd.js',

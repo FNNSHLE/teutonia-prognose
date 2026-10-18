@@ -33,7 +33,7 @@ app/modell.js              Team strength model, win probabilities, season simula
 app/spielerinnen.js        Player evaluation from match reports, lineup effects, match timelines
 app/kennzahlen.js          Per-team metrics from live ticker (phases, 7m, suspensions, timeouts)
 app/matchplan.js           Rule engine producing recommendations/findings for the next match + lineup optimiser
-app/erfassung.js           Goalkeeper tracker (Preact + htm components, own state, mounted by app.js)
+app/tracker.js             Goalkeeper tracker (Preact + htm components, own state, mounted by app.js; English)
 app/manifest.json, icons   PWA metadata
 app/bilder/                Key visual, OG image, 3D icon
 daten/team_id.txt          Focus team id (86088). League/phase is auto-detected from the team page.
@@ -151,7 +151,9 @@ Teilende (10002). `block` is `" 1. Halbzeit"` (leading space), `"Halbzeitpause"`
 
 ## App conventions
 
-- **Everything is German**: identifiers, comments, UI copy, commit messages. Teams are women's teams, so
+- **UI copy and commit messages are German**; so are the existing JS files. **Every new JS or TS file is
+  written in English** (identifiers, comments, CSS classes), per the owner's rule of 2026-10-18; existing
+  German files are not rewritten. Teams are women's teams, so
   the copy uses feminine forms (Spielerin, Trainerin, Torhüterin, Schützin). Keep that consistent.
 - Typography helpers in `app.js`: `dez()`, `vz()`, `pct()`, `stand()`; narrow no-break space `NB`, real
   minus sign `MINUS` ("−"). Use them instead of ad-hoc formatting.
@@ -196,7 +198,7 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
 
 1. **Groundwork** (done 2026-10-18): vendor Preact and htm into `app/lib/`, add a service worker so the app
    opens in a hall without reception. See "Vendored libraries and service worker".
-2. **Capture app** (done, see "Goalkeeper tracker" below): `app/erfassung.js`, area `erfassung`, open to
+2. **Capture app** (done, see "Goalkeeper tracker" below): `app/tracker.js`, area `erfassung`, open to
    everyone. Uses the next match and the roster already on the page; the coach's goalkeeper pins
    (`kader[teamId].pins`) preselect the goalkeepers.
 3. **Exchange format**: JSON Schema for the tracker's v1 export, keyed by handball.net `matchId`, `teamId`
@@ -209,22 +211,24 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
 
 When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.txt`.
 
-## Goalkeeper tracker (`app/erfassung.js`)
+## Goalkeeper tracker (`app/tracker.js`)
 
 - Area id `erfassung`, listed last in `BEREICHE`, reachable via "Mehr", key 9, or the deep link
   `app/index.html#erfassung`. Any area id works as a hash; `wechsle()` clears an area hash when the user
   switches away so a reload does not drag them back.
 - Boundary with `app.js`: `seiteErfassung()` renders the page header plus an empty `#erfassung-wurzel`;
-  `zeichne()` calls `erfassungUnmount()` before replacing `#inhalt` and `erfassungMount(el, ctx)` after.
-  The context (`erfassungKontext()`) carries `fokus`, `kurz`, `lang`, the focus team's matches (open ones
-  first, then the two most recent played) with ready-made labels, and the roster with pin flags. Nothing
+  `zeichne()` calls `trackerUnmount()` before replacing `#inhalt` and `trackerMount(el, ctx)` after.
+  The context (`erfassungKontext()` in `app.js`, English keys) carries `teamId`, `shortName`, `longName`,
+  `matches` (open ones first, then the two most recent played, with ready-made labels) and `roster` with
+  `pinned` flags. Nothing
   else from `app.js` is reachable from the tracker; extend the context rather than adding globals.
-- State lives in the module (`zustand`) and in `localStorage` under `hbprog.erfassung`, written after
-  every change. Components only read it and call `aendere()`. This is deliberate: `zeichne()` remounts
+- State lives in the module (`state`) and in `localStorage` under `hbprog.erfassung`, written after
+  every change. Components only read it and call `update()`. This is deliberate: `zeichne()` remounts
   the tree on resize, hash change and tab switches, and nothing may be lost mid-game. Transient UI state
   (selected zone, 7m toggle, confirmations) lives in `ui` and is not persisted.
-- Game clock: `uhr = { halbzeit 0..3, laeuft, seit, vorher }`, seconds per half, stopped by hand for
-  timeouts. Events record `hz` and `sek`; the export converts to a global second (`(hz-1)*1800 + sek`).
+- Game clock: `clock = { half 0..3, running, since, before }`, seconds per half, stopped by hand for
+  timeouts. Events record `half` and `second` within the half; the export converts to a global second
+  (`(half-1)*1800 + second`).
 - Shot zones: 1..9 from the shooter's point of view, row by row from top left; 0 = off target. A tap
   outside the frame logs a miss immediately; a tap inside asks "Gehalten" or "Tor". The goal SVG shows
   saves (green) and goals (red) per zone for the active goalkeeper.

@@ -749,16 +749,17 @@
       modul('', `<div class="leer">${ico('trikot')}<b>Keine Spielerin gefunden</b><p>Keine Treffer für „${esc(ui.spSuche)}“.</p><button class="textaktion" data-aktion="filterWeg" style="margin:0">Filter zurücksetzen</button></div>`);
   }
 
-  // ================= Torhüterin erfassen (Preact, app/erfassung.js) =================
+  // ================= Torhüterin erfassen (Preact, app/tracker.js) =================
+  // Kontext für den Tracker: nur das, was er braucht; englische Schlüssel, weil tracker.js auf Englisch ist.
   function erfassungKontext() {
     const kd = kaderVon(fokus), t = B.teams[fokus];
     const label = g => `${g.terminOffen ? 'Termin offen' : tagLang(g.datum)} · ${g.heim === fokus ? 'gegen' : 'bei'} ${kurz(g.heim === fokus ? g.gast : g.heim)}${g.gewertet ? ` (${g.heim === fokus ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)})` : ''}`;
-    const eintrag = g => ({ id: g.id, label: label(g), gegnerId: g.heim === fokus ? g.gast : g.heim, heim: g.heim === fokus, datum: g.datum.toISOString().slice(0, 10) });
+    const eintrag = g => ({ id: g.id, label: label(g), opponentId: g.heim === fokus ? g.gast : g.heim, isHome: g.heim === fokus, date: g.datum.toISOString().slice(0, 10) });
     const meine = spiele.filter(g => g.heim === fokus || g.gast === fokus);
     return {
-      fokus, kurz, lang,
-      spiele: meine.filter(g => g.offen).map(eintrag).concat(meine.filter(g => g.gewertet).slice(-2).reverse().map(eintrag)),
-      kader: t ? t.liste.map(s => ({ id: s.id, name: s.name, nummer: s.nummer, pin: !!kd.pins[s.id] })) : [],
+      teamId: fokus, shortName: kurz, longName: lang,
+      matches: meine.filter(g => g.offen).map(eintrag).concat(meine.filter(g => g.gewertet).slice(-2).reverse().map(eintrag)),
+      roster: t ? t.liste.map(s => ({ id: s.id, name: s.name, number: s.nummer, pinned: !!kd.pins[s.id] })) : [],
     };
   }
   function seiteErfassung() {
@@ -891,10 +892,10 @@
   function zeichne(scrollOben) {
     const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik, erfassung: seiteErfassung };
     if (!seiten[bereich]) bereich = 'heute';
-    if (window.erfassungUnmount) erfassungUnmount(); // Preact-Baum sauber abbauen, bevor der Inhalt ersetzt wird
+    if (window.trackerUnmount) trackerUnmount(); // Preact-Baum sauber abbauen, bevor der Inhalt ersetzt wird
     gerüst();
     $('#inhalt').innerHTML = seiten[bereich]();
-    if (bereich === 'erfassung' && window.erfassungMount) erfassungMount($('#erfassung-wurzel'), erfassungKontext());
+    if (bereich === 'erfassung' && window.trackerMount) trackerMount($('#erfassung-wurzel'), erfassungKontext());
     document.title = `${(BEREICHE.find(b => b.id === bereich) || {}).name} · ${APP}`;
     if (bereich === 'labor') laborErgebnis();
     if (bereich === 'spielerinnen') spListe();
