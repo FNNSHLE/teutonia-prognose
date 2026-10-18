@@ -20,7 +20,7 @@ Private fan project, not an offering of SC Teutonia 10 or handball.net. Data: [h
 | Spiele | Fixtures and results; tap a match for the timeline and lineups |
 | Tabelle | Table, position history, season forecast, "what if" with fixed outcomes |
 | Mehr | Durchspielen (lineup lab), Spielerinnen (player stats), Teams, "So rechnet Anwurf" (method and backtest), Torhüterin erfassen (live goalkeeper tracker, see below) |
-| Erfassung | Live goalkeeper tracker for the bench: pick the match and the goalkeepers, start the clock, tap the goal where the shot went, then "Gehalten" or "Tor"; a tap outside the frame logs a miss. Undo, keeper changes, half-time, draft survives reloads. Export as JSON via share sheet, clipboard or download. Deep link: `app/index.html#erfassung`. |
+| Erfassung | Live goalkeeper tracker for the bench: pick the match and the goalkeepers, start the clock, tap the goal where the shot went, then "Gehalten" or "Tor"; a tap outside the frame logs a miss. Keyboard: 1–9 zone, 0 miss, Y save, N goal. Undo, keeper changes, half-time, draft survives reloads. Export as JSON via share sheet, clipboard or download. Deep link: `app/index.html#erfassung`. Committed records feed the player sheet, the match plan and the optimiser. |
 
 Any team of the league can be chosen top left; the own team is restored on the next open. Light and dark
 mode follow the device setting. Keys 1–8 switch areas on a keyboard.
@@ -56,6 +56,7 @@ for f in app/*.js sw.js; do node --check "$f"; done
 # goalkeeper records: validate all files in daten/torwart/, or create an empty one for the next match
 node scripts/goalkeeper.mjs validate
 node scripts/goalkeeper.mjs new next
+node scripts/goalkeeper.mjs bundle     # regenerate daten/torwart.js after adding a record (the fetch scripts do it too)
 ```
 
 Opening `app/index.html` straight from the file system also works.
@@ -97,10 +98,11 @@ even flagged), no missed field shots and no defensive actions. See the to-dos.
 ```
 app/            the app: index.html (CSS, skeleton), app.js (UI), modell.js, spielerinnen.js,
                 kennzahlen.js, matchplan.js, tracker.js (goalkeeper tracker, Preact, English),
+                goalkeepers.js (evaluation of the records, English),
                 lib/ (vendored Preact, htm), assets/ (icons, images), PWA icons, images
 app/lib/        vendored Preact, Preact hooks and htm (pinned UMD builds, see LIESMICH.txt there)
 sw.js           service worker for offline use; must stay at the root so its scope covers app/ and daten/
-daten/          generated data (daten.js, spielberichte.js), raw cache, team_id.txt,
+daten/          generated data (daten.js, spielberichte.js, torwart.js), raw cache, team_id.txt,
                 torwart/ (goalkeeper records from the tracker + schema.json)
 scripts/        goalkeeper.mjs (validate records, create empty ones); plain Node, no dependencies
 abruf.sh        data fetch for CI and Mac/Linux
@@ -137,11 +139,13 @@ dedicated step (see backlog); htm templates convert to TSX mechanically, so noth
       checks every `daten/torwart/torwart-<matchId>-<teamId>.json` against the schema and the fixture
       list; `scripts/goalkeeper.mjs new next` creates an empty record for the next match. First real file:
       the 8 November 2026 match at TV Fischbek II.
-- [ ] **Integration**: bundle the files into a generated `window.HB_TORWART`, extend `spielerinnen.js`
-      (goalkeeper stats per player), `kennzahlen.js` (team save rate), `matchplan.js` (new rule ids TW1…),
-      the player sheet and the coach view in `app.js`. Let goalkeeper impact flow into `besetzungsEffekt()`
-      so the optimiser no longer needs manual pins. Then update the "Grenzen" text, `LIESMICH.txt` and
-      `CLAUDE.md`.
+- [x] **Integration**: the fetch scripts (and `scripts/goalkeeper.mjs bundle`) write the records into
+      `daten/torwart.js` as `window.HB_TORWART`. `app/goalkeepers.js` (English) evaluates them: save rate,
+      7 m, minutes in goal, zone picture, weak zones, and an estimated goal impact per goalkeeper that
+      replaces the generic "Torwirkung" from 20 shots on target, so the optimiser values goalkeepers
+      without pins. Shown in the player sheet (tiles + zone SVG), the player list (sort "Paraden"), the
+      match plan ("Im Tor" module, rules TW1 "X ins Tor" and TW2 "Gegentore vor allem …") and the method
+      page. Tracker shortcuts on a keyboard: 1–9 zone, 0 miss, Y save, N goal, Escape.
 
 ### Backlog
 

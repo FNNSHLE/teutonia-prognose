@@ -1,5 +1,6 @@
 // Matchplan: datenbelegte Empfehlungen zur Aufstellung und Befunde für das nächste Spiel.
 // Regelwerk nach Agency/2026-10-14_Matchplan-und-Redesign/02_matchplan.md, Teil B.
+// TW1/TW2 kommen aus der eigenen Torhüterinnen-Erfassung (ctx.tw aus app/goalkeepers.js).
 
 const MATCHPLAN = { K: 14, MAX_EMPF: 8, MAX_BEFUNDE: 4 };
 
@@ -121,6 +122,22 @@ function erzeugeMatchplan(ctx) {
       if (w <= -5) empf.push({ id: 'DI1', kat: 'Disziplin', p: s.zwei / s.anz * -w, eff: null, titel: `Zeitstrafen bei ${name(s)}: ${s.zwei} in ${s.anz} Spielen`,
         text: `Sie hat ${s.zwei} Zeitstrafe${s.zwei > 1 ? 'n' : ''} in ${s.anz} Spielen. Ohne sie sinkt eure Siegchance um ${Math.round(-w)} Prozentpunkte.`, n: s.anz });
     });
+  }
+  // TW1 Torhüterin mit der besseren Paradenquote, TW2 Zone mit vielen Gegentoren (eigene Erfassung, app/goalkeepers.js)
+  const tw = ctx.tw;
+  if (tw && tF && tw.teams[fokus]) {
+    const tTeam = tw.teams[fokus];
+    const keepers = tF.liste.filter(s => s.tw && s.tw.reliable).sort((a, b) => b.tw.shrunkRate - a.tw.shrunkRate);
+    if (keepers.length >= 2 && keepers[0].tw.shrunkRate - keepers[1].tw.shrunkRate >= 0.05) {
+      const [a, b] = keepers, d = (a.tw.shrunkRate - b.tw.shrunkRate) * tTeam.onTargetPerMatch;
+      empf.push({ id: 'TW1', kat: 'Aufstellung', p: d * H, eff: null, titel: `${name(a)} ins Tor`,
+        text: `Sie hält ${pr(a.tw.rate)} % der Würfe aufs Tor (${a.tw.saves} von ${a.tw.onTarget}), ${name(b)} ${pr(b.tw.rate)} % (${b.tw.saves} von ${b.tw.onTarget}). Bei ${Math.round(tTeam.onTargetPerMatch)} Würfen aufs Tor pro Spiel sind das etwa ${dez1(d)} Tore.`, n: a.tw.matches, person: a });
+    }
+    if (tTeam.onTarget >= GOALKEEPER.MIN_SHOTS) {
+      const weak = weakZones(tTeam, tw.league.rate)[0];
+      if (weak) bef.push({ id: 'TW2', kat: 'Im Tor', p: (tw.league.rate - weak.rate) * weak.onTarget / tTeam.matches * 10, titel: `Gegentore vor allem ${weak.name}`,
+        text: `Von ${weak.onTarget} Würfen ${weak.name} (aus Sicht der Werferin) hielt ${kurzname(fokus)} ${weak.saves}, insgesamt ${pr(tTeam.rate)} % aller Würfe aufs Tor.`, n: tTeam.matches });
+    }
   }
   // DI2 Zeitstrafen des Teams
   if (kF && kF.spiele >= 2 && kF.zweiProSpiel >= liga.zweiProSpiel + 0.5)

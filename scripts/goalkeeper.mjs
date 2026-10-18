@@ -4,6 +4,7 @@
 //
 //   node scripts/goalkeeper.mjs validate [file ...]        default: every daten/torwart/torwart-*.json
 //   node scripts/goalkeeper.mjs new [matchId | next] [--team <id>]   empty record; "next" = next open match
+//   node scripts/goalkeeper.mjs bundle                     write daten/torwart.js (window.HB_TORWART) from the records
 //
 // The schema is the source of truth for the shape; this file adds the checks a schema cannot express
 // (ids that must exist in the match data, ordering) and a validator for the JSON Schema subset the schema uses.
@@ -160,7 +161,17 @@ function cmdNew(args) {
   return 0;
 }
 
+// Same output as the fetch scripts (abruf.sh, Start (Mac).command, app/abruf.ps1), for use without fetching.
+function cmdBundle() {
+  const files = existsSync(DIR) ? readdirSync(DIR).filter(f => /^torwart-.*\.json$/.test(f)).sort().map(f => join(DIR, f)) : [];
+  const parts = files.map(f => readFileSync(f, 'utf8').trim());
+  writeFileSync(join(ROOT, 'daten', 'torwart.js'), `window.HB_TORWART = [${parts.join(',')}];\n`);
+  console.log(`Wrote daten/torwart.js with ${files.length} record${files.length === 1 ? '' : 's'}.`);
+  return 0;
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'validate') process.exit(cmdValidate(rest));
 else if (cmd === 'new') process.exit(cmdNew(rest));
-else { console.log('Usage:\n  node scripts/goalkeeper.mjs validate [file ...]\n  node scripts/goalkeeper.mjs new [matchId | next] [--team <id>]'); process.exit(cmd ? 1 : 0); }
+else if (cmd === 'bundle') process.exit(cmdBundle());
+else { console.log('Usage:\n  node scripts/goalkeeper.mjs validate [file ...]\n  node scripts/goalkeeper.mjs new [matchId | next] [--team <id>]\n  node scripts/goalkeeper.mjs bundle'); process.exit(cmd ? 1 : 0); }

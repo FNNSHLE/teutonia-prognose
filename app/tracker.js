@@ -152,6 +152,8 @@
           goalkeepers: chosen, active: chosen[0].id,
           clock: { half: 0, running: false, since: null, before: 0 }, events: [],
         };
+        // The starter is recorded as a change at second 0 so the file says who began in goal.
+        state.events.push({ seq: 1, type: 'goalkeeperChange', half: 1, second: 0, goalkeeperId: chosen[0].id, at: new Date().toISOString() });
       });
     };
     const addManual = () => {
@@ -194,7 +196,7 @@
     const row = e => {
       const g = s.goalkeepers.find(x => x.id === e.goalkeeperId);
       const who = g ? (g.number ? `#${g.number} ` : '') + lastName(g.name) : '?';
-      const what = e.type === 'goalkeeperChange' ? `Wechsel auf ${who}` : `${resultLabel[e.result]}${e.sevenMeter ? ' · 7 m' : ''}${e.zone ? ` · Zone ${e.zone}` : ''} · ${who}`;
+      const what = e.type === 'goalkeeperChange' ? (e.second === 0 && e.half === 1 ? `Beginnt im Tor: ${who}` : `Wechsel auf ${who}`) : `${resultLabel[e.result]}${e.sevenMeter ? ' · 7 m' : ''}${e.zone ? ` · Zone ${e.zone}` : ''} · ${who}`;
       return html`<div class="gk-event ${e.type === 'shot' ? e.result : ''}" key=${e.seq}><span class="time">${e.half}. HZ ${mmss(e.second)}</span><span class="what">${what}</span><button class="gk-x" type="button" aria-label="Eintrag löschen" onClick=${() => removeEvent(e.seq)}>×</button></div>`;
     };
     return html`
@@ -213,7 +215,7 @@
       <${Panel} title="Im Tor" eyebrow="Antippen wechselt">
         <div class="gk-chips">${s.goalkeepers.map(g => html`<button class="chip ${g.id === active.id ? 'an' : ''}" type="button" onClick=${() => changeGoalkeeper(g.id)}>${g.number ? `#${g.number} ` : ''}${g.name}</button>`)}</div>
       <//>
-      <${Panel} title="Wurf" eyebrow="Wo ging der Ball hin? Aus Sicht der Werferin" footer=${ui.zone == null ? 'Ins Tor tippen, dann Tor oder Gehalten. Neben das Tor tippen heißt vorbei.' : null}>
+      <${Panel} title="Wurf" eyebrow="Wo ging der Ball hin? Aus Sicht der Werferin" footer=${ui.zone == null ? 'Ins Tor tippen, dann Tor oder Gehalten. Neben das Tor tippen heißt vorbei. Tastatur: 1 bis 9 Zone, 0 vorbei, Y gehalten, N Tor.' : null}>
         <${Goal} zones=${own.zones} />
         ${ui.zone != null ? html`
           <div class="gk-pick">
@@ -269,8 +271,24 @@
     </svg>`;
   }
 
+  // ================= Keyboard (desktop) =================
+  // 1–9 pick a zone, 0 logs a miss, Y = Gehalten, N = Tor, Escape cancels. Captured before app.js sees the
+  // key, so the digit shortcuts for switching areas are suspended while a session is running.
+  function onKey(e) {
+    if (!state || e.metaKey || e.ctrlKey || e.altKey || (e.target && e.target.matches && e.target.matches('input, select, textarea'))) return;
+    const k = e.key.toLowerCase();
+    let handled = true;
+    if (k >= '1' && k <= '9') { ui.zone = Number(k); draw(); }
+    else if (k === '0') { ui.zone = null; logShot('miss'); }
+    else if (k === 'y' && ui.zone != null) logShot('save');
+    else if (k === 'n' && ui.zone != null) logShot('goal');
+    else if (k === 'escape') { ui.zone = null; draw(); }
+    else handled = false;
+    if (handled) { e.preventDefault(); e.stopPropagation(); }
+  }
+
   // ================= Interface to app.js =================
   // ctx: { teamId, shortName(id), longName(id), matches: [{id, label, opponentId, isHome, date}], roster: [{id, name, number, pinned}] }
-  window.trackerMount = function (el, context) { root = el; ctx = context; draw(); };
-  window.trackerUnmount = function () { if (root) { render(null, root); root = null; } };
+  window.trackerMount = function (el, context) { root = el; ctx = context; document.addEventListener('keydown', onKey, true); draw(); };
+  window.trackerUnmount = function () { document.removeEventListener('keydown', onKey, true); if (root) { render(null, root); root = null; } };
 })();

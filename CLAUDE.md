@@ -34,11 +34,13 @@ app/spielerinnen.js        Player evaluation from match reports, lineup effects,
 app/kennzahlen.js          Per-team metrics from live ticker (phases, 7m, suspensions, timeouts)
 app/matchplan.js           Rule engine producing recommendations/findings for the next match + lineup optimiser
 app/tracker.js             Goalkeeper tracker (Preact + htm components, own state, mounted by app.js; English)
+app/goalkeepers.js         Evaluation of the goalkeeper records: stats, goal impact, zone SVG (English)
 app/manifest.json          PWA metadata
 app/assets/                Icons, favicon, key visual, OG image, 3D icon
 daten/team_id.txt          Focus team id (86088). League/phase is auto-detected from the team page.
 daten/daten.js             Generated: window.HB_DATA (match list pages + standings)
 daten/spielberichte.js     Generated: window.HB_DETAILS (lineups + events per finished match)
+daten/torwart.js           Generated: window.HB_TORWART (array of goalkeeper records, see daten/torwart/)
 daten/cache/<id>_l.json    Raw lineups per match (handball.net response)
 daten/cache/<id>_e.json    Raw live-ticker events per match
 daten/torwart/schema.json  JSON Schema of the goalkeeper record (tracker export)
@@ -214,10 +216,19 @@ later dedicated step recorded in the README backlog; htm templates convert to TS
    match/team/home/date against `daten/daten.js`, file name). `validate` runs over all records,
    `new [matchId|next] [--team id]` writes an empty record. When the format changes: bump `version` in
    the schema and in `tracker.js`, and keep a migration path for committed files.
-4. **Integration**: bundle the files into a generated `window.HB_TORWART` next to the other data files,
-   extend `spielerinnen.js` (goalkeeper stats per player), `kennzahlen.js` (team-level save rate),
-   `matchplan.js` (new rule ids, e.g. TW1…), the player sheet and the Trainerin view in `app.js`.
-   Goalkeeper influence should flow into `besetzungsEffekt()` so the optimiser no longer needs manual pins.
+4. **Integration** (done): all three fetch scripts and `scripts/goalkeeper.mjs bundle` write
+   `daten/torwart.js` (`window.HB_TORWART = [record, …]`), loaded after `spielberichte.js`.
+   `app/goalkeepers.js` → `evaluateGoalkeepers(records)` returns `{ players, teams, league, records }`;
+   `app.js` attaches `s.tw` and `s.torwart = true` to the matching player in `B.teams[].liste` and, once
+   `tw.reliable` (≥ `GOALKEEPER.MIN_SHOTS` shots on target), replaces `s.einfluss` with `tw.influence`
+   (= (shrunk save rate − league rate) × team shots on target per match, clamped), then re-sorts the lists.
+   That is how goalkeeper quality reaches `besetzungsEffekt()` and the optimiser. Goalkeepers added by
+   name in the tracker (`manuell:` ids) are evaluated but cannot be attached to a lineup player.
+   `matchplan.js` gets `ctx.tw` and adds TW1 (better goalkeeper by shrunk rate, ≥ 5 pp apart) and TW2
+   (weakest zone of the team, `weakZones()`); `seiteMatchplan()` adds the "Im Tor" module. The player
+   sheet swaps the scoring tiles for goalkeeper tiles plus `goalZoneSvg()`; the player list gets the sort
+   "Paraden"; Methodik counts the records. The starter is logged by the tracker as a `goalkeeperChange`
+   at second 0; `timeInGoal()` falls back to the first shot's goalkeeper for older files.
 
 When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.txt`.
 
@@ -251,8 +262,12 @@ When this lands, update "Known gaps", the Methodik "Grenzen" text and `LIESMICH.
   `shot { seq, half, second, goalkeeperId, zone, result: goal|save|miss, sevenMeter, at }` and
   `goalkeeperChange { seq, half, second, goalkeeperId, at }`. Share sheet (file if supported, else text),
   clipboard, or download as `torwart-<matchId>-<teamId>.json`.
-- Testing: a CDP script drives a whole session in headless Chrome (setup, clock, shots, undo, reload,
-  export, reset). It lives outside the repo for now; see the regression-check backlog item.
+- Keyboard on desktop (captured in `tracker.js` before `app.js` sees the key): 1–9 zone, 0 miss, Y save,
+  N goal, Escape cancel. The area-switching digits of `app.js` are therefore inactive while a session runs.
+- Testing: two CDP scripts drive headless Chrome, one through a whole tracker session (setup, clock,
+  shots by tap and by key, undo, reload, export, reset) and one through the integration (match plan rules
+  with a synthetic 60-shot record, player list sort, player sheet, method page). They live outside the
+  repo for now; see the regression-check backlog item.
 
 ## To-dos
 

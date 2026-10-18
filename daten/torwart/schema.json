@@ -72,7 +72,7 @@
         "type": { "const": "goalkeeperChange" },
         "half": { "$ref": "#/$defs/half" },
         "second": { "$ref": "#/$defs/second" },
-        "goalkeeperId": { "$ref": "#/$defs/playerId", "description": "The goalkeeper now in goal" },
+        "goalkeeperId": { "$ref": "#/$defs/playerId", "description": "The goalkeeper now in goal. A change at half 1, second 0 names the starter; files without one are read as if the goalkeeper of the first shot started." },
         "at": { "type": "string", "format": "date-time" }
       }
     }

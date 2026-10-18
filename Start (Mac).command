@@ -70,6 +70,13 @@ fi
     printf '};\n'
   done; } > daten/spielberichte.js
 
+# Torhüterinnen-Erfassungen (daten/torwart/*.json, Schema daten/torwart/schema.json) für die App bündeln
+{ printf 'window.HB_TORWART = ['; erst=1
+  for f in daten/torwart/torwart-*.json; do
+    [ -e "$f" ] || continue
+    [ $erst = 1 ] || printf ','; erst=0; cat "$f"
+  done; printf '];\n'; } > daten/torwart.js
+
 # Browser-Cache umgehen: Datenstand als Versionsmerkmal in die Seite schreiben
 sed -i '' -E "s/\\?t=[0-9]+/?t=$(date +%s)/g" app/index.html
 

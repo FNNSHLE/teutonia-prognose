@@ -35,6 +35,8 @@ Mehr:          Spiel-Labor, Spielerinnen, Teams, So rechnet die App, Torhüterin
 Erfassung:     Für die Bank: Spiel und Torhüterinnen wählen, Uhr starten, bei jedem Wurf ins Tor tippen,
                wo der Ball hinging, dann "Gehalten" oder "Tor". Neben das Tor tippen heißt vorbei.
                Am Ende die Datei teilen oder kopieren. Direkter Link: app/index.html#erfassung
+               Am Rechner geht es auch mit der Tastatur: 1 bis 9 Zone, 0 vorbei, Y gehalten, N Tor.
+               Eingespielte Erfassungen zeigen Paradenquote und Wurfbild bei der Spielerin und im Matchplan.
 
 Oben links lässt sich jedes Team der Liga ansehen. Beim nächsten Öffnen zeigt die App wieder das eigene Team.
 Hell oder dunkel folgt automatisch der Einstellung des Geräts.
