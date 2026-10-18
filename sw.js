@@ -8,7 +8,7 @@
 //   offline der zuletzt gesehene. Fremde Ursprünge (Teamlogos von handball360.isquad.de) werden nicht angefasst.
 // Cache-Schlüssel sind die URLs ohne ?v= und ?t=, so finden sich die Dateien auch nach einem Versionswechsel.
 
-const CACHE = 'anwurf-3'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
+const CACHE = 'anwurf-4'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
 const SHELL = [
   'index.html',
   'app/index.html',
@@ -22,11 +22,11 @@ const SHELL = [
   'app/lib/preact-hooks-10.29.2.umd.js',
   'app/lib/htm-3.1.1.umd.js',
   'app/manifest.json',
-  'app/favicon.svg',
-  'app/icon.svg',
-  'app/icon-180.png',
-  'app/icon-512.png',
-  'app/bilder/keyvisual-1600x900.png',
+  'app/assets/favicon.svg',
+  'app/assets/icon.svg',
+  'app/assets/icon-180.png',
+  'app/assets/icon-512.png',
+  'app/assets/keyvisual-1600x900.png',
 ];
 
 // Schlüssel im Cache: gleiche URL ohne Suchteil; Verzeichnisse zeigen auf ihre index.html.

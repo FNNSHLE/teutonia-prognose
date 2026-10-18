@@ -465,7 +465,7 @@
     const r = rang.indexOf(fokus) + 1, pl = platz(fokus), diff = z.tp - z.tm;
     const alter = (Date.now() - geholt) / 864e5;
     const alt = alter > 7 ? `<div class="hinweis">${ico('uhr')}<span>Die Daten sind ${Math.floor(alter)} Tage alt. ${location.protocol === 'file:' ? 'Für den aktuellen Stand die App über die Start-Datei neu öffnen.' : 'Neue Daten kommen, sobald sie eingespielt sind.'}</span></div>` : '';
-    const intro = merk.get('intro', false) ? '' : `<section class="intro">${bildDa.keyvisual ? `<div class="bild" style="background-image:url('bilder/keyvisual-1600x900.png')"></div>` : ''}
+    const intro = merk.get('intro', false) ? '' : `<section class="intro">${bildDa.keyvisual ? `<div class="bild" style="background-image:url('assets/keyvisual-1600x900.png')"></div>` : ''}
       <div>${wortmarke(26)}</div>
       <p><b style="color:var(--text-1)">${APP} rechnet aus Ergebnissen und Spielberichten von handball.net aus, wie die Chancen im nächsten Spiel stehen.</b> Die Zahlen sind Richtwerte aus wenigen Spielen, keine Gewissheit.</p>
       <p class="cap">${esc(ABSENDER)}</p>
@@ -807,7 +807,7 @@
       ['Am grünen Tisch', 'Spiel, das per Urteil gewertet wurde.'],
     ];
     return `${seitenkopf(wortmarke(32), 'So rechnet die App und wie gut sie bisher lag')}
-      ${bildDa.keyvisual ? `<div style="border-radius:var(--r-xl);overflow:hidden;margin-bottom:var(--gap);background:var(--tafel)"><img src="bilder/keyvisual-1600x900.png" alt="" style="display:block;width:100%;height:auto"></div>` : ''}
+      ${bildDa.keyvisual ? `<div style="border-radius:var(--r-xl);overflow:hidden;margin-bottom:var(--gap);background:var(--tafel)"><img src="assets/keyvisual-1600x900.png" alt="" style="display:block;width:100%;height:auto"></div>` : ''}
       <div class="kacheln vier">${kachel('Favorit gewann', `${treffer} von ${gewertet.length}`, 'gemessen vor dem Anpfiff')}${kachel('Chance fürs echte Ergebnis', `${Math.round(summe / n * 100)}<span class="pz">%</span>`, 'im Schnitt')}${kachel('Treffsicherheit', dez(brier / n, 2), '0 wäre perfekt, 0,67 wäre Raten')}${kachel('Heimvorteil', `${vz(modell.heim)}`, 'Tore in dieser Liga')}</div>
       ${modul('Teamstärke und Siegchance', `<div class="fliess"><p>Aus allen Ergebnissen schätzt ${APP} für jedes Team, wie viele Tore es mehr wirft und weniger kassiert als der Schnitt, dazu den Heimvorteil. Am Saisonanfang zieht die Rechnung alle Teams Richtung Durchschnitt und wird mit jedem Ergebnis mutiger.</p><p>Daraus ergibt sich für jedes Spiel eine erwartete Tordifferenz. Weil Handball streut, wird sie als Glockenkurve behandelt: Die Flächen links, in der Mitte und rechts sind Niederlage, Remis und Sieg. Die Zahlen oben sind ehrlich gemessen, jedes Spiel nur mit dem, was vor dem Anpfiff bekannt war.</p></div>`)}
       ${modul('Matchplan', `<div class="fliess"><p>Der Matchplan zeigt nur, was die Spielberichte belegen: wer unverzichtbar ist, wen es lohnt anzufragen, die 7-Meter-Reihenfolge nach Quote, in welcher Hälfte wer trifft, Zeitstrafen, Spielphasen und die wichtigsten Gegnerinnen. Taktische Ratschläge gibt es bewusst nicht, weil Positionen, Einsatzzeiten und Paraden fehlen. Jede Karte sagt, aus wie vielen Spielen sie stammt.</p><p>Werte je Spielerin zeigt ${APP} nur in der Ansicht für die Trainerin. Sie ist über einen eigenen Link erreichbar und hat keinen Passwortschutz.</p></div>`)}
@@ -885,7 +885,7 @@
 
   // ================= Bilder vorhanden? =================
   const bildDa = { keyvisual: false };
-  (function () { const i = new Image(); i.onload = () => { bildDa.keyvisual = true; if (bereich === 'heute' || bereich === 'methodik') zeichne(); }; i.src = 'bilder/keyvisual-1600x900.png'; })();
+  (function () { const i = new Image(); i.onload = () => { bildDa.keyvisual = true; if (bereich === 'heute' || bereich === 'methodik') zeichne(); }; i.src = 'assets/keyvisual-1600x900.png'; })();
 
   // ================= Zeichnen =================
   let letzteBreite = 0;

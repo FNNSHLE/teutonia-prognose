@@ -34,8 +34,8 @@ app/spielerinnen.js        Player evaluation from match reports, lineup effects,
 app/kennzahlen.js          Per-team metrics from live ticker (phases, 7m, suspensions, timeouts)
 app/matchplan.js           Rule engine producing recommendations/findings for the next match + lineup optimiser
 app/tracker.js             Goalkeeper tracker (Preact + htm components, own state, mounted by app.js; English)
-app/manifest.json, icons   PWA metadata
-app/bilder/                Key visual, OG image, 3D icon
+app/manifest.json          PWA metadata
+app/assets/                Icons, favicon, key visual, OG image, 3D icon
 daten/team_id.txt          Focus team id (86088). League/phase is auto-detected from the team page.
 daten/daten.js             Generated: window.HB_DATA (match list pages + standings)
 daten/spielberichte.js     Generated: window.HB_DETAILS (lineups + events per finished match)

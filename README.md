@@ -92,7 +92,8 @@ even flagged), no missed field shots and no defensive actions. See the to-dos.
 
 ```
 app/            the app: index.html (CSS, skeleton), app.js (UI), modell.js, spielerinnen.js,
-                kennzahlen.js, matchplan.js, tracker.js (goalkeeper tracker, Preact, English), PWA icons, images
+                kennzahlen.js, matchplan.js, tracker.js (goalkeeper tracker, Preact, English),
+                lib/ (vendored Preact, htm), assets/ (icons, images), PWA icons, images
 app/lib/        vendored Preact, Preact hooks and htm (pinned UMD builds, see LIESMICH.txt there)
 sw.js           service worker for offline use; must stay at the root so its scope covers app/ and daten/
 daten/          generated data (daten.js, spielberichte.js), raw cache, team_id.txt
