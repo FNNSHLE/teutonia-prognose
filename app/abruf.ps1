@@ -82,6 +82,14 @@ Get-ChildItem $cache -Filter '*_l.json' | ForEach-Object {
 }
 [IO.File]::WriteAllText((Join-Path $daten 'spielberichte.js'), $sb.ToString(), $utf8)
 
+# Torhüterinnen-Erfassungen (daten/torwart/*.json) für die App bündeln
+$tw = Join-Path $daten 'torwart'
+$teile = @()
+if (Test-Path $tw) { Get-ChildItem $tw -Filter 'torwart-*.json' | Sort-Object Name | ForEach-Object { $teile += [IO.File]::ReadAllText($_.FullName) } }
+$liste = Join-Path $tw 'goalkeepers.json'
+$kader = if (Test-Path $liste) { [IO.File]::ReadAllText($liste) } else { '{}' }
+[IO.File]::WriteAllText((Join-Path $daten 'torwart.js'), "window.HB_TORWART = {`"goalkeepers`": $kader, `"records`": [" + ($teile -join ',') + "]};`n", $utf8)
+
 # Browser-Cache umgehen: Datenstand als Versionsmerkmal in die Seite schreiben
 $idx = Join-Path $root 'app\index.html'
 $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()

@@ -86,12 +86,21 @@
     if (!cache[tag]) cache[tag] = schaetzeModell(gewertet.filter(x => x.datum.toISOString().slice(0, 10) < tag), teamIds);
     vorher[g.id] = prognose(cache[tag], g.heim, g.gast);
   });
-  const B = werteSpielberichteAus(DETAILS, spiele, modell);
+  const B = werteSpielberichteAus(DETAILS, spiele, modell, goalkeeperIds(window.HB_TORWART));
   const muster = teamMuster(spiele, B.verlaeufe, teamIds);
   const K = teamKennzahlen(DETAILS, spiele, B.verlaeufe, teamIds);
   const LIGA = ligaKennzahlen(K);
   const alleSp = Object.values(B.teams).flatMap(t => t.liste);
   const spNach = {}; alleSp.forEach(s => spNach[s.id] = s);
+  // Torhüterinnen aus der eigenen Erfassung (window.HB_TORWART, app/goalkeepers.js): Kennzahlen an die
+  // Spielerin hängen; ab genug Würfen ersetzt die Paradenquote die generische Torwirkung.
+  const TW = evaluateGoalkeepers(window.HB_TORWART || []);
+  Object.values(TW.players).forEach(t => {
+    const s = spNach[t.playerId]; if (!s) return;
+    s.torwart = true; s.tw = t;
+    if (t.reliable) s.einfluss = Math.max(SPIELERIN.MIN, Math.min(SPIELERIN.MAX, t.influence));
+  });
+  Object.values(B.teams).forEach(t => t.liste.sort((a, b) => b.einfluss - a.einfluss || b.tore - a.tore));
 
   const eigeneTab = tabelleAus(gewertet, teamIds);
   const stRoh = (D.standings && D.standings.data) || [];
@@ -172,6 +181,7 @@
       pin: '<path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/>',
       ort: '<path d="M12 21s-6-5.5-6-10a6 6 0 0112 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/>',
       schloss: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+      tor: '<path d="M4 20V6h16v14"/><path d="M4 11h16M9.3 6v14M14.7 6v14M4 15.5h16"/>',
     };
     return `<svg class="ico${k ? ' k' : ''}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || ''}</svg>`;
   }
@@ -207,7 +217,11 @@
     { id: 'spielerinnen', name: 'Spielerinnen', kurz: 'Spielerinnen', ico: 'trikot' },
     { id: 'teams', name: 'Teams', kurz: 'Teams', ico: 'schilde' },
     { id: 'methodik', name: 'So rechnet Anwurf', kurz: 'Methodik', ico: 'info' },
+    { id: 'erfassung', name: 'Torhüterin erfassen', kurz: 'Erfassung', ico: 'tor' },
   ];
+  // Bereich per Link öffnen, z. B. app/index.html#erfassung für die Bank
+  const bereichAusHash = () => { const h = location.hash.replace('#', '').toLowerCase(); return BEREICHE.some(b => b.id === h) ? h : null; };
+  if (bereichAusHash()) bereich = bereichAusHash();
   const geholt = new Date(D.fetchedAt);
   const datenstand = `Datenstand ${geholt.toLocaleDateString('de-DE')} ${geholt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
 
@@ -460,7 +474,7 @@
     const r = rang.indexOf(fokus) + 1, pl = platz(fokus), diff = z.tp - z.tm;
     const alter = (Date.now() - geholt) / 864e5;
     const alt = alter > 7 ? `<div class="hinweis">${ico('uhr')}<span>Die Daten sind ${Math.floor(alter)} Tage alt. ${location.protocol === 'file:' ? 'Für den aktuellen Stand die App über die Start-Datei neu öffnen.' : 'Neue Daten kommen, sobald sie eingespielt sind.'}</span></div>` : '';
-    const intro = merk.get('intro', false) ? '' : `<section class="intro">${bildDa.keyvisual ? `<div class="bild" style="background-image:url('bilder/keyvisual-1600x900.png')"></div>` : ''}
+    const intro = merk.get('intro', false) ? '' : `<section class="intro">${bildDa.keyvisual ? `<div class="bild" style="background-image:url('assets/keyvisual-1600x900.png')"></div>` : ''}
       <div>${wortmarke(26)}</div>
       <p><b style="color:var(--text-1)">${APP} rechnet aus Ergebnissen und Spielberichten von handball.net aus, wie die Chancen im nächsten Spiel stehen.</b> Die Zahlen sind Richtwerte aus wenigen Spielen, keine Gewissheit.</p>
       <p class="cap">${esc(ABSENDER)}</p>
@@ -502,7 +516,7 @@
     const g = naechstes(fokus);
     if (!g) return seitenkopf('Matchplan') + modul('', `<div class="leer">${ico('plan')}<b>Kein offenes Spiel</b><p>Für ${esc(kurz(fokus))} steht kein Spiel mehr an.</p></div>`);
     const s = sicht(g);
-    const mp = erzeugeMatchplan({ modell, B, K, liga: LIGA, g, fokus, eigene: labor.eigene });
+    const mp = erzeugeMatchplan({ modell, B, K, liga: LIGA, g, fokus, eigene: labor.eigene, tw: TW });
     const r = drei(mp.basis.s, mp.basis.u, mp.basis.n), n = Math.min(mp.n || 0, mp.nG || 0);
     const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au2 = mp.empfehlungen.filter(e => e.id === 'AU2'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
     const ph1 = mp.befunde.find(b => b.id === 'PH1');
@@ -510,6 +524,8 @@
     if (au1.length) wichtig.push(['Einplanen', au1.map(e => esc(e.person.name)).join(', ')]);
     if (au2.length) wichtig.push(['Anfragen', au2.map(e => esc(e.person.name)).join(', ')]);
     if (au6) wichtig.push(['7-Meter', au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${esc(kurzName(x.s.name))}`).join(' · ')]);
+    const tw1 = mp.empfehlungen.find(e => e.id === 'TW1'), tw3 = mp.empfehlungen.find(e => e.id === 'TW3');
+    if (tw1 || tw3) wichtig.push(['Im Tor', [tw1 ? esc(tw1.person.name) : '', tw3 ? `bei 7 m ${esc(tw3.person.name)}` : ''].filter(Boolean).join(' · ')]);
     if (ph1) wichtig.push(['Achtung', esc(ph1.titel)]);
     const kopf = seitenkopf('Matchplan', `${s.heim ? 'gegen' : 'bei'} ${esc(kurz(mp.gegner))} · ${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr`}`,
       `<div style="text-align:right"><div class="kpi">${r[0]}<span class="pz">%</span></div><div class="cap t2">Siegchance</div></div>`);
@@ -525,6 +541,8 @@
       else if (e.id === 'AU7') links = `<span class="kpi">${e.text.match(/^(\d+)/)[1]}/${e.text.match(/ihrer (\d+)/)[1]}</span><small>Tore ${/zweiten/.test(e.titel) ? '2.' : '1.'} Hälfte</small>`;
       else if (e.id === 'DI1') links = `<span class="kpi">${e.text.match(/hat (\d+)/)[1]}</span><small>Zeitstrafen</small>`;
       else if (e.id === 'DI2') links = `<span class="kpi">${dez(K[fokus].zweiProSpiel)}</span><small>Zeitstrafen pro Spiel</small>`;
+      else if (e.id === 'TW1') links = `<span class="kpi gut">${Math.round(e.person.tw.rate * 100)}<span class="pz">%</span></span><small>gehalten</small>`;
+      else if (e.id === 'TW3') links = `<span class="kpi gut">${e.person.tw.sevenMeter.saves}<span class="pz">/${e.person.tw.sevenMeter.onTarget}</span></span><small>7 m gehalten</small>`;
       return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3>${esc(e.titel)}</h3><p>${esc(e.text)}</p><div class="belege">${ausSpielen(e.n)}</div></div></article>`;
     };
     const karten = mp.empfehlungen.filter(e => e.id !== 'AU6');
@@ -532,12 +550,22 @@
     const siebenmeter = au6 ? modul('7-Meter-Reihenfolge', `<div class="siebenmeter">${au6.siebenmeter.slice(0, 4).map((x, i) => `<div class="platz7"><span class="nr">${i + 1}.</span><span><b style="font-weight:600">${esc(x.s.name)}</b><span class="cap t2" style="display:block">#${x.s.nummer}</span></span><span style="font-weight:600">${x.s.sm} von ${x.s.smVers}</span></div>`).join('')}</div>`,
       { id: 'mp7m', fuss: `Reihenfolge nach Trefferquote, bei wenigen Würfen vorsichtig Richtung Ligaschnitt (${pct(LIGA.smQuote)}) gezogen. Das Team trifft ${B.teams[fokus].liste.reduce((a, x) => a + x.sm, 0)} von ${B.teams[fokus].liste.reduce((a, x) => a + x.smVers, 0)}.` }) : '';
     const befund = b => `<div class="satz"><span class="micro">${b.kat}</span><div style="font-weight:600;margin:2px 0">${esc(b.titel)}</div><div class="t2">${esc(b.text)}</div></div>`;
-    const phasenBef = mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2'), weitere = mp.befunde.filter(b => b.id !== 'PH1' && b.id !== 'PH2');
+    const phasenBef = mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2'), weitere = mp.befunde.filter(b => b.id !== 'PH1' && b.id !== 'PH2' && b.id !== 'TW4');
     const gegnerinnen = mp.gegnerinnen.length ? `<div class="mkopf" style="margin-top:8px"><div><span class="micro">${esc(kurz(mp.gegner))}</span><h2 class="titel">Gegnerinnen im Blick</h2></div></div><div class="karten zwei">${mp.gegnerinnen.map(x => `<article class="karte"><div class="eff"><span class="kpi">#${x.s.nummer}</span></div><div><h3 style="margin-top:0">${esc(x.s.name)}</h3><div class="tags">${x.tags.map(t => etikett(esc(t.replace(/(\d)× 2'/, '$1 Zeitstrafen').replace(' Sp.', ' Spielen').replace('HZ', 'Hälfte')))).join('')}</div></div></article>`).join('')}</div>` : '';
+    const twTeam = TW.teams[fokus];
+    // Siegchance je Torhüterin: sie im Tor, die anderen Torhüterinnen nicht, sonst die übliche Besetzung
+    const keeperinnen = B.teams[fokus].liste.filter(x => x.tw || x.torwart);
+    const basisDabei = ueblicheBesetzung(B, [fokus, mp.gegner]);
+    const mitIhr = k => { const d = Object.assign({}, basisDabei); keeperinnen.forEach(x => d[x.id] = x.id === k.id); return chanceFokus(modell, g, fokus, B, d, labor.eigene).s; };
+    const belegbar = keeperinnen.some(x => x.tw && x.tw.reliable);
+    const imTor = twTeam ? modul('Im Tor', `<div class="zeilen">${keeperinnen.filter(x => x.tw).sort((a, b) => mitIhr(b) - mitIhr(a) || b.tw.onTarget - a.tw.onTarget).map(x => `<button class="spiel" style="grid-template-columns:minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(x.id)}"><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(x.name)}</span></div><div style="height:auto"><span class="cap t2">#${x.nummer} · ${x.tw.saves} von ${x.tw.onTarget} gehalten (${x.tw.onTarget ? pct(x.tw.rate) : '–'})${x.tw.sevenMeter.onTarget ? ` · 7 m ${x.tw.sevenMeter.saves}/${x.tw.sevenMeter.onTarget}` : ''} · ${x.tw.matches} Spiel${x.tw.matches === 1 ? '' : 'e'}</span></div></span><span style="text-align:right"><span style="font-weight:600;font-size:17px">${pct(mitIhr(x))}</span><span class="cap t3" style="display:block">Siegchance mit ihr</span></span></button>`).join('')}</div>`,
+      { eyebrow: 'Eigene Erfassung', fuss: `Siegchance mit ihr im Tor und der üblichen Besetzung sonst${belegbar ? '' : `, vorerst gleich für alle: ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor zählt die Paradenquote`}. Team hält ${pct(twTeam.rate)} aus ${twTeam.matches} erfassten Spiel${twTeam.matches === 1 ? '' : 'en'}${TW.league.records > twTeam.matches ? `, alle erfassten Teams ${pct(TW.league.rate)}` : ''}.` }) : '';
+    const tw4 = mp.befunde.find(b => b.id === 'TW4');
+    const hinspiel = tw4 ? modul(`Letztes Spiel gegen ${esc(kurz(mp.gegner))}`, `${goalZoneSvg(tw4.zonen, 320)}<div class="satz" style="margin-top:8px"><div style="font-weight:600;margin:2px 0">${esc(tw4.titel)}</div><div class="t2">${esc(tw4.text)}</div></div>`, { eyebrow: 'Wohin die Gegentore kamen', fuss: 'Gehalten von Würfen aufs Tor je Zone aus Sicht der Werferin, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung.' }) : '';
     const trainerin = TRAINERIN ? optimiererModul(g) : modul('Aufstellung durchrechnen', `<p class="meta" style="margin:0 0 12px">Für die Trainerin: Absagen eintragen, Torhüterinnen festlegen und sehen, wie sich die Siegchance verändert. Die Ansicht zeigt Werte je Spielerin und ist deshalb nicht für die ganze Gruppe gedacht.</p><button class="btn" data-aktion="trainerin">${ico('schloss', 1)} Ansicht für die Trainerin öffnen</button>`, { eyebrow: 'Für die Trainerin', klasse: 'nicht-druck', fuss: 'Diese Ansicht hat keinen Passwortschutz. Sie ist über den Link mit #trainerin am Ende erreichbar.' });
     return `${kopf}${aktionen}${das}${hinweis}
       <div class="mkopf" style="margin-top:8px"><div><span class="micro">Aufstellung und Disziplin</span><h2 class="titel">Empfehlungen</h2></div></div>
-      ${empf}${siebenmeter}${trainerin}
+      ${empf}${siebenmeter}${imTor}${hinspiel}${trainerin}
       ${mp.phasen.fokus && mp.phasen.gegner ? modul('Spielphasen', `${phasenGrafik(mp)}${phasenBef.map(befund).join('')}`, { eyebrow: 'Befund', fuss: `Tordifferenz je 10 Minuten, Summe aus ${mp.phasen.nF === mp.phasen.nG ? 'je ' + mp.phasen.nF : mp.phasen.nF + ' und ' + mp.phasen.nG} Spielen mit Spielbericht. Gestrichelt: Halbzeit. Warum die Phasen so verlaufen, zeigen die Daten nicht.` }) : ''}
       ${gegnerinnen}
       ${weitere.length ? modul('Weitere Befunde', weitere.map(befund).join('')) : ''}
@@ -573,28 +601,33 @@
     const sortiert = t.liste.slice().sort((a, b) => (kd.verf[a.id] === false) - (kd.verf[b.id] === false) || (wertVon(b) || 0) - (wertVon(a) || 0));
     const zeile = s => {
       const an = kd.verf[s.id] !== false, w = wertVon(s), pin = !!kd.pins[s.id], im = o.auswahl.some(x => x.s === s);
-      const info = [`${s.anz}/${t.spiele.length} Sp.`, `${dez(s.toreProSpiel)} Tore/Sp.`];
+      const info = [`${s.anz}/${t.spiele.length} Sp.`];
+      if (s.torwart) info.push(s.tw && s.tw.onTarget ? `${s.tw.saves} von ${s.tw.onTarget} gehalten (${pct(s.tw.rate)})` : 'noch keine Paraden erfasst');
+      else info.push(`${dez(s.toreProSpiel)} Tore/Sp.`);
       if (s.smVers) info.push(`7m ${s.sm}/${s.smVers}`);
       if (s.zwei) info.push(`${s.zwei}× Zeitstrafe`);
-      const tag = !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
-      const wert = !an ? '<small>nicht dabei</small>' : w == null || w < 1 ? '<small>keine Daten</small>' : `${Math.round(w)}<small>%</small>`;
+      const tag = s.torwart ? 'Torhüterin' : !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
+      const wert = !an ? '<small>nicht dabei</small>' : w == null || w < 1 ? `<small>${s.torwart && !(s.tw && s.tw.reliable) ? 'ohne Erfassung' : 'keine Daten'}</small>` : `${Math.round(w)}<small>%</small>`;
+      // Torhüterinnen aus der festen Liste stehen immer im Kader, die Stecknadel entfällt für sie.
+      const nadel = s.torwart ? `<span class="pin an" title="Torhüterin, steht immer im Kader" aria-label="Torhüterin, immer dabei">${ico('pin')}</span>`
+        : `<button type="button" class="pin${pin ? ' an' : ''}" data-pin="${esc(s.id)}" aria-pressed="${pin}" aria-label="${esc(s.name)} immer dabei" title="Immer dabei, etwa Torhüterin">${ico('pin')}</button>`;
       return `<label class="sz label${an && im ? '' : ' aus'}">
         <input type="checkbox" role="switch" class="schalter" data-verf="${esc(s.id)}" ${an ? 'checked' : ''} aria-label="${esc(s.name)} dabei">
         <span class="nr">#${s.nummer}</span>
-        <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, true) : ''}</b><span class="cap zwei"><span class="nur-mobil">${tag ? tag + ' · ' : ''}</span>${info.join(' · ')}</span></span>
-        <span style="display:flex;align-items:center;gap:4px"><button type="button" class="pin${pin ? ' an' : ''}" data-pin="${esc(s.id)}" aria-pressed="${pin}" aria-label="${esc(s.name)} immer dabei" title="Immer dabei, etwa Torhüterin">${ico('pin')}</button><span class="wirk">${wert}</span></span></label>`;
+        <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, tag !== 'Torhüterin') : ''}</b><span class="cap zwei"><span class="nur-mobil">${tag && tag !== 'Torhüterin' ? tag + ' · ' : ''}</span>${info.join(' · ')}</span></span>
+        <span style="display:flex;align-items:center;gap:4px">${nadel}<span class="wirk">${wert}</span></span></label>`;
     };
     const fehlen = anders.filter(s => kd.verf[s.id] === false), dazu = anders.filter(s => kd.verf[s.id] !== false && belegt(s, labor.eigene));
     const nameListe = l => l.length > 3 ? `${l.slice(0, 2).map(s => esc(s.name)).join(', ')} und ${l.length - 2} weitere` : l.map(s => esc(s.name)).join(', ');
     const vergleich = [fehlen.length ? `Nicht dabei: ${nameListe(fehlen)}.` : '', dazu.length ? `Zusätzlich zur Stammbesetzung: ${nameListe(dazu)}.` : ''].join(' ').trim() || 'Gleich wie die Stammbesetzung.';
     const ergebnis = `<div class="kacheln" style="margin-bottom:12px">${kachel('Mit diesem Kader', `${rO[0]}<span class="pz">%</span>`, `${o.auswahl.length} im Spielbericht (höchstens ${MATCHPLAN.K})`, delta ? `<span class="delta ${delta > 0 ? 'plus' : 'minus'}">${delta > 0 ? '+' : MINUS}${Math.abs(delta)}</span>` : '')}${kachel('Stammbesetzung', `${rU[0]}<span class="pz">%</span>`, 'wer bei mindestens der Hälfte der Spiele dabei war')}</div><p class="meta" style="margin:0 0 8px">${vergleich}</p>`;
     const warn = [];
-    if (o.ohnePins) warn.push('Torhüterinnen erfassen die Spielberichte nicht. Markiere sie mit der Stecknadel, dann stehen sie immer im Kader.');
+    if (o.ohnePins && !TW.teams[fokus]) warn.push('Torhüterinnen erfassen die Spielberichte nicht. Markiere sie mit der Stecknadel, dann stehen sie immer im Kader.');
     if (o.gestrichen.length) warn.push(`Nicht im Spielbericht (Grenze ${MATCHPLAN.K}): ${o.gestrichen.map(x => esc(x.s.name)).join(', ')}.`);
     return modul('Aufstellung durchrechnen', `${ergebnis}
       <div class="listenkopf"><span class="meta">${verf} von ${t.liste.length} verfügbar</span><button class="textaktion" data-aktion="alleVerf">Alle verfügbar</button></div>
       <div class="zeilen">${sortiert.map(zeile).join('')}</div>`,
-      { eyebrow: 'Ansicht Trainerin', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen und Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
+      { eyebrow: 'Ansicht Trainerin', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen zählen über ihre Paradenquote aus der eigenen Erfassung (ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor), vorher neutral. Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
   }
 
   // ================= Spiele =================
@@ -685,13 +718,13 @@
     return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei</span><button class="textaktion" data-aktion="laborUeblich">Stammbesetzung</button></div>
       <div class="zeilen">${t.liste.slice().sort((a, b) => a.nummer - b.nummer).map(s => {
         const dab = !!labor.dabei[s.id], eig = labor.eigene[s.id], w = eig != null ? eig : s.einfluss;
-        const tagText = !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
-        const rechts = TRAINERIN ? `<button type="button" class="wirk" data-einfluss="${esc(s.id)}" title="Eigene Einschätzung">${vz(w)}<small>Tore</small></button>` : `<span class="wirk"><small>${dez(s.toreProSpiel)} Tore/Sp.</small></span>`;
+        const tagText = s.torwart ? 'Torhüterin' : !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
+        const rechts = TRAINERIN ? `<button type="button" class="wirk" data-einfluss="${esc(s.id)}" title="Eigene Einschätzung">${vz(w)}<small>Tore</small></button>` : `<span class="wirk"><small>${s.torwart ? (s.tw && s.tw.onTarget ? `${pct(s.tw.rate)} gehalten` : 'Torhüterin') : `${dez(s.toreProSpiel)} Tore/Sp.`}</small></span>`;
         return `<label class="sz label${dab ? '' : ' aus'}" data-zeile="${esc(s.id)}"><input type="checkbox" role="switch" class="schalter" data-dabei="${esc(s.id)}" ${dab ? 'checked' : ''} aria-label="${esc(s.name)} spielt mit">
-          <span class="nr">#${s.nummer}</span><span class="wer"><b><span>${esc(s.name)}</span>${tagText ? etikett(tagText, true) : ''}</b><span class="cap"><span class="nur-mobil">${tagText ? tagText + ' · ' : ''}</span>${s.anz} von ${t.spiele.length} Spielen${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
+          <span class="nr">#${s.nummer}</span><span class="wer"><b><span>${esc(s.name)}</span>${tagText ? etikett(tagText, tagText !== 'Torhüterin') : ''}</b><span class="cap"><span class="nur-mobil">${tagText && tagText !== 'Torhüterin' ? tagText + ' · ' : ''}</span>${s.anz} von ${t.spiele.length} Spielen${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
           ${rechts}
           ${TRAINERIN && labor.offen === s.id ? `<div class="regelzeile">${reglerEigen(s.id, w)}</div>` : ''}</label>`;
-      }).join('')}</div>`, { fuss: TRAINERIN ? 'Zahl rechts: Torwirkung, also so viele Tore Unterschied macht sie im Schnitt. Antippen, um sie selbst einzuschätzen, etwa für eine Torhüterin.' : 'Zeile antippen: dabei oder nicht dabei. Die Chancen oben rechnen sofort neu.' });
+      }).join('')}</div>`, { fuss: TRAINERIN ? 'Zahl rechts: Torwirkung, also so viele Tore Unterschied macht sie im Schnitt. Antippen, um sie selbst einzuschätzen. Torhüterinnen bekommen sie aus der Paradenquote der eigenen Erfassung, vorher 0.' : 'Zeile antippen: dabei oder nicht dabei. Die Chancen oben rechnen sofort neu.' });
   }
   function reglerEigen(pid, w) {
     const pos = (w + 2) / 10 * 100;
@@ -719,7 +752,7 @@
   }
 
   // ================= Spielerinnen =================
-  const SORT = { tore: ['Tore', s => s.tore], tps: ['pro Spiel', s => s.toreProSpiel], sm: ['7-Meter', s => s.smVers ? s.sm / s.smVers + s.smVers / 1000 : -1] };
+  const SORT = { tore: ['Tore', s => s.tore], tps: ['pro Spiel', s => s.toreProSpiel], sm: ['7-Meter', s => s.smVers ? s.sm / s.smVers + s.smVers / 1000 : -1], tw: ['Paraden', s => s.tw && s.tw.onTarget ? s.tw.rate + s.tw.onTarget / 10000 : -1] };
   if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss];
   function seiteSpielerinnen() {
     if (!SORT[ui.spSort]) ui.spSort = 'tore';
@@ -736,12 +769,30 @@
   function spListe() {
     const q = ui.spSuche.trim().toLowerCase(), f = SORT[ui.spSort][1];
     const liste = alleSp.filter(s => (ui.spTeam === 'alle' || String(s.team) === String(ui.spTeam)) && (!q || s.name.toLowerCase().includes(q))).sort((a, b) => f(b) - f(a));
-    const wert = s => ui.spSort === 'einfluss' ? vz(s.einfluss) : ui.spSort === 'tore' ? s.tore : ui.spSort === 'tps' ? dez(s.toreProSpiel) : (s.smVers ? `${s.sm}/${s.smVers}` : '');
+    const wert = s => ui.spSort === 'einfluss' ? vz(s.einfluss) : ui.spSort === 'tore' ? s.tore : ui.spSort === 'tps' ? dez(s.toreProSpiel) : ui.spSort === 'tw' ? (s.tw && s.tw.onTarget ? pct(s.tw.rate) : '') : (s.smVers ? `${s.sm}/${s.smVers}` : '');
+    const zeile2 = s => s.tw ? `Torhüterin · ${s.tw.saves} von ${s.tw.onTarget} gehalten` : s.torwart ? `Torhüterin · ${s.anz} Spiel${s.anz > 1 ? 'e' : ''}` : `${s.tore} Tore in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`;
     const el = $('#spListe'); if (!el) return;
     el.innerHTML = liste.length ? modul('', `<div class="zeilen">${liste.slice(0, 120).map((s, i) => `<button class="spiel${s.team === fokus ? ' fokus' : ''}" style="grid-template-columns:28px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(s.id)}">
-        <span class="cap t3" style="text-align:right">${i + 1}</span><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${esc(kurz(s.team))} · ${s.tore} Tore in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}</span></div></span>
+        <span class="cap t3" style="text-align:right">${i + 1}</span><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${esc(kurz(s.team))} · ${zeile2(s)}</span></div></span>
         <span style="font-weight:600;font-size:17px">${wert(s)}</span></button>`).join('')}</div>`) :
       modul('', `<div class="leer">${ico('trikot')}<b>Keine Spielerin gefunden</b><p>Keine Treffer für „${esc(ui.spSuche)}“.</p><button class="textaktion" data-aktion="filterWeg" style="margin:0">Filter zurücksetzen</button></div>`);
+  }
+
+  // ================= Torhüterin erfassen (Preact, app/tracker.js) =================
+  // Kontext für den Tracker: nur das, was er braucht; englische Schlüssel, weil tracker.js auf Englisch ist.
+  function erfassungKontext() {
+    const kd = kaderVon(fokus), t = B.teams[fokus];
+    const label = g => `${g.terminOffen ? 'Termin offen' : tagLang(g.datum)} · ${g.heim === fokus ? 'gegen' : 'bei'} ${kurz(g.heim === fokus ? g.gast : g.heim)}${g.gewertet ? ` (${g.heim === fokus ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)})` : ''}`;
+    const eintrag = g => ({ id: g.id, label: label(g), opponentId: g.heim === fokus ? g.gast : g.heim, isHome: g.heim === fokus, date: g.datum.toISOString().slice(0, 10) });
+    const meine = spiele.filter(g => g.heim === fokus || g.gast === fokus);
+    return {
+      teamId: fokus, shortName: kurz, longName: lang,
+      matches: meine.filter(g => g.offen).map(eintrag).concat(meine.filter(g => g.gewertet).slice(-2).reverse().map(eintrag)),
+      roster: t ? t.liste.map(s => ({ id: s.id, name: s.name, number: s.nummer, pinned: !!kd.pins[s.id] || !!s.torwart })) : [],
+    };
+  }
+  function seiteErfassung() {
+    return `${seitenkopf('Torhüterin erfassen', `${esc(kurz(fokus))} · Würfe aufs eigene Tor live von der Bank`)}${hinweisFokus()}<div id="erfassung-wurzel"></div>`;
   }
 
   // ================= Teams =================
@@ -783,15 +834,16 @@
       ['Stammbesetzung', 'Alle, die bei mindestens der Hälfte der Spiele dabei waren.'],
       ['Torwirkung', 'Nur in der Ansicht für die Trainerin: so viele Tore Unterschied macht eine Spielerin im Schnitt, wenn sie spielt. Torhüterinnen und Abwehrarbeit fehlen darin.'],
       ['Am grünen Tisch', 'Spiel, das per Urteil gewertet wurde.'],
+      ['Paradenquote', 'Anteil der Würfe aufs Tor, die die Torhüterin hält. Kommt aus der eigenen Erfassung von der Bank, nicht von handball.net.'],
     ];
     return `${seitenkopf(wortmarke(32), 'So rechnet die App und wie gut sie bisher lag')}
-      ${bildDa.keyvisual ? `<div style="border-radius:var(--r-xl);overflow:hidden;margin-bottom:var(--gap);background:var(--tafel)"><img src="bilder/keyvisual-1600x900.png" alt="" style="display:block;width:100%;height:auto"></div>` : ''}
+      ${bildDa.keyvisual ? `<div style="border-radius:var(--r-xl);overflow:hidden;margin-bottom:var(--gap);background:var(--tafel)"><img src="assets/keyvisual-1600x900.png" alt="" style="display:block;width:100%;height:auto"></div>` : ''}
       <div class="kacheln vier">${kachel('Favorit gewann', `${treffer} von ${gewertet.length}`, 'gemessen vor dem Anpfiff')}${kachel('Chance fürs echte Ergebnis', `${Math.round(summe / n * 100)}<span class="pz">%</span>`, 'im Schnitt')}${kachel('Treffsicherheit', dez(brier / n, 2), '0 wäre perfekt, 0,67 wäre Raten')}${kachel('Heimvorteil', `${vz(modell.heim)}`, 'Tore in dieser Liga')}</div>
       ${modul('Teamstärke und Siegchance', `<div class="fliess"><p>Aus allen Ergebnissen schätzt ${APP} für jedes Team, wie viele Tore es mehr wirft und weniger kassiert als der Schnitt, dazu den Heimvorteil. Am Saisonanfang zieht die Rechnung alle Teams Richtung Durchschnitt und wird mit jedem Ergebnis mutiger.</p><p>Daraus ergibt sich für jedes Spiel eine erwartete Tordifferenz. Weil Handball streut, wird sie als Glockenkurve behandelt: Die Flächen links, in der Mitte und rechts sind Niederlage, Remis und Sieg. Die Zahlen oben sind ehrlich gemessen, jedes Spiel nur mit dem, was vor dem Anpfiff bekannt war.</p></div>`)}
       ${modul('Matchplan', `<div class="fliess"><p>Der Matchplan zeigt nur, was die Spielberichte belegen: wer unverzichtbar ist, wen es lohnt anzufragen, die 7-Meter-Reihenfolge nach Quote, in welcher Hälfte wer trifft, Zeitstrafen, Spielphasen und die wichtigsten Gegnerinnen. Taktische Ratschläge gibt es bewusst nicht, weil Positionen, Einsatzzeiten und Paraden fehlen. Jede Karte sagt, aus wie vielen Spielen sie stammt.</p><p>Werte je Spielerin zeigt ${APP} nur in der Ansicht für die Trainerin. Sie ist über einen eigenen Link erreichbar und hat keinen Passwortschutz.</p></div>`)}
       ${modul('Begriffe', GLOSSAR.map(([k, v]) => `<div class="satz"><b>${k}</b><div class="t2">${v}</div></div>`).join(''))}
-      ${modul('Grenzen', `<div class="fliess"><p>Torhüterinnen sind in den Spielberichten nicht gekennzeichnet, Paraden fehlen. Verletzungen, Trainingsstand und die Vorsaison kennt die Rechnung nicht. Bei drei bis vier Spielen je Team sind alle Werte Richtwerte.</p></div>`)}
-      ${modul('Absender', `<div class="meta">${esc(ABSENDER)}<br>${esc(datenstand)}. ${gewertet.length} gewertete Spiele, ${Object.keys(DETAILS).length} Spielberichte, ${offen.length} offene Spiele.</div>`)}`;
+      ${modul('Grenzen', `<div class="fliess"><p>Torhüterinnen sind in den Spielberichten nicht gekennzeichnet, Paraden kennt handball.net nicht. Sie kommen nur aus der eigenen Erfassung von der Bank (Bereich „Torhüterin erfassen“)${TW.records ? `, bisher ${TW.records} Spiel${TW.records === 1 ? '' : 'e'}` : ', bisher kein Spiel'}. Ab ${GOALKEEPER.MIN_SHOTS} erfassten Würfen aufs Tor ersetzt die Paradenquote die generische Torwirkung einer Torhüterin. Verletzungen, Trainingsstand und die Vorsaison kennt die Rechnung nicht. Bei drei bis vier Spielen je Team sind alle Werte Richtwerte.</p></div>`)}
+      ${modul('Absender', `<div class="meta">${esc(ABSENDER)}<br>${esc(datenstand)}. ${gewertet.length} gewertete Spiele, ${Object.keys(DETAILS).length} Spielberichte, ${TW.records} Torhüterinnen-Erfassung${TW.records === 1 ? '' : 'en'}, ${offen.length} offene Spiele.</div>`)}`;
   }
 
   // ================= Detail-Sheets =================
@@ -848,8 +900,11 @@
     }).join('');
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
     oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:8px;align-items:center;margin-bottom:16px">${logo(s.team)} ${esc(lang(s.team))}</div>
+      ${s.tw ? `<div class="kacheln">${kachel('Paradenquote', s.tw.rate == null ? '–' : `${Math.round(s.tw.rate * 100)}<span class="pz">%</span>`, `${s.tw.saves} von ${s.tw.onTarget} Würfen aufs Tor`)}${kachel('7-Meter gehalten', s.tw.sevenMeter.onTarget ? `${s.tw.sevenMeter.saves} von ${s.tw.sevenMeter.onTarget}` : 'keine', s.tw.sevenMeter.onTarget ? pct(s.tw.sevenMeter.rate) + ' Quote' : 'noch kein Siebenmeter erfasst')}${kachel('Erfasste Spiele', `${s.tw.matches}`, `${s.tw.minutes} Minuten im Tor`)}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), s.tw.reliable ? 'aus der Paradenquote' : `Paradenquote zählt ab ${GOALKEEPER.MIN_SHOTS} Würfen`) : kachel('Vorbei', `${s.tw.misses}`, 'Würfe neben das Tor')}</div>
+      ${modul('Gehalten je Zone', goalZoneSvg(s.tw.zones, 320), { eyebrow: 'Aus Sicht der Werferin', fuss: 'Gehalten von Würfen aufs Tor je Zone, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung von der Bank.' })}` : `${s.torwart ? `<div class="hinweis">${ico('tor')}<span>Torhüterin. Paraden gibt es erst, wenn ein Spiel von der Bank erfasst wurde.</span></div>` : ''}
       <div class="kacheln">${kachel('Tore pro Spiel', dez(s.toreProSpiel), `${s.tore} Tore in ${s.anz} von ${t.spiele.length} Spielen`)}${kachel('Anteil an den Teamtoren', `${Math.round(s.anteil * 100)}<span class="pz">%</span>`, `erste Hälfte ${hz[0]}, zweite ${hz[1]}`)}${kachel('7-Meter', s.smVers ? `${s.sm} von ${s.smVers}` : 'keine', s.smVers ? pct(s.sm / s.smVers) + ' Quote' : 'noch keine Würfe')}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), 'Tore Unterschied, wenn sie spielt') : kachel('Zeitstrafen', `${s.zwei}`, `in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`)}</div>
       ${TRAINERIN ? `<div class="fussnote" style="margin-top:0">Tore mehr als eine Ersatzspielerin: ${vz(s.torbeitrag)}. ${s.mitOhne == null ? 'Noch kein Spiel ohne sie.' : !s.gewichtMitOhne ? `So lief es mit und ohne sie: ${vz(s.mitOhne)} Tore, zählt erst ab zwei Spielen mit und zwei ohne sie.` : `So lief es mit und ohne sie: ${vz(s.mitOhne)} Tore.`}</div>` : ''}
+`}
       <div class="micro" style="margin:20px 0 4px">Spiele, neuestes zuerst</div><table class="tab"><tbody>${zeilen}</tbody></table>`);
   }
 
@@ -863,15 +918,17 @@
 
   // ================= Bilder vorhanden? =================
   const bildDa = { keyvisual: false };
-  (function () { const i = new Image(); i.onload = () => { bildDa.keyvisual = true; if (bereich === 'heute' || bereich === 'methodik') zeichne(); }; i.src = 'bilder/keyvisual-1600x900.png'; })();
+  (function () { const i = new Image(); i.onload = () => { bildDa.keyvisual = true; if (bereich === 'heute' || bereich === 'methodik') zeichne(); }; i.src = 'assets/keyvisual-1600x900.png'; })();
 
   // ================= Zeichnen =================
   let letzteBreite = 0;
   function zeichne(scrollOben) {
-    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik };
+    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik, erfassung: seiteErfassung };
     if (!seiten[bereich]) bereich = 'heute';
+    if (window.trackerUnmount) trackerUnmount(); // Preact-Baum sauber abbauen, bevor der Inhalt ersetzt wird
     gerüst();
     $('#inhalt').innerHTML = seiten[bereich]();
+    if (bereich === 'erfassung' && window.trackerMount) trackerMount($('#erfassung-wurzel'), erfassungKontext());
     document.title = `${(BEREICHE.find(b => b.id === bereich) || {}).name} · ${APP}`;
     if (bereich === 'labor') laborErgebnis();
     if (bereich === 'spielerinnen') spListe();
@@ -881,7 +938,7 @@
       if (bereich === 'spiele') { const el = document.querySelector('[data-naechste]'); if (el) { el.scrollIntoView({ block: 'start' }); window.scrollBy(0, -60); } }
     }
   }
-  function wechsle(b) { bereich = b; merk.set('bereich', b); schliesseSheet(); zeichne(true); }
+  function wechsle(b) { bereich = b; merk.set('bereich', b); if (bereichAusHash() && bereichAusHash() !== b) history.replaceState(null, '', location.pathname + location.search); schliesseSheet(); zeichne(true); }
   function setzeFokus(id) { fokus = id; labor.spiel = null; schliesseSheet(); zeichne(true); }
 
   // ================= Ereignisse =================
@@ -954,13 +1011,19 @@
     }
     if (t.id === 'spSuche') { ui.spSuche = t.value; return spListe(); }
   });
-  window.addEventListener('hashchange', () => { TRAINERIN = /trainerin/i.test(location.hash); if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss]; else delete SORT.einfluss; schliesseSheet(); zeichne(); });
+  window.addEventListener('hashchange', () => { TRAINERIN = /trainerin/i.test(location.hash); if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss]; else delete SORT.einfluss; if (bereichAusHash()) { bereich = bereichAusHash(); merk.set('bereich', bereich); } schliesseSheet(); zeichne(); });
   window.addEventListener('afterprint', () => document.body.classList.remove('druck-kabine'));
   document.addEventListener('keydown', e => {
     if (e.target.matches('input, select, textarea')) return;
-    if (e.key >= '1' && e.key <= '8' && !e.metaKey && !e.ctrlKey) wechsle(BEREICHE[Number(e.key) - 1].id);
+    if (e.key >= '1' && e.key <= '9' && !e.metaKey && !e.ctrlKey && BEREICHE[Number(e.key) - 1]) wechsle(BEREICHE[Number(e.key) - 1].id);
   });
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (Math.abs(window.innerWidth - letzteBreite) > 40) { const y = window.scrollY; zeichne(); window.scrollTo(0, y); } }, 180); });
+
+  // Service Worker für die Halle ohne Empfang. Liegt im Wurzelverzeichnis, weil der Geltungsbereich auf das Verzeichnis
+  // der Datei begrenzt ist und app/ die Daten aus ../daten/ lädt. Scheitert die Registrierung, läuft die App wie bisher.
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    try { navigator.serviceWorker.register('../sw.js').catch(() => {}); } catch (e) {}
+  }
 
   zeichne(true);
 })();

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fnnshle.github.io/teutonia-prognose/daten/torwart/schema.json",
+  "title": "Anwurf goalkeeper record",
+  "description": "One match, one team, every shot on that team's goal as logged live from the bench by the Anwurf tracker (app/tracker.js). Ids are handball.net ids so the file joins with the match reports in daten/cache. Zones are seen from the shooter: 1 top left, 3 top right, 7 bottom left, 9 bottom right, 0 off target. Files live in daten/torwart/torwart-<matchId>-<teamId>.json and are checked with scripts/goalkeeper.mjs.",
+  "type": "object",
+  "required": ["format", "version", "matchId", "teamId", "opponentId", "isHome", "date", "goalkeepers", "events"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "anwurf-goalkeeper" },
+    "version": { "const": 1 },
+    "matchId": { "type": "integer", "minimum": 1, "description": "handball.net match id, as in HB_DATA and daten/cache/<id>_l.json" },
+    "teamId": { "type": "integer", "minimum": 1, "description": "The team whose goalkeepers are tracked" },
+    "opponentId": { "type": "integer", "minimum": 1 },
+    "isHome": { "type": "boolean", "description": "true when teamId is the home side of the match" },
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Match day, local date" },
+    "startedAt": { "type": ["string", "null"], "format": "date-time", "description": "When the tracker session was started" },
+    "exportedAt": { "type": ["string", "null"], "format": "date-time" },
+    "recordedBy": { "type": "string", "description": "Optional: who tracked, free text" },
+    "notes": { "type": "string", "description": "Optional free text, e.g. unusual circumstances" },
+    "goalkeepers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/goalkeeper" }
+    },
+    "events": {
+      "type": "array",
+      "description": "In the order they happened; seq strictly increasing",
+      "items": { "oneOf": [{ "$ref": "#/$defs/shot" }, { "$ref": "#/$defs/goalkeeperChange" }] }
+    }
+  },
+  "$defs": {
+    "playerId": {
+      "type": "string",
+      "pattern": "^([0-9a-z]{7}|manuell:[a-z0-9-]+)$",
+      "description": "handball.net player id (7 chars) or manuell:<slug> for a goalkeeper not in any match report yet"
+    },
+    "goalkeeper": {
+      "type": "object",
+      "required": ["playerId", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "playerId": { "$ref": "#/$defs/playerId" },
+        "name": { "type": "string", "minLength": 1 },
+        "number": { "type": ["integer", "null"], "minimum": 0, "maximum": 99 }
+      }
+    },
+    "half": { "type": "integer", "minimum": 1, "maximum": 4, "description": "1 and 2 regular time, 3 and 4 overtime" },
+    "second": { "type": "integer", "minimum": 0, "maximum": 7200, "description": "Game clock in seconds since throw-off of the match (half 2 starts at 1800)" },
+    "shot": {
+      "type": "object",
+      "required": ["seq", "type", "half", "second", "goalkeeperId", "zone", "result"],
+      "additionalProperties": false,
+      "properties": {
+        "seq": { "type": "integer", "minimum": 1 },
+        "type": { "const": "shot" },
+        "half": { "$ref": "#/$defs/half" },
+        "second": { "$ref": "#/$defs/second" },
+        "goalkeeperId": { "$ref": "#/$defs/playerId" },
+        "zone": { "type": "integer", "minimum": 0, "maximum": 9, "description": "0 = off target (post, bar, wide)" },
+        "result": { "enum": ["goal", "save", "miss"], "description": "miss goes with zone 0" },
+        "sevenMeter": { "type": "boolean", "default": false },
+        "shooterNumber": { "type": ["integer", "null"], "minimum": 0, "maximum": 99, "description": "Optional, shirt number of the opponent shooter" },
+        "at": { "type": "string", "format": "date-time", "description": "Wall clock when logged" }
+      }
+    },
+    "goalkeeperChange": {
+      "type": "object",
+      "required": ["seq", "type", "half", "second", "goalkeeperId"],
+      "additionalProperties": false,
+      "properties": {
+        "seq": { "type": "integer", "minimum": 1 },
+        "type": { "const": "goalkeeperChange" },
+        "half": { "$ref": "#/$defs/half" },
+        "second": { "$ref": "#/$defs/second" },
+        "goalkeeperId": { "$ref": "#/$defs/playerId", "description": "The goalkeeper now in goal. A change at half 1, second 0 names the starter; files without one are read as if the goalkeeper of the first shot started." },
+        "at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

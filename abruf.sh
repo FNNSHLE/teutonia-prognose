@@ -68,6 +68,15 @@ fi
     printf '};\n'
   done; } > daten/spielberichte.js
 
+# Torhüterinnen-Erfassungen (daten/torwart/*.json, Schema daten/torwart/schema.json) für die App bündeln
+{ printf 'window.HB_TORWART = {"goalkeepers": '
+  if [ -s daten/torwart/goalkeepers.json ]; then cat daten/torwart/goalkeepers.json; else printf '{}'; fi
+  printf ', "records": ['; erst=1
+  for f in daten/torwart/torwart-*.json; do
+    [ -e "$f" ] || continue
+    [ $erst = 1 ] || printf ','; erst=0; cat "$f"
+  done; printf ']};\n'; } > daten/torwart.js
+
 # Browser-Cache umgehen
 STAMP=$(date +%s)
 sed -E "s/\?t=[0-9]+/?t=$STAMP/g" app/index.html > "$TMP/index.html" && cat "$TMP/index.html" > app/index.html
