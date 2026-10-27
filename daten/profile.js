@@ -15,7 +15,7 @@ window.HB_PROFILE = {
   "1bjxdb2": { name: "Zoé Raethe", position: ["RR"], satz: "Noch so'n Ding und ich werf die Axt auf dich." },
   "0liff2d": { name: "Nele Petersen", position: ["RM", "LA", "RA"], satz: "Herausforderung – ich nenne es nächste Aufgabe." },
   "1r2lvr5": { name: "Veronika Graß", position: ["RM"], satz: "Bananenbrot als Schlüssel zur Gelassenheit." },
-  "0iv7e52": { name: "Cannur Yaren", position: [], satz: "" },
+  "0iv7e52": { name: "Cannur Yaren", position: ["LA"], satz: "So nah an der Halle, doch warten müsst ihr oft auf mich!" },
   "0r4agwv": { name: "Flora Trautwein", position: ["LA", "RL"], satz: "Ich lauf euch allen davon." },
   "0zq6bco": { name: "Phillis Dutschke", position: ["RM"], satz: "Sorry Leude – ich bin in Graz." },
   "0cbebaf": { name: "Amelie Graß", position: ["KM"], satz: "Ohne mich läuft der Bumbs hier eh nisch." },
