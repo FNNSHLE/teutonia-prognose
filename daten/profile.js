@@ -14,7 +14,7 @@ window.HB_PROFILE = {
   "0jotezw": { name: "Silja Paul", position: [], satz: "" },
   "1bjxdb2": { name: "Zoé Raethe", position: [], satz: "" },
   "0liff2d": { name: "Nele Petersen", position: [], satz: "" },
-  "1r2lvr5": { name: "Veronika Graß", position: [], satz: "" },
+  "1r2lvr5": { name: "Veronika Graß", position: ["RM"], satz: "Bananenbrot als Schlüssel zur Gelassenheit." },
   "0iv7e52": { name: "Cannur Yaren", position: [], satz: "" },
   "0r4agwv": { name: "Flora Trautwein", position: ["LA", "RL"], satz: "Ich lauf euch allen davon." },
   "0zq6bco": { name: "Phillis Dutschke", position: [], satz: "" },
