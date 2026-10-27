@@ -5,7 +5,7 @@
 // satz: ein kurzer Satz über die Spielerin. Leere Felder zeigt die App nicht an.
 window.HB_PROFILE = {
   "1bt1pug": { name: "Laura Kähler", position: [], satz: "" },
-  "0ikpy6y": { name: "Henrike Schroeter", position: [], satz: "" },
+  "0ikpy6y": { name: "Henrike Schroeter", position: ["KM", "RR", "RL"], satz: "Ich wackel euch besser aus als jeder Wackelzahn." },
   "0xpr7jg": { name: "Greta Schnur", position: ["RM", "RR", "RL"], satz: "Pilates-Lizenz auf YouTube erworben." },
   "1lqwdic": { name: "Irena Goetze", position: [], satz: "" },
   "0n1j8do": { name: "Katharina Schneeberg", position: ["RL", "RR"], satz: "Harte Pässe sind ihr Ding." },
