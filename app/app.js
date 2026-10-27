@@ -579,6 +579,44 @@
     }, 3500);
   }
 
+  // ================= WhatsApp-Zusammenfassung =================
+  // Text fürs Team zum nächsten Spiel des eigenen Teams. Automatisch in eine Gruppe schreiben erlaubt WhatsApp nicht,
+  // deshalb öffnet ein Knopf WhatsApp mit dem fertigen Text (wa.me), Empfänger und Senden wählt man selbst.
+  const APP_URL = 'https://fnnshle.github.io/teutonia-prognose/app/index.html';
+  function whatsappText() {
+    const g = naechstes(UNSER); if (!g) return '';
+    const heim = g.heim === UNSER, geg = heim ? g.gast : g.heim;
+    const mp = erzeugeMatchplan({ modell, B, K, liga: LIGA, g, fokus: UNSER, eigene: labor.eigene, tw: TW });
+    const r = drei(mp.basis.s, mp.basis.u, mp.basis.n);
+    const kn = n => { const t = n.split(' '); return t.length > 1 ? `${t[0]} ${t[t.length - 1][0]}.` : n; };
+    const z = [];
+    z.push(`🤾‍♀️ *${kurz(UNSER)} ${heim ? 'gegen' : 'bei'} ${kurz(geg)}*`);
+    z.push(`📅 ${g.terminOffen ? 'Termin noch offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr`} · ${heim ? 'Heimspiel' : 'auswärts'}`);
+    if (g.halle) z.push(`📍 ${normalisiere(g.halle)}${g.adresse ? `, ${adresseSchoen(g.adresse)}` : ''}`);
+    if (g.lat && g.lon) z.push(`🗺️ https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.lat + ',' + g.lon)}`);
+    z.push(`📊 Siegchance ${r[0]} % · Remis ${r[1]} % · Niederlage ${r[2]} %`);
+    const w = [];
+    const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au2 = mp.empfehlungen.filter(e => e.id === 'AU2'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
+    const tw1 = mp.empfehlungen.find(e => e.id === 'TW1'), tw3 = mp.empfehlungen.find(e => e.id === 'TW3'), ph1 = mp.befunde.find(b => b.id === 'PH1');
+    if (au1.length) w.push(`Einplanen: ${au1.map(e => e.person.name).join(', ')}`);
+    if (au2.length) w.push(`Anfragen: ${au2.map(e => e.person.name).join(', ')}`);
+    if (au6) w.push(`7-Meter: ${au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${kn(x.s.name)}`).join(' · ')}`);
+    if (tw1 || tw3) w.push(`Im Tor: ${[tw1 ? tw1.person.name : '', tw3 ? `bei 7 m ${tw3.person.name}` : ''].filter(Boolean).join(' · ')}`);
+    if (ph1) w.push(`Achtung: ${ph1.titel}`);
+    if (w.length) { z.push(''); z.push('*Das Wichtigste*'); w.forEach(x => z.push(`• ${x}`)); }
+    z.push(''); z.push(`👉 Matchplan: ${APP_URL}#matchplan`);
+    return z.join('\n');
+  }
+  const whatsappLink = () => { const t = whatsappText(); return t ? `https://wa.me/?text=${encodeURIComponent(t)}` : ''; };
+  function whatsappSheet() {
+    const t = whatsappText();
+    if (!t) return oeffneSheet('Nachricht fürs Team', `<div class="leer">${ico('plan')}<b>Kein offenes Spiel</b><p>Für ${esc(kurz(UNSER))} steht kein Spiel mehr an.</p></div>`);
+    oeffneSheet('Nachricht fürs Team', `<p class="meta" style="margin:0 0 12px">Tippe auf „In WhatsApp öffnen“, wähle die Teamgruppe und sende ab.</p>
+      <pre class="wa-vorschau">${esc(t)}</pre>
+      <div style="display:grid;gap:8px;margin-top:12px"><a class="btn prim wa-knopf" href="${whatsappLink()}" target="_blank" rel="noopener">${ico('teilen', 1)} In WhatsApp öffnen</a>
+      <button class="btn" data-aktion="waKopieren">Text kopieren</button></div>`);
+  }
+
   // ================= Newsroom =================
   // Vorerst nur ein Verweis aufs Instagram-Profil. Beiträge selbst bräuchten einen Feed mit Zustimmung des Kontos
   // (z. B. Behold); ohne den lädt die App nichts von Instagram, es fließen also keine Daten an Meta.
@@ -611,7 +649,7 @@
     if (ph1) wichtig.push(['Achtung', esc(ph1.titel)]);
     const kopf = seitenkopf('Matchplan', `${s.heim ? 'gegen' : 'bei'} ${esc(kurz(mp.gegner))} · ${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr`}`,
       `<div style="text-align:right"><div class="kpi">${r[0]}<span class="pz">%</span></div><div class="cap t2">Siegchance</div></div>`);
-    const aktionen = `<div style="display:flex;gap:8px;margin-bottom:var(--gap)" class="nicht-druck"><button class="btn prim" data-aktion="kabine">${ico('druck', 1)} Kabinenblatt</button>${navigator.share ? `<button class="btn" data-aktion="teilen">${ico('teilen', 1)} Teilen</button>` : ''}</div>`;
+    const aktionen = `<div style="display:flex;gap:8px;margin-bottom:var(--gap)" class="nicht-druck"><button class="btn prim" data-aktion="kabine">${ico('druck', 1)} Kabinenblatt</button>${fokus === UNSER ? `<button class="btn wa-knopf" data-aktion="whatsapp">${ico('teilen', 1)} WhatsApp</button>` : ''}${navigator.share ? `<button class="btn" data-aktion="teilen">${ico('teilen', 1)} Teilen</button>` : ''}</div>`;
     const das = wichtig.length ? `<section class="wichtigstes"><div class="mkopf"><div><span class="micro">Auf einen Blick</span><h2 class="titel">Das Wichtigste</h2></div></div>${wichtig.map(([k, v]) => `<div class="zeile"><span class="micro">${k}</span><span>${v}</span></div>`).join('')}</section>` : '';
     const hinweis = `<div class="hinweis">${ico('info')}<span>${n || 'Wenige'} Spielberichte je Team. Genug für eine Richtung, zu wenig für Gewissheit.</span></div>`;
     const maxEff = Math.max(1, ...mp.empfehlungen.map(e => Math.abs(e.eff || 0)));
@@ -1080,6 +1118,8 @@
       if (a === 'zu') return schliesseSheet();
       if (a === 'team') return teamWechsler();
       if (a === 'mehr') return mehrSheet();
+      if (a === 'whatsapp') return whatsappSheet();
+      if (a === 'waKopieren') { const t = whatsappText(); const ok = () => { el.textContent = 'Kopiert'; }; if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => {}); return; }
       if (a === 'kabine') { document.body.classList.add('druck-kabine'); window.print(); return; }
       if (a === 'teilen') { navigator.share({ title: `${APP}: Matchplan`, url: location.href.split('#')[0] }).catch(() => {}); return; }
       if (a === 'trainerin') { location.hash = 'trainerin'; return; }
@@ -1137,6 +1177,7 @@
     if (t.id === 'spSuche') { ui.spSuche = t.value; return spListe(); }
   });
   window.addEventListener('hashchange', () => { TRAINERIN = /trainerin/i.test(location.hash); if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss]; else delete SORT.einfluss; if (bereichAusHash()) { bereich = bereichAusHash(); merk.set('bereich', bereich); } schliesseSheet(); zeichne(); });
+  if (/^#whatsapp$/i.test(location.hash)) { history.replaceState(null, '', location.pathname + location.search); if (fokus !== UNSER) { fokus = UNSER; } wechsle('matchplan'); whatsappSheet(); }
   window.addEventListener('afterprint', () => document.body.classList.remove('druck-kabine'));
   document.addEventListener('keydown', e => {
     if (e.target.matches('input, select, textarea')) return;
