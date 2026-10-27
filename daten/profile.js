@@ -9,7 +9,7 @@ window.HB_PROFILE = {
   "0xpr7jg": { name: "Greta Schnur", position: ["RM", "RR", "RL"], satz: "Pilates-Lizenz auf YouTube erworben." },
   "1lqwdic": { name: "Irena Goetze", position: ["RA"], satz: "Zeig mal her: Ach, deine Rippe ist verrutscht." },
   "0n1j8do": { name: "Katharina Schneeberg", position: ["RL", "RR"], satz: "Harte Pässe sind ihr Ding." },
-  "13vxzhb": { name: "Sassina Schwaderer", position: [], satz: "" },
+  "13vxzhb": { name: "Sassina Schwaderer", position: ["RL", "RR"], satz: "Die Spanier verstehen mein Italienisch, als wäre ich geborene Griechin." },
   "1jac3bl": { name: "Carola Maack", position: ["RA", "LA"], satz: "3-fach-Mama Sita als Flügelstürmer." },
   "0jotezw": { name: "Silja Paul", position: [], satz: "" },
   "1bjxdb2": { name: "Zoé Raethe", position: [], satz: "" },
