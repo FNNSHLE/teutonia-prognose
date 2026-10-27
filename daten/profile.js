@@ -7,7 +7,7 @@ window.HB_PROFILE = {
   "1bt1pug": { name: "Laura Kähler", position: [], satz: "" },
   "0ikpy6y": { name: "Henrike Schroeter", position: ["KM", "RR", "RL"], satz: "Ich wackel euch besser aus als jeder Wackelzahn." },
   "0xpr7jg": { name: "Greta Schnur", position: ["RM", "RR", "RL"], satz: "Pilates-Lizenz auf YouTube erworben." },
-  "1lqwdic": { name: "Irena Goetze", position: [], satz: "" },
+  "1lqwdic": { name: "Irena Goetze", position: ["RA"], satz: "Zeig mal her: Ach, deine Rippe ist verrutscht." },
   "0n1j8do": { name: "Katharina Schneeberg", position: ["RL", "RR"], satz: "Harte Pässe sind ihr Ding." },
   "13vxzhb": { name: "Sassina Schwaderer", position: [], satz: "" },
   "1jac3bl": { name: "Carola Maack", position: ["RA", "LA"], satz: "3-fach-Mama Sita als Flügelstürmer." },
