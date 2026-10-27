@@ -338,8 +338,8 @@
 
   function formSun(g, id, gr) { const e = ergebnisAus(g, id); return `<span class="sun ${e}${gr ? ' gross' : ''}" aria-label="${SUN[e]}"${gr ? '' : ' style="width:18px;height:18px;font-size:11px"'}>${e}</span>`; }
   function tabelleHtml(zeilen, kompakt) {
-    return `<div class="${kompakt ? '' : 'scrollx'}"><table class="tab"><thead><tr><th>#</th><th class="l">Team</th><th>Sp</th><th class="opt">S</th><th class="opt">U</th><th class="opt">N</th><th class="opt">Tore</th><th>Diff</th><th>Punkte</th><th class="opt l" style="padding-left:12px">Form</th></tr></thead><tbody>
-      ${zeilen.map(z => { const i = platz(z.id), d = z.tp - z.tm; return `<tr class="klick${z.id === fokus ? ' f' : ''}" data-team="${z.id}"><td class="t2">${i}</td><td class="l tw"><span class="team">${logo(z.id)}<span>${esc(kurz(z.id))}</span></span></td><td>${z.sp}</td><td class="opt">${z.s}</td><td class="opt">${z.u}</td><td class="opt">${z.n}</td><td class="opt">${stand(z.tp, z.tm)}</td><td>${d > 0 ? '+' : d < 0 ? MINUS : ''}${Math.abs(d)}</td><td class="pk">${z.pkt}</td><td class="opt l" style="padding-left:12px"><span style="display:inline-flex;gap:3px">${spieleVon(z.id).slice(-5).reverse().map(g => formSun(g, z.id)).join('')}</span></td></tr>`; }).join('')}
+    return `<div class="${kompakt ? 'kompakt' : 'scrollx'}"><table class="tab"><thead><tr><th>#</th><th class="l">Team</th><th>Sp</th><th class="opt">S</th><th class="opt">U</th><th class="opt">N</th><th class="opt tore">Tore</th><th>Diff</th><th>${kompakt ? 'Pkt' : 'Punkte'}</th><th class="opt l form" style="padding-left:12px">Form</th></tr></thead><tbody>
+      ${zeilen.map(z => { const i = platz(z.id), d = z.tp - z.tm; return `<tr class="klick${z.id === fokus ? ' f' : ''}" data-team="${z.id}"><td class="t2">${i}</td><td class="l tw"><span class="team">${logo(z.id)}<span>${esc(kurz(z.id))}</span></span></td><td>${z.sp}</td><td class="opt">${z.s}</td><td class="opt">${z.u}</td><td class="opt">${z.n}</td><td class="opt tore">${stand(z.tp, z.tm)}</td><td>${d > 0 ? '+' : d < 0 ? MINUS : ''}${Math.abs(d)}</td><td class="pk">${z.pkt}</td><td class="opt l form" style="padding-left:12px"><span style="display:inline-flex;gap:3px">${spieleVon(z.id).slice(-5).reverse().map(g => formSun(g, z.id)).join('')}</span></td></tr>`; }).join('')}
     </tbody></table></div>`;
   }
 
@@ -524,12 +524,56 @@
     return `${seitenkopf(esc(kurz(fokus)), `Platz ${pl} · ${z.pkt} Punkte · ${esc(ligaName)}`)}${alt}${intro}
       ${erfassungOben ? erfassungKarte(naechstes(fokus)) : ''}<div class="hero-raster">${tafel(fokus)}${kach}</div>
       ${erfassungOben ? '' : erfassungKarte(naechstes(fokus))}
+      ${teamKarussell()}
       <div class="zwei-sp">${modul('Form', formHtml, { eyebrow: 'Letzte Spiele', aktion: `<button class="textaktion" data-kader="${fokus}">Kader</button>` })}
       ${modul('Auffälligkeiten', ins.slice(0, 4).map(x => `<div class="satz">${x}</div>`).join('') || '<p class="meta">Noch zu wenig Daten.</p>', { aktion: ins.length > 4 ? '<button class="textaktion" data-aktion="alleInsights">Alle</button>' : '', fuss: `Aus ${B.teams[fokus] ? B.teams[fokus].spiele.length : 0} Spielen mit Spielbericht.` })}</div>
       ${siegchanceVerlauf(fokus)}
       <div class="zwei-sp">${modul('Tabelle', tabelleHtml(mini, true), { aktion: '<button class="textaktion" data-bereich="tabelle">Ganze Tabelle</button>' })}
       ${modul('Nächste Spiele der Liga', `<div class="zeilen">${bald.map(g => spielZeile(g)).join('') || '<p class="meta">Keine terminierten Spiele.</p>'}</div>`, { aktion: '<button class="textaktion" data-aktion="alleSpiele">Alle</button>' })}</div>
       <div class="datenfuss">${esc(datenstand)}<br>${esc(ABSENDER)}</div>`;
+  }
+
+  // ================= Karussell „Get to know the team“ =================
+  // Nur das eigene Team: Foto, Nummer, Positionen und Satz aus daten/profile.js. Läuft von selbst weiter,
+  // hält bei Berührung, Maus oder Fokus an und bleibt bei „weniger Bewegung“ ganz stehen.
+  function teamKarussell() {
+    if (fokus !== UNSER || !B.teams[UNSER]) return '';
+    const liste = B.teams[UNSER].liste.slice().sort((a, b) => a.nummer - b.nummer || a.name.localeCompare(b.name));
+    if (!liste.length) return '';
+    const karte = s => {
+      const pos = positionen(s), p = profil(s);
+      return `<button class="kk" data-spielerin="${esc(s.id)}" aria-label="${esc(s.name)}, Nummer ${s.nummer}">
+        <span class="kk-bild">${ava(s, 96)}<span class="kk-nr">${s.nummer}</span></span>
+        <span class="kk-name">${esc(s.name)}</span>
+        ${pos.length ? `<span class="kk-pos">${pos.map((x, i) => i === 0 && pos.length > 1 ? `<span class="etikett lieb">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}
+        ${p && p.satz ? `<span class="kk-satz">„${esc(p.satz)}“</span>` : ''}
+      </button>`;
+    };
+    const pfeile = `<span class="kk-pfeile"><button class="icobtn" data-karussell="-1" aria-label="Zurück"><span style="display:inline-block;transform:scaleX(-1)">${ico('chevr', 1)}</span></button><button class="icobtn" data-karussell="1" aria-label="Weiter">${ico('chevr', 1)}</button></span>`;
+    return modul('Get to know the team', `<div class="karussell" id="karussell" tabindex="0" aria-label="Spielerinnen von ${esc(kurz(UNSER))}">${liste.map(karte).join('')}</div>`,
+      { eyebrow: `${esc(kurz(UNSER))} · ${liste.length} Spielerinnen`, aktion: pfeile, klasse: 'karussell-modul' });
+  }
+  let karussellUhr = null, karussellPause = 0;
+  function karussellSchritt(r) {
+    const el = $('#karussell'); if (!el) return;
+    const k = el.querySelector('.kk'); if (!k) return;
+    const w = k.getBoundingClientRect().width + 12;
+    const ende = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    if (r > 0 && ende) el.scrollTo({ left: 0, behavior: 'smooth' });
+    else if (r < 0 && el.scrollLeft <= 4) el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+    else el.scrollBy({ left: r * w, behavior: 'smooth' });
+  }
+  function karussellStart() {
+    clearInterval(karussellUhr); karussellUhr = null;
+    const el = $('#karussell'); if (!el) return;
+    const halt = () => { karussellPause = Date.now() + 8000; };
+    ['pointerdown', 'pointerenter', 'wheel', 'focusin', 'touchstart'].forEach(ev => el.addEventListener(ev, halt, { passive: true }));
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    karussellUhr = setInterval(() => {
+      if (!document.body.contains(el)) { clearInterval(karussellUhr); karussellUhr = null; return; }
+      if (document.hidden || Date.now() < karussellPause || (sheet && sheet.open)) return;
+      karussellSchritt(1);
+    }, 3500);
   }
 
   // ================= Matchplan =================
@@ -993,6 +1037,7 @@
     document.title = `${(BEREICHE.find(b => b.id === bereich) || {}).name} · ${APP}`;
     if (bereich === 'labor') laborErgebnis();
     if (bereich === 'spielerinnen') spListe();
+    if (bereich === 'heute') karussellStart(); else { clearInterval(karussellUhr); karussellUhr = null; }
     letzteBreite = window.innerWidth;
     if (scrollOben) {
       window.scrollTo(0, 0);
@@ -1005,13 +1050,14 @@
   // ================= Ereignisse =================
   document.addEventListener('click', e => {
     if (e.target.matches('input')) return;
-    const el = e.target.closest('[data-aktion],[data-bereich],[data-fokus],[data-team],[data-kader],[data-spiel],[data-spielerin],[data-labor],[data-ui],[data-fest],[data-tmsort],[data-einfluss],[data-pin],[data-wert]');
+    const el = e.target.closest('[data-aktion],[data-bereich],[data-fokus],[data-team],[data-kader],[data-spiel],[data-spielerin],[data-labor],[data-ui],[data-fest],[data-tmsort],[data-einfluss],[data-pin],[data-wert],[data-karussell]');
     if (!el) return;
     const ds = el.dataset;
     if (ds.wert && !el.closest('.pkt') && !ds.ui && !ds.fest && el.tagName !== 'BUTTON') {
       const z = el.closest('.modul, .sinhalt'); const wz = z && z.querySelector('[data-wertzeile]'); if (wz) wz.textContent = ds.wert; return;
     }
     if (ds.pin) { e.preventDefault(); const kd = kaderVon(UNSER === fokus ? fokus : fokus); kd.pins[ds.pin] = !kd.pins[ds.pin]; merk.set('kader', kader); const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
+    if (ds.karussell) { karussellPause = Date.now() + 8000; return karussellSchritt(Number(ds.karussell)); }
     if (ds.einfluss) { e.preventDefault(); labor.offen = labor.offen === ds.einfluss ? null : ds.einfluss; const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
     if (ds.aktion) {
       const a = ds.aktion;

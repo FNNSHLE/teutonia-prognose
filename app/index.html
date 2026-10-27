@@ -223,7 +223,7 @@ svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
 .ava img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--t-fast); }
 .ava img.da { opacity: 1; }
 .a24 { width: 24px; height: 24px; font-size: 10px; } .a28 { width: 28px; height: 28px; font-size: 11px; } .a32 { width: 32px; height: 32px; font-size: 12px; }
-.a40 { width: 40px; height: 40px; font-size: 14px; } .a72 { width: 72px; height: 72px; font-size: 24px; }
+.a40 { width: 40px; height: 40px; font-size: 14px; } .a96 { width: 96px; height: 96px; font-size: 30px; } .a72 { width: 72px; height: 72px; font-size: 24px; }
 .l16 { width: 16px; height: 16px; font-size: 16px; } .l20 { width: 20px; height: 20px; font-size: 20px; } .l24 { width: 24px; height: 24px; font-size: 24px; }
 .l28 { width: 28px; height: 28px; font-size: 28px; } .l48 { width: 48px; height: 48px; font-size: 48px; }
 @media (min-width: 900px) { .tafel .l48 { width: 56px; height: 56px; font-size: 56px; } }
@@ -290,6 +290,10 @@ svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
 .tab .opt { display: none; }
 .tab td.pk { font-weight: 700; }
 @media (min-width: 600px) { .tab .opt { display: table-cell; } .tab td { height: 40px; } }
+/* Mini-Tabelle auf Start: Tore und Form weglassen, damit sie in die halbe Breite passt (ganze Tabelle hat alles) */
+.kompakt { overflow-x: auto; }
+.kompakt .tab .tore, .kompakt .tab .form { display: none; }
+@media (min-width: 900px) and (max-width: 1199px) { .kompakt .tab .opt { display: none; } }
 .scrollx { overflow-x: auto; margin: 0 calc(-1 * var(--pad)); padding: 0 var(--pad); -webkit-overflow-scrolling: touch; }
 .scrollx .tab td:first-child, .scrollx .tab th:first-child { position: sticky; left: calc(-1 * var(--pad)); background: var(--bg-1); z-index: 1; }
 .scrollx .tab tr.f td:first-child { background: var(--accent-tint); }
@@ -421,6 +425,19 @@ dialog.sheet::backdrop { background: var(--scrim); }
 
 /* ================= Torhüterin erfassen (app/tracker.js, Klassen gk-*) ================= */
 .gk-select, .gk-input { width: 100%; height: 44px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--bg-1); color: var(--text-1); font: 500 15px var(--font); padding: 0 12px; }
+/* Karussell „Get to know the team“ */
+.karussell { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 calc(-1 * var(--pad)); padding: 2px var(--pad) 4px; scroll-padding: 0 var(--pad); outline: none; }
+.karussell::-webkit-scrollbar { display: none; }
+.kk { flex: 0 0 200px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 20px 14px 18px; border: 1px solid var(--line-1); border-radius: var(--r-l); background: var(--bg-0); color: inherit; min-height: 280px; transition: transform var(--t-fast); }
+.kk:active { transform: scale(.98); }
+.kk:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kk-bild { position: relative; display: inline-block; }
+.kk-nr { position: absolute; right: -6px; bottom: -2px; min-width: 32px; height: 32px; padding: 0 6px; display: grid; place-items: center; border-radius: var(--r-full); background: var(--accent); color: var(--text-on-accent); font: 700 15px/1 var(--font-display, inherit); box-shadow: 0 0 0 3px var(--bg-0); }
+.kk-name { font-weight: 600; font-size: 16px; line-height: 20px; margin-top: 4px; }
+.kk-pos { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.kk-satz { font-size: 13px; line-height: 18px; color: var(--text-2); font-style: italic; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.kk-pfeile { display: flex; gap: 4px; }
+@media (max-width: 599px) { .kk { flex-basis: 70%; } .kk-pfeile { display: none; } }
 .profiltags { display: flex; flex-wrap: wrap; gap: 6px; }
 .etikett.lieb { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
 .etikett.lieb .ico { width: 12px; height: 12px; }
@@ -584,7 +601,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="matchplan.js?v=23"></script>
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=32"></script>
 
 </body>
 </html>
