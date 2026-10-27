@@ -239,7 +239,8 @@
     $('#seitenleiste').innerHTML = `
       <div class="marke">${wortmarke(24)}</div>
       <button class="wechsler" data-aktion="team">${logo(fokus, 28)}<span class="txt"><span class="n" style="display:block">${esc(kurz(fokus))}</span><small>Platz ${platz(fokus)} · ${(tabelle.find(z => z.id === fokus) || {}).pkt || 0} Punkte</small></span>${ico('chev', 1)}</button>
-      <nav>${BEREICHE.map((b, i) => `${i === 4 ? '<div class="luecke"></div>' : ''}<button data-bereich="${b.id}" class="${bereich === b.id ? 'an' : ''}">${ico(b.ico)}${b.name}</button>`).join('')}</nav>
+      <button class="btn prim erfassen-knopf${bereich === 'erfassung' ? ' an' : ''}" data-bereich="erfassung">${ico('tor', 1)}<span>${erfassungLaeuft() ? 'Erfassung läuft' : 'Torhüterin erfassen'}</span>${erfassungLaeuft() ? '<span class="punkt" aria-hidden="true"></span>' : ''}</button>
+      <nav>${BEREICHE.filter(b => b.id !== 'erfassung').map((b, i) => `${i === 4 ? '<div class="luecke"></div>' : ''}<button data-bereich="${b.id}" class="${bereich === b.id ? 'an' : ''}">${ico(b.ico)}${b.name}</button>`).join('')}</nav>
       <div class="fuss">${TRAINERIN ? `<span class="etikett" style="margin-bottom:8px">${ico('schloss', 1)} Ansicht Trainerin</span><br>` : ''}${esc(datenstand)}<div class="absender">${esc(ABSENDER)}</div></div>`;
     $('#kopf').innerHTML = `<button class="wechsler" data-aktion="team" aria-label="Team wählen">${logo(fokus, 24)}<span class="n">${esc(kurz(fokus))}</span>${ico('chev', 1)}</button><span class="platz"></span>
       ${TRAINERIN ? `<span class="etikett">${ico('schloss', 1)} Trainerin</span>` : ''}`;
@@ -510,8 +511,11 @@
     const ins = auffaelligkeiten(fokus);
     const pIdx = tabelle.findIndex(x => x.id === fokus), start = Math.max(0, Math.min(pIdx - 2, tabelle.length - 5)), mini = tabelle.slice(start, start + 5);
     const bald = offen.filter(g => !g.terminOffen).slice(0, 5);
+    // Am Spieltag oder während einer laufenden Erfassung steht die Erfassen-Karte ganz oben
+    const erfassungOben = !!erfassungLaeuft() || tageBisSpiel(naechstes(fokus)) === 0;
     return `${seitenkopf(esc(kurz(fokus)), `Platz ${pl} · ${z.pkt} Punkte · ${esc(ligaName)}`)}${alt}${intro}
-      <div class="hero-raster">${tafel(fokus)}${kach}</div>
+      ${erfassungOben ? erfassungKarte(naechstes(fokus)) : ''}<div class="hero-raster">${tafel(fokus)}${kach}</div>
+      ${erfassungOben ? '' : erfassungKarte(naechstes(fokus))}
       <div class="zwei-sp">${modul('Form', formHtml, { eyebrow: 'Letzte Spiele', aktion: `<button class="textaktion" data-kader="${fokus}">Kader</button>` })}
       ${modul('Auffälligkeiten', ins.slice(0, 4).map(x => `<div class="satz">${x}</div>`).join('') || '<p class="meta">Noch zu wenig Daten.</p>', { aktion: ins.length > 4 ? '<button class="textaktion" data-aktion="alleInsights">Alle</button>' : '', fuss: `Aus ${B.teams[fokus] ? B.teams[fokus].spiele.length : 0} Spielen mit Spielbericht.` })}</div>
       ${siegchanceVerlauf(fokus)}
@@ -573,7 +577,7 @@
     const tw4 = mp.befunde.find(b => b.id === 'TW4');
     const hinspiel = tw4 ? modul(`Letztes Spiel gegen ${esc(kurz(mp.gegner))}`, `${goalZoneSvg(tw4.zonen, 320)}<div class="satz" style="margin-top:8px"><div style="font-weight:600;margin:2px 0">${esc(tw4.titel)}</div><div class="t2">${esc(tw4.text)}</div></div>`, { eyebrow: 'Wohin die Gegentore kamen', fuss: 'Gehalten von Würfen aufs Tor je Zone aus Sicht der Werferin, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung.' }) : '';
     const trainerin = TRAINERIN ? optimiererModul(g) : modul('Aufstellung durchrechnen', `<p class="meta" style="margin:0 0 12px">Für die Trainerin: Absagen eintragen, Torhüterinnen festlegen und sehen, wie sich die Siegchance verändert. Die Ansicht zeigt Werte je Spielerin und ist deshalb nicht für die ganze Gruppe gedacht.</p><button class="btn" data-aktion="trainerin">${ico('schloss', 1)} Ansicht für die Trainerin öffnen</button>`, { eyebrow: 'Für die Trainerin', klasse: 'nicht-druck', fuss: 'Diese Ansicht hat keinen Passwortschutz. Sie ist über den Link mit #trainerin am Ende erreichbar.' });
-    return `${kopf}${aktionen}${das}${hinweis}
+    return `${kopf}${aktionen}${das}${erfassungKarte(g)}${hinweis}
       <div class="mkopf" style="margin-top:8px"><div><span class="micro">Aufstellung und Disziplin</span><h2 class="titel">Empfehlungen</h2></div></div>
       ${empf}${siebenmeter}${imTor}${hinspiel}${trainerin}
       ${mp.phasen.fokus && mp.phasen.gegner ? modul('Spielphasen', `${phasenGrafik(mp)}${phasenBef.map(befund).join('')}`, { eyebrow: 'Befund', fuss: `Tordifferenz je 10 Minuten, Summe aus ${mp.phasen.nF === mp.phasen.nG ? 'je ' + mp.phasen.nF : mp.phasen.nF + ' und ' + mp.phasen.nG} Spielen mit Spielbericht. Gestrichelt: Halbzeit. Warum die Phasen so verlaufen, zeigen die Daten nicht.` }) : ''}
@@ -797,6 +801,29 @@
   }
 
   // ================= Torhüterin erfassen (Preact, app/tracker.js) =================
+  // Läuft gerade eine Erfassung? Der Tracker speichert den Entwurf unter hbprog.erfassung (tracker.js).
+  function erfassungLaeuft() {
+    try { const d = JSON.parse(localStorage.getItem('hbprog.erfassung')); return d && d.matchId ? d : null; } catch (e) { return null; }
+  }
+  const tageBisSpiel = g => g && !g.terminOffen ? tageBis(g.datum) : null;
+  // Auffällige Karte zum Erfassen am Spieltag, für Start und Matchplan. Nur fürs eigene Team, denn erfasst wird von der eigenen Bank.
+  function erfassungKarte(g) {
+    if (fokus !== UNSER) return '';
+    const lauf = erfassungLaeuft();
+    const tw = TW.teams[fokus], n = tw ? tw.matches : 0;
+    const t = tageBisSpiel(g);
+    const wann = lauf ? 'Erfassung läuft' : t === 0 ? 'Heute ist Spieltag' : t === 1 ? 'Morgen ist Spieltag' : g ? `Am Spieltag${g.terminOffen ? '' : ` · ${tagLang(g.datum)}`}` : 'Am Spieltag';
+    const geg = g ? `${g.heim === fokus ? 'gegen' : 'bei'} ${esc(kurz(g.heim === fokus ? g.gast : g.heim))}` : '';
+    const titel = lauf ? 'Weiter erfassen, wo du aufgehört hast' : `Torhüterin erfassen${geg ? ` ${geg}` : ''}`;
+    const text = lauf ? 'Die angefangene Erfassung ist auf diesem Gerät gespeichert. Am Ende als Datei teilen, damit sie in die App einfließt.'
+      : 'Auf der Bank jeden Wurf aufs eigene Tor antippen: Zone, gehalten oder Tor. Daraus entstehen Paradenquote, 7-Meter-Werte und die Torhüterinnen-Empfehlung im Matchplan.';
+    return `<section class="erfassen-karte nicht-druck${lauf || t === 0 ? ' heute' : ''}">
+      <span class="erfassen-ico" aria-hidden="true">${ico('tor')}</span>
+      <div class="erfassen-txt"><span class="micro">${wann}${lauf ? '<span class="punkt" aria-hidden="true"></span>' : ''}</span><h2 class="titel">${titel}</h2><p>${text}</p>
+        <p class="cap">${n ? `Bisher ${n} Spiel${n === 1 ? '' : 'e'} erfasst.` : 'Noch kein Spiel erfasst. Jede Erfassung macht die Torhüterinnen-Werte genauer.'}</p></div>
+      <button class="btn prim" data-bereich="erfassung">${ico('tor', 1)} ${lauf ? 'Fortsetzen' : 'Erfassung starten'}</button>
+    </section>`;
+  }
   // Kontext für den Tracker: nur das, was er braucht; englische Schlüssel, weil tracker.js auf Englisch ist.
   function erfassungKontext() {
     const kd = kaderVon(fokus), t = B.teams[fokus];
@@ -930,7 +957,7 @@
     oeffneSheet('Team wählen', tabelle.map(z => `<button class="listezeile" data-fokus="${z.id}"><span class="platz">${platz(z.id)}</span>${logo(z.id, 28)}<span class="nm">${esc(kurz(z.id))} ${z.id === UNSER ? etikett('eigenes Team') : ''}</span>${z.id === fokus ? ico('haken', 1) : ''}</button>`).join('') + `<p class="cap t2" style="margin:12px 0 0">Beim nächsten Öffnen zeigt ${APP} wieder ${esc(kurz(UNSER))}.</p>`);
   }
   function mehrSheet() {
-    oeffneSheet('Mehr', BEREICHE.slice(4).map(b => `<button class="listezeile" data-bereich="${b.id}">${ico(b.ico)}<span class="nm">${b.name}</span>${bereich === b.id ? ico('haken', 1) : ico('chevr', 1).replace('class="ico k"', 'class="ico k t3"')}</button>`).join('') +
+    oeffneSheet('Mehr', `<button class="btn prim erfassen-knopf" data-bereich="erfassung" style="width:100%;margin-bottom:12px">${ico('tor', 1)}<span>${erfassungLaeuft() ? 'Erfassung läuft · fortsetzen' : 'Torhüterin erfassen'}</span></button>` + BEREICHE.slice(4).filter(b => b.id !== 'erfassung').map(b => `<button class="listezeile" data-bereich="${b.id}">${ico(b.ico)}<span class="nm">${b.name}</span>${bereich === b.id ? ico('haken', 1) : ico('chevr', 1).replace('class="ico k"', 'class="ico k t3"')}</button>`).join('') +
       `<button class="listezeile" data-aktion="${TRAINERIN ? 'trainerinAus' : 'trainerin'}">${ico('schloss')}<span class="nm">${TRAINERIN ? 'Ansicht Trainerin verlassen' : 'Ansicht für die Trainerin'}</span></button>`);
   }
 
