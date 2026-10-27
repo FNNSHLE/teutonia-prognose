@@ -642,6 +642,14 @@
       // chronologisch, Spieltag als Etikett
       const nxt = liste.find(g => g.offen);
       html = `<div class="zeilen">${liste.map(g => `${g === nxt ? '<div class="spieltag micro" data-naechste>Als Nächstes</div>' : ''}${spielZeile(g, { ohneMarke: true })}`).join('')}</div>`;
+    } else if (ui.spieleStatus === 'offen') {
+      // offene Spiele aller Teams: nach Datum, Monat als Etikett, Spiele ohne Termin am Ende
+      const MONAT = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+      const gruppe = g => g.terminOffen ? 'Termin noch offen' : `${MONAT[g.datum.getUTCMonth()]} ${g.datum.getUTCFullYear()}`;
+      const sortiert = liste.filter(g => !g.terminOffen).sort((a, b) => a.datum - b.datum || a.runde - b.runde)
+        .concat(liste.filter(g => g.terminOffen).sort((a, b) => a.runde - b.runde || a.datum - b.datum));
+      const gruppen = [...new Set(sortiert.map(gruppe))];
+      html = gruppen.map((k, i) => `<div class="spieltag micro"${i === 0 ? ' data-naechste' : ''}>${k}</div><div class="zeilen">${sortiert.filter(g => gruppe(g) === k).map(g => spielZeile(g)).join('')}</div>`).join('');
     } else {
       const runden = [...new Set(liste.map(g => g.runde))].sort((a, b) => a - b);
       const naechsteRunde = (offen[0] || {}).runde;
