@@ -425,6 +425,15 @@ dialog.sheet::backdrop { background: var(--scrim); }
 
 /* ================= Torhüterin erfassen (app/tracker.js, Klassen gk-*) ================= */
 .gk-select, .gk-input { width: 100%; height: 44px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--bg-1); color: var(--text-1); font: 500 15px var(--font); padding: 0 12px; }
+/* Newsroom: Verweis auf Instagram */
+.news { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.news-ico { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--accent-tint); color: var(--accent); }
+.news-ico .ico { width: 28px; height: 28px; }
+.news-txt b { font-weight: 600; word-break: break-all; }
+.news-txt p { margin: 4px 0 0; color: var(--text-2); }
+.news .btn { white-space: nowrap; text-decoration: none; }
+.news .btn .ico { width: 16px; height: 16px; }
+@media (max-width: 599px) { .news { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; } .news-ico { width: 48px; height: 48px; } .news .btn { grid-column: 1 / -1; width: 100%; } }
 /* Karussell „Get to know the team“ */
 .karussell { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 calc(-1 * var(--pad)); padding: 2px var(--pad) 4px; scroll-padding: 0 var(--pad); outline: none; }
 .karussell::-webkit-scrollbar { display: none; }
@@ -601,7 +610,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="matchplan.js?v=23"></script>
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 
 </body>
 </html>

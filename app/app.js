@@ -165,6 +165,8 @@
   function ico(n, k) {
     const P = {
       tafel: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/>',
+      kamera: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',
+      extern: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
       stern: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
       plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4"/>',
       kalender: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -525,6 +527,7 @@
       ${erfassungOben ? erfassungKarte(naechstes(fokus)) : ''}<div class="hero-raster">${tafel(fokus)}${kach}</div>
       ${erfassungOben ? '' : erfassungKarte(naechstes(fokus))}
       ${teamKarussell()}
+      ${newsroom()}
       <div class="zwei-sp">${modul('Form', formHtml, { eyebrow: 'Letzte Spiele', aktion: `<button class="textaktion" data-kader="${fokus}">Kader</button>` })}
       ${modul('Auffälligkeiten', ins.slice(0, 4).map(x => `<div class="satz">${x}</div>`).join('') || '<p class="meta">Noch zu wenig Daten.</p>', { aktion: ins.length > 4 ? '<button class="textaktion" data-aktion="alleInsights">Alle</button>' : '', fuss: `Aus ${B.teams[fokus] ? B.teams[fokus].spiele.length : 0} Spielen mit Spielbericht.` })}</div>
       ${siegchanceVerlauf(fokus)}
@@ -574,6 +577,19 @@
       if (document.hidden || Date.now() < karussellPause || (sheet && sheet.open)) return;
       karussellSchritt(1);
     }, 3500);
+  }
+
+  // ================= Newsroom =================
+  // Vorerst nur ein Verweis aufs Instagram-Profil. Beiträge selbst bräuchten einen Feed mit Zustimmung des Kontos
+  // (z. B. Behold); ohne den lädt die App nichts von Instagram, es fließen also keine Daten an Meta.
+  const INSTAGRAM = { handle: 'scteutonia10handballdamen', url: 'https://www.instagram.com/scteutonia10handballdamen/' };
+  function newsroom() {
+    if (fokus !== UNSER) return '';
+    return modul('Neues aus dem Team', `<div class="news">
+        <span class="news-ico" aria-hidden="true">${ico('kamera')}</span>
+        <div class="news-txt"><b>@${esc(INSTAGRAM.handle)}</b><p>Spielberichte, Fotos und alles rund um die Damen von ${esc(kurz(UNSER))} gibt es auf Instagram.</p></div>
+        <a class="btn prim" href="${INSTAGRAM.url}" target="_blank" rel="noopener noreferrer">Zu Instagram ${ico('extern', 1)}</a>
+      </div>`, { eyebrow: 'Newsroom · Instagram', klasse: 'news-modul' });
   }
 
   // ================= Matchplan =================
