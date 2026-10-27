@@ -435,6 +435,13 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .news .btn .ico { width: 16px; height: 16px; }
 @media (max-width: 599px) { .news { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; } .news-ico { width: 48px; height: 48px; } .news .btn { grid-column: 1 / -1; width: 100%; } }
 /* Karussell „Get to know the team“ */
+/* Gelb abgesetzt, damit das Team auf Start heraussticht */
+.karussell-modul { --gelb: #F2B705; --gelb-tint: #FFF7D6; --gelb-text: #7A5A00; border: 2px solid var(--gelb); background: linear-gradient(180deg, var(--gelb-tint), var(--bg-1) 70%); }
+@media (prefers-color-scheme: dark) { .karussell-modul { --gelb: #F5C21B; --gelb-tint: #2A230B; --gelb-text: #F5C21B; } }
+.karussell-modul .mkopf .micro { color: var(--gelb-text); }
+.karussell-modul .kk { border-color: color-mix(in srgb, var(--gelb) 45%, var(--line-1)); background: var(--bg-1); }
+.karussell-modul .kk-nr { background: var(--gelb); color: #1A1400; }
+.karussell-modul .kk:focus-visible { outline-color: var(--gelb); }
 .karussell { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 calc(-1 * var(--pad)); padding: 2px var(--pad) 4px; scroll-padding: 0 var(--pad); outline: none; }
 .karussell::-webkit-scrollbar { display: none; }
 .kk { flex: 0 0 200px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 20px 14px 18px; border: 1px solid var(--line-1); border-radius: var(--r-l); background: var(--bg-0); color: inherit; min-height: 280px; transition: transform var(--t-fast); }
