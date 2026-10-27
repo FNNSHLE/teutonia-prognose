@@ -421,6 +421,11 @@ dialog.sheet::backdrop { background: var(--scrim); }
 
 /* ================= Torhüterin erfassen (app/tracker.js, Klassen gk-*) ================= */
 .gk-select, .gk-input { width: 100%; height: 44px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--bg-1); color: var(--text-1); font: 500 15px var(--font); padding: 0 12px; }
+.team-filter { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; margin-bottom: 12px; }
+.team-filter .chip { height: 44px; padding: 0 16px; border-radius: var(--r-m); gap: 8px; }
+.team-filter .chip.an { background: var(--accent-tint); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.team-filter .gk-select { border-radius: var(--r-m); border-color: var(--line-1); background: var(--bg-2); }
+.team-filter .gk-select.an { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
 .gk-input.nr { width: 72px; flex: none; }
 .gk-add { display: flex; gap: 8px; margin-top: 12px; } .gk-add .gk-input { min-width: 0; }
 .gk-roster { margin: 0 calc(-1 * var(--pad)); }
@@ -574,7 +579,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="matchplan.js?v=23"></script>
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 
 </body>
 </html>

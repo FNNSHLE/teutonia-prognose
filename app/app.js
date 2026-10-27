@@ -122,7 +122,7 @@
   // Der Fokus wird bewusst nicht gespeichert: Beim Öffnen zeigt die App immer das eigene Team.
   let fokus = teams[UNSER] ? UNSER : teamIds[0];
   let bereich = merk.get('bereich', 'heute');
-  const ui = { spieleTeam: 'fokus', spieleStatus: 'alle', tabelleAnsicht: 'tabelle', spSuche: '', spTeam: 'alle', spSort: 'tore', tmSort: 'staerke', tmAb: true };
+  const ui = { spieleTeam: 'fokus', spieleStatus: 'alle', tabelleAnsicht: 'tabelle', spSuche: '', spTeam: UNSER, spSort: 'tore', tmSort: 'staerke', tmAb: true };
   let fest = merk.get('fest', {}); Object.keys(fest).forEach(k => { if (!spielNach[k] || !spielNach[k].offen) delete fest[k]; });
   const labor = { spiel: null, dabei: {}, eigene: merk.get('eigene', {}), form: { f: 0, g: 0 }, neutral: false, offen: null };
   const kader = merk.get('kader', {});
@@ -778,7 +778,14 @@
   if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss];
   function seiteSpielerinnen() {
     if (!SORT[ui.spSort]) ui.spSort = 'tore';
-    const chips = `<div class="chipreihe"><button class="chip${ui.spTeam === 'alle' ? ' an' : ''}" data-ui="spTeam" data-wert="alle">Alle</button>${tabelle.map(z => `<button class="chip${String(ui.spTeam) === String(z.id) ? ' an' : ''}" data-ui="spTeam" data-wert="${z.id}">${logo(z.id, 16)}${esc(kurz(z.id))}</button>`).join('')}</div>`;
+    // Eigenes Team zuerst und als eigener Knopf, alle anderen Teams im Auswahlfeld daneben
+    const eigen = String(ui.spTeam) === String(UNSER);
+    const chips = `<div class="team-filter"><button class="chip${eigen ? ' an' : ''}" data-ui="spTeam" data-wert="${UNSER}">${logo(UNSER, 16)}${esc(kurz(UNSER))}</button>
+      <select class="gk-select${eigen ? '' : ' an'}" id="spTeamWahl" aria-label="Anderes Team wählen">
+        <option value="" ${eigen ? 'selected' : ''} disabled>Andere Teams …</option>
+        <option value="alle" ${ui.spTeam === 'alle' ? 'selected' : ''}>Alle Teams</option>
+        ${tabelle.filter(z => z.id !== UNSER).map(z => `<option value="${z.id}" ${String(ui.spTeam) === String(z.id) ? 'selected' : ''}>${esc(kurz(z.id))}</option>`).join('')}
+      </select></div>`;
     const seg = `<div class="seg">${Object.entries(SORT).map(([k, [l]]) => `<button data-ui="spSort" data-wert="${k}" class="${ui.spSort === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
     const abh = teamIds.filter(id => B.teams[id]).sort((a, b) => B.teams[b].top1 - B.teams[a].top1);
     return `${seitenkopf('Spielerinnen', `${alleSp.length} Spielerinnen aus ${Object.keys(B.teams).length} Teams`)}
@@ -1009,7 +1016,7 @@
       if (a === 'introWeg') { merk.set('intro', true); return zeichne(); }
       if (a === 'alleInsights') return oeffneSheet('Auffälligkeiten', auffaelligkeiten(fokus).map(x => `<div class="satz">${x}</div>`).join(''));
       if (a === 'alleSpiele') { ui.spieleTeam = 'alle'; return wechsle('spiele'); }
-      if (a === 'filterWeg') { ui.spSuche = ''; ui.spTeam = 'alle'; return zeichne(); }
+      if (a === 'filterWeg') { ui.spSuche = ''; ui.spTeam = UNSER; return zeichne(); }
       if (a === 'festWeg') { fest = {}; merk.set('fest', fest); return zeichne(); }
       if (a === 'fokusSiegt') { offen.forEach(o => { if (o.heim === fokus) fest[o.id] = 'H'; if (o.gast === fokus) fest[o.id] = 'G'; }); merk.set('fest', fest); return zeichne(); }
       if (a === 'alleVerf') { kaderVon(fokus).verf = {}; merk.set('kader', kader); return zeichne(); }
@@ -1026,7 +1033,8 @@
     if (ds.spielerin) return spielerinDetail(ds.spielerin);
     if (ds.ui) {
       const k = ds.ui; ui[k] = ds.wert;
-      if (k === 'spTeam' || k === 'spSort') { $$(`[data-ui="${k}"]`).forEach(b => b.classList.toggle('an', b.dataset.wert === ds.wert)); return spListe(); }
+      if (k === 'spTeam') { const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
+      if (k === 'spSort') { $$(`[data-ui="${k}"]`).forEach(b => b.classList.toggle('an', b.dataset.wert === ds.wert)); return spListe(); }
       return zeichne(k === 'spieleTeam');
     }
     if (ds.fest) { if (fest[ds.fest] === ds.wert) delete fest[ds.fest]; else fest[ds.fest] = ds.wert; merk.set('fest', fest); const y = window.scrollY; zeichne(); window.scrollTo(0, y); return; }
@@ -1037,6 +1045,7 @@
     if (t.dataset.verf) { const kd = kaderVon(fokus); if (t.checked) delete kd.verf[t.dataset.verf]; else kd.verf[t.dataset.verf] = false; merk.set('kader', kader); zeichne(); window.scrollTo(0, y); return; }
     if (t.dataset.dabei) { labor.dabei[t.dataset.dabei] = t.checked; t.closest('.sz').classList.toggle('aus', !t.checked); const m = t.closest('.modul'); const kopf = m.querySelector('.listenkopf .meta'); if (kopf) { const alle = m.querySelectorAll('[data-dabei]'); kopf.textContent = `${[...alle].filter(x => x.checked).length} von ${alle.length} dabei`; } return laborErgebnis(); }
     if (t.id === 'neutral') { labor.neutral = t.checked; return laborErgebnis(); }
+    if (t.id === 'spTeamWahl') { ui.spTeam = t.value === 'alle' ? 'alle' : Number(t.value); return zeichne(); }
     if (t.dataset.eigen) { merk.set('eigene', labor.eigene); return; }
   });
   document.addEventListener('input', e => {
