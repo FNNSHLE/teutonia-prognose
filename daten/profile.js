@@ -16,7 +16,7 @@ window.HB_PROFILE = {
   "0liff2d": { name: "Nele Petersen", position: [], satz: "" },
   "1r2lvr5": { name: "Veronika Graß", position: [], satz: "" },
   "0iv7e52": { name: "Cannur Yaren", position: [], satz: "" },
-  "0r4agwv": { name: "Flora Trautwein", position: [], satz: "" },
+  "0r4agwv": { name: "Flora Trautwein", position: ["LA", "RL"], satz: "Ich lauf euch allen davon." },
   "0zq6bco": { name: "Phillis Dutschke", position: [], satz: "" },
   "0cbebaf": { name: "Amelie Graß", position: [], satz: "" },
 };
