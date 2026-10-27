@@ -455,11 +455,13 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .kk-name { font-weight: 600; font-size: 16px; line-height: 20px; margin-top: 4px; }
 .kk-pos { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
 .kk-satz { font-size: 13px; line-height: 18px; color: var(--text-2); font-style: italic; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.kk-amt { margin-top: auto; padding-top: 6px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--gelb-text, var(--text-2)); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .kk-pfeile { display: flex; gap: 4px; }
 @media (max-width: 599px) { .kk { flex-basis: 70%; } .kk-pfeile { display: none; } }
 .profiltags { display: flex; flex-wrap: wrap; gap: 6px; }
 .etikett.lieb { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
 .etikett.lieb .ico { width: 12px; height: 12px; }
+.aemter { margin: 0 0 16px; } .aemter .micro { display: block; margin-bottom: 6px; }
 .profilsatz { margin: 0 0 16px; padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--bg-2); border-radius: 0 var(--r-m) var(--r-m) 0; font-size: 15px; line-height: 22px; color: var(--text-1); }
 .team-filter { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; margin-bottom: 12px; }
 .team-filter .chip { height: 44px; padding: 0 16px; border-radius: var(--r-m); gap: 8px; }
@@ -620,7 +622,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="matchplan.js?v=23"></script>
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
-<script src="app.js?v=36"></script>
+<script src="app.js?v=37"></script>
 
 </body>
 </html>

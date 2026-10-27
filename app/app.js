@@ -213,6 +213,7 @@
   const positionen = s => { const p = profil(s); return p && Array.isArray(p.position) ? p.position.filter(x => POS[x]) : []; };
   const posKurz = s => positionen(s).join('/');
   const mitPos = s => posKurz(s) ? `${posKurz(s)} · ` : '';
+  const aemter = s => { const p = profil(s); return p && Array.isArray(p.aemter) ? p.aemter.filter(Boolean) : []; };
 
   // ================= Datum (Ortszeit mit falscher UTC-Kennung, UTC-Werte direkt lesen) =================
   const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
@@ -551,6 +552,7 @@
         <span class="kk-name">${esc(s.name)}</span>
         ${pos.length ? `<span class="kk-pos">${pos.map((x, i) => i === 0 ? `<span class="etikett lieb">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}
         ${p && p.satz ? `<span class="kk-satz">„${esc(p.satz)}“</span>` : ''}
+        ${aemter(s).length ? `<span class="kk-amt">${aemter(s).map(esc).join(' · ')}</span>` : ''}
       </button>`;
     };
     const pfeile = `<span class="kk-pfeile"><button class="icobtn" data-karussell="-1" aria-label="Zurück"><span style="display:inline-block;transform:scaleX(-1)">${ico('chevr', 1)}</span></button><button class="icobtn" data-karussell="1" aria-label="Weiter">${ico('chevr', 1)}</button></span>`;
@@ -1060,6 +1062,7 @@
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
     oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:16px;align-items:center;margin-bottom:16px">${ava(s, 72)}<span style="display:grid;gap:8px"><span style="display:flex;gap:8px;align-items:center">${logo(s.team)} ${esc(lang(s.team))}</span>${positionen(s).length ? `<span class="profiltags">${positionen(s).map((x, i) => i === 0 ? `<span class="etikett lieb" title="Lieblingsposition">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}</span></div>
       ${profil(s) && profil(s).satz ? `<p class="profilsatz">${esc(profil(s).satz)}</p>` : ''}
+      ${aemter(s).length ? `<div class="aemter"><span class="micro">Ämter im Team</span><div class="profiltags">${aemter(s).map(a => etikett(esc(a))).join('')}</div></div>` : ''}
       ${s.tw ? `<div class="kacheln">${kachel('Paradenquote', s.tw.rate == null ? '–' : `${Math.round(s.tw.rate * 100)}<span class="pz">%</span>`, `${s.tw.saves} von ${s.tw.onTarget} Würfen aufs Tor`)}${kachel('7-Meter gehalten', s.tw.sevenMeter.onTarget ? `${s.tw.sevenMeter.saves} von ${s.tw.sevenMeter.onTarget}` : 'keine', s.tw.sevenMeter.onTarget ? pct(s.tw.sevenMeter.rate) + ' Quote' : 'noch kein Siebenmeter erfasst')}${kachel('Erfasste Spiele', `${s.tw.matches}`, `${s.tw.minutes} Minuten im Tor`)}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), s.tw.reliable ? 'aus der Paradenquote' : `Paradenquote zählt ab ${GOALKEEPER.MIN_SHOTS} Würfen`) : kachel('Vorbei', `${s.tw.misses}`, 'Würfe neben das Tor')}</div>
       ${modul('Gehalten je Zone', goalZoneSvg(s.tw.zones, 320), { eyebrow: 'Aus Sicht der Werferin', fuss: 'Gehalten von Würfen aufs Tor je Zone, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung von der Bank.' })}` : `${s.torwart ? `<div class="hinweis">${ico('tor')}<span>Torhüterin. Paraden gibt es erst, wenn ein Spiel von der Bank erfasst wurde.</span></div>` : ''}
       <div class="kacheln">${kachel('Tore pro Spiel', dez(s.toreProSpiel), `${s.tore} Tore in ${s.anz} von ${t.spiele.length} Spielen`)}${kachel('Anteil an den Teamtoren', `${Math.round(s.anteil * 100)}<span class="pz">%</span>`, `erste Hälfte ${hz[0]}, zweite ${hz[1]}`)}${kachel('7-Meter', s.smVers ? `${s.sm} von ${s.smVers}` : 'keine', s.smVers ? pct(s.sm / s.smVers) + ' Quote' : 'noch keine Würfe')}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), 'Tore Unterschied, wenn sie spielt') : kachel('Zeitstrafen', `${s.zwei}`, `in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`)}</div>
