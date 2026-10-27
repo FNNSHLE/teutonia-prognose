@@ -545,8 +545,8 @@
     return `${seitenkopf(esc(kurz(fokus)), `Platz ${pl} · ${z.pkt} Punkte · ${esc(ligaName)}`)}${alt}${intro}
       ${erfassungOben ? erfassungKarte(naechstes(fokus)) : ''}<div class="hero-raster">${tafel(fokus)}${kach}</div>
       ${erfassungOben ? '' : erfassungKarte(naechstes(fokus))}
-      ${teamKarussell()}
       ${vibePlayer()}
+      ${teamKarussell()}
       ${newsroom()}
       <div class="zwei-sp">${modul('Form', formHtml, { eyebrow: 'Letzte Spiele', aktion: `<button class="textaktion" data-kader="${fokus}">Kader</button>` })}
       ${modul('Auffälligkeiten', ins.slice(0, 4).map(x => `<div class="satz">${x}</div>`).join('') || '<p class="meta">Noch zu wenig Daten.</p>', { aktion: ins.length > 4 ? '<button class="textaktion" data-aktion="alleInsights">Alle</button>' : '', fuss: `Aus ${B.teams[fokus] ? B.teams[fokus].spiele.length : 0} Spielen mit Spielbericht.` })}</div>
