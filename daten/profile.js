@@ -1,7 +1,7 @@
 // Von Hand gepflegt: Positionen und ein Satz je Spielerin des eigenen Teams (SC Teutonia 10).
 // Schlüssel ist die Spielerinnen-ID von handball.net. position: eine oder mehrere von
 // TW Torhüterin, LA Linksaußen, RL Rückraum links, RM Rückraum Mitte, RR Rückraum rechts, RA Rechtsaußen, KM Kreis.
-// Die erste Position ist die Lieblingsposition, die App hebt sie hervor.
+// Die erste Position ist die Lieblingsposition, die App hebt sie hervor (auch wenn es nur eine ist).
 // satz: ein kurzer Satz über die Spielerin. Leere Felder zeigt die App nicht an.
 window.HB_PROFILE = {
   "1bt1pug": { name: "Laura Kähler", position: ["TW"], satz: "Donnerstag ist Dönerstag." },

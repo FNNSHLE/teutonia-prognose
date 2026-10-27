@@ -545,7 +545,7 @@
       return `<button class="kk" data-spielerin="${esc(s.id)}" aria-label="${esc(s.name)}, Nummer ${s.nummer}">
         <span class="kk-bild">${ava(s, 96)}<span class="kk-nr">${s.nummer}</span></span>
         <span class="kk-name">${esc(s.name)}</span>
-        ${pos.length ? `<span class="kk-pos">${pos.map((x, i) => i === 0 && pos.length > 1 ? `<span class="etikett lieb">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}
+        ${pos.length ? `<span class="kk-pos">${pos.map((x, i) => i === 0 ? `<span class="etikett lieb">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}
         ${p && p.satz ? `<span class="kk-satz">„${esc(p.satz)}“</span>` : ''}
       </button>`;
     };
@@ -1003,7 +1003,7 @@
       return `<tr class="klick" data-spiel="${g.id}" style="${dabei ? '' : 'opacity:.5'}"><td class="l t2">${tagKurz(g.datum)}</td><td class="l" style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${g.heim === s.team ? 'gegen' : 'bei'} ${esc(kurz(geg))}</td><td>${formSun(g, s.team)}</td><td style="font-weight:600">${dabei ? `${tore} Tore` : '<span class="cap t3">nicht dabei</span>'}</td></tr>`;
     }).join('');
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
-    oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:16px;align-items:center;margin-bottom:16px">${ava(s, 72)}<span style="display:grid;gap:8px"><span style="display:flex;gap:8px;align-items:center">${logo(s.team)} ${esc(lang(s.team))}</span>${positionen(s).length ? `<span class="profiltags">${positionen(s).map((x, i) => i === 0 && positionen(s).length > 1 ? `<span class="etikett lieb" title="Lieblingsposition">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}</span></div>
+    oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:16px;align-items:center;margin-bottom:16px">${ava(s, 72)}<span style="display:grid;gap:8px"><span style="display:flex;gap:8px;align-items:center">${logo(s.team)} ${esc(lang(s.team))}</span>${positionen(s).length ? `<span class="profiltags">${positionen(s).map((x, i) => i === 0 ? `<span class="etikett lieb" title="Lieblingsposition">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}</span></div>
       ${profil(s) && profil(s).satz ? `<p class="profilsatz">${esc(profil(s).satz)}</p>` : ''}
       ${s.tw ? `<div class="kacheln">${kachel('Paradenquote', s.tw.rate == null ? '–' : `${Math.round(s.tw.rate * 100)}<span class="pz">%</span>`, `${s.tw.saves} von ${s.tw.onTarget} Würfen aufs Tor`)}${kachel('7-Meter gehalten', s.tw.sevenMeter.onTarget ? `${s.tw.sevenMeter.saves} von ${s.tw.sevenMeter.onTarget}` : 'keine', s.tw.sevenMeter.onTarget ? pct(s.tw.sevenMeter.rate) + ' Quote' : 'noch kein Siebenmeter erfasst')}${kachel('Erfasste Spiele', `${s.tw.matches}`, `${s.tw.minutes} Minuten im Tor`)}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), s.tw.reliable ? 'aus der Paradenquote' : `Paradenquote zählt ab ${GOALKEEPER.MIN_SHOTS} Würfen`) : kachel('Vorbei', `${s.tw.misses}`, 'Würfe neben das Tor')}</div>
       ${modul('Gehalten je Zone', goalZoneSvg(s.tw.zones, 320), { eyebrow: 'Aus Sicht der Werferin', fuss: 'Gehalten von Würfen aufs Tor je Zone, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung von der Bank.' })}` : `${s.torwart ? `<div class="hinweis">${ico('tor')}<span>Torhüterin. Paraden gibt es erst, wenn ein Spiel von der Bank erfasst wurde.</span></div>` : ''}
