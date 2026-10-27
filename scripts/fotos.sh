@@ -46,6 +46,12 @@ while read -r PID URL; do
   fi
 done < "$TMP/liste.txt"
 
+# Zu große Dateien (früher ohne Verkleinerung geladen) nachträglich verkleinern
+for f in daten/fotos/*.jpg; do
+  [ -e "$f" ] || continue
+  [ "$(wc -c < "$f")" -gt 20000 ] && verkleinere "$f"
+done
+
 # Für die App: Spielerin -> Kurzkennung der Quelle (wechselt das Foto, wechselt die Kennung und damit der Cache).
 { printf 'window.HB_FOTOS = {'; erst=1
   while read -r PID URL; do
