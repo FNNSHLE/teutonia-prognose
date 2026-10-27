@@ -428,6 +428,22 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .wa-vorschau { margin: 0; padding: 12px 14px; background: var(--bg-2); border-radius: var(--r-m); white-space: pre-wrap; word-break: break-word; font: 14px/20px var(--font); color: var(--text-1); max-height: 46vh; overflow: auto; }
 .btn.wa-knopf { text-decoration: none; }
 .btn.prim.wa-knopf { background: #1FAF55; color: #fff; }
+/* Team-Song */
+.vibe { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) 64px; gap: 20px; align-items: center; padding: 20px; margin-bottom: var(--gap); border-radius: var(--r-l); background: radial-gradient(120% 140% at 0% 0%, #3A2C10 0%, #17181C 55%, #0E0F12 100%); color: #F2F3F5; overflow: hidden; }
+.vibe::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2px rgba(242,183,5,.55); pointer-events: none; }
+.vibe-cover { width: 96px; height: 96px; border-radius: 14px; object-fit: cover; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.vibe .micro { color: #F5C21B; }
+.vibe .titel { margin: 2px 0 2px; color: #fff; font-size: 22px; }
+.vibe .cap { color: #B9BCC4; }
+.vibe-zeit { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 12px; font-size: 12px; color: #B9BCC4; font-variant-numeric: tabular-nums; }
+.vibe-zeit input[type=range] { width: 100%; accent-color: #F5C21B; height: 20px; margin: 0; }
+.vibe-knopf { width: 64px; height: 64px; border-radius: 50%; border: 0; display: grid; place-items: center; background: #F5C21B; color: #1A1400; box-shadow: 0 6px 18px rgba(245,194,27,.35); transition: transform var(--t-fast); }
+.vibe-knopf:active { transform: scale(.94); }
+.vibe-knopf .ico { width: 28px; height: 28px; }
+.vibe-knopf.an { animation: vibepuls 1.4s ease-in-out infinite; }
+@keyframes vibepuls { 50% { box-shadow: 0 0 0 10px rgba(245,194,27,.12), 0 6px 18px rgba(245,194,27,.35); } }
+@media (prefers-reduced-motion: reduce) { .vibe-knopf.an { animation: none; } }
+@media (max-width: 599px) { .vibe { grid-template-columns: 72px minmax(0, 1fr) 56px; gap: 14px; padding: 16px; } .vibe-cover { width: 72px; height: 72px; } .vibe .titel { font-size: 19px; } .vibe-knopf { width: 56px; height: 56px; } .vibe-zeit { grid-column: 1 / -1; margin-top: 4px; } }
 /* Newsroom: Verweis auf Instagram */
 .news { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 16px; align-items: center; }
 .news-ico { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--accent-tint); color: var(--accent); }
@@ -623,7 +639,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="matchplan.js?v=23"></script>
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
 
 </body>
 </html>

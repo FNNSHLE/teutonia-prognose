@@ -183,6 +183,8 @@
       tafel: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/>',
       kamera: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',
       extern: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+      play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>',
+      pause: '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" stroke="none"/>',
       stern: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
       plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4"/>',
       kalender: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -544,6 +546,7 @@
       ${erfassungOben ? erfassungKarte(naechstes(fokus)) : ''}<div class="hero-raster">${tafel(fokus)}${kach}</div>
       ${erfassungOben ? '' : erfassungKarte(naechstes(fokus))}
       ${teamKarussell()}
+      ${vibePlayer()}
       ${newsroom()}
       <div class="zwei-sp">${modul('Form', formHtml, { eyebrow: 'Letzte Spiele', aktion: `<button class="textaktion" data-kader="${fokus}">Kader</button>` })}
       ${modul('Auffälligkeiten', ins.slice(0, 4).map(x => `<div class="satz">${x}</div>`).join('') || '<p class="meta">Noch zu wenig Daten.</p>', { aktion: ins.length > 4 ? '<button class="textaktion" data-aktion="alleInsights">Alle</button>' : '', fuss: `Aus ${B.teams[fokus] ? B.teams[fokus].spiele.length : 0} Spielen mit Spielbericht.` })}</div>
@@ -633,6 +636,40 @@
       <pre class="wa-vorschau">${esc(t)}</pre>
       <div style="display:grid;gap:8px;margin-top:12px"><a class="btn prim wa-knopf" href="${whatsappLink()}" target="_blank" rel="noopener">${ico('teilen', 1)} In WhatsApp öffnen</a>
       <button class="btn" data-aktion="waKopieren">Text kopieren</button></div>`);
+  }
+
+  // ================= Team-Song „Teutonia, Teutonia“ =================
+  // Ein einziges Audio-Objekt außerhalb des DOM, damit die Musik beim Wechsel der Bereiche weiterläuft.
+  const SONG = { src: 'assets/teutonia-vibe.mp3', cover: 'assets/teutonia-vibe-cover.jpg', titel: 'Teutonia, Teutonia', dauer: 184 };
+  let songAudio = null;
+  const song = () => songAudio || (songAudio = Object.assign(new Audio(), { preload: 'none', src: SONG.src }));
+  const mmss = t => { t = Math.max(0, Math.floor(t || 0)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+  function vibePlayer() {
+    if (fokus !== UNSER) return '';
+    const a = songAudio, laeuft = a && !a.paused, pos = a ? a.currentTime : 0, dauer = (a && a.duration) || SONG.dauer;
+    return `<section class="vibe nicht-druck" aria-label="Team-Song">
+      <img class="vibe-cover" src="${SONG.cover}" alt="" width="96" height="96" loading="lazy">
+      <div class="vibe-txt">
+        <span class="micro">Unser Spirit passt in keine Statistik</span>
+        <h2 class="titel">Hier ist unser Vibe!</h2>
+        <span class="cap">„${SONG.titel}“ · der Song über ${esc(kurz(UNSER))}</span>
+        <div class="vibe-zeit"><span id="vibeJetzt">${mmss(pos)}</span><input type="range" id="vibeLeiste" min="0" max="${Math.round(dauer)}" step="1" value="${Math.round(pos)}" aria-label="Position im Song"><span id="vibeDauer">${mmss(dauer)}</span></div>
+      </div>
+      <button class="vibe-knopf" data-aktion="vibe" aria-label="${laeuft ? 'Pause' : 'Abspielen'}">${ico(laeuft ? 'pause' : 'play')}</button>
+    </section>`;
+  }
+  function vibeAnzeige() {
+    const a = songAudio; if (!a) return;
+    const k = $('.vibe-knopf'), l = $('#vibeLeiste'), j = $('#vibeJetzt'), d = $('#vibeDauer');
+    if (k) { k.innerHTML = ico(a.paused ? 'play' : 'pause'); k.setAttribute('aria-label', a.paused ? 'Abspielen' : 'Pause'); k.classList.toggle('an', !a.paused); }
+    if (l && !l.matches(':active')) { if (a.duration) l.max = Math.round(a.duration); l.value = Math.round(a.currentTime); }
+    if (j) j.textContent = mmss(a.currentTime);
+    if (d && a.duration) d.textContent = mmss(a.duration);
+  }
+  function vibeUmschalten() {
+    const a = song();
+    if (!a._an) { a._an = true; ['play', 'pause', 'timeupdate', 'loadedmetadata', 'ended'].forEach(ev => a.addEventListener(ev, vibeAnzeige)); }
+    if (a.paused) a.play().catch(() => {}); else a.pause();
   }
 
   // ================= Newsroom =================
@@ -1142,6 +1179,7 @@
       if (a === 'zu') return schliesseSheet();
       if (a === 'team') return teamWechsler();
       if (a === 'mehr') return mehrSheet();
+      if (a === 'vibe') return vibeUmschalten();
       if (a === 'whatsapp') return whatsappSheet();
       if (a === 'waKopieren') { const t = whatsappText(); const ok = () => { el.textContent = 'Kopiert'; }; if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => {}); return; }
       if (a === 'kabine') { document.body.classList.add('druck-kabine'); window.print(); return; }
@@ -1197,6 +1235,7 @@
       return laborErgebnis();
     }
     if (t.id === 'spSuche') { ui.spSuche = t.value; return spListe(); }
+    if (t.id === 'vibeLeiste') { const a = song(); a.currentTime = Number(t.value); const j = $('#vibeJetzt'); if (j) j.textContent = mmss(t.value); return; }
   });
   window.addEventListener('hashchange', () => { if (bereichAusHash()) { bereich = bereichAusHash(); merk.set('bereich', bereich); } schliesseSheet(); zeichne(); });
   if (/^#whatsapp$/i.test(location.hash)) { history.replaceState(null, '', location.pathname + location.search); if (fokus !== UNSER) { fokus = UNSER; } wechsle('matchplan'); whatsappSheet(); }
