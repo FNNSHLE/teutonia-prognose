@@ -13,7 +13,7 @@ window.HB_PROFILE = {
   "1jac3bl": { name: "Carola Maack", position: ["RA", "LA"], satz: "3-fach-Mama Sita als Flügelstürmer." },
   "0jotezw": { name: "Silja Paul", position: [], satz: "" },
   "1bjxdb2": { name: "Zoé Raethe", position: [], satz: "" },
-  "0liff2d": { name: "Nele Petersen", position: [], satz: "" },
+  "0liff2d": { name: "Nele Petersen", position: ["RM", "LA", "RA"], satz: "Herausforderung – ich nenne es nächste Aufgabe." },
   "1r2lvr5": { name: "Veronika Graß", position: ["RM"], satz: "Bananenbrot als Schlüssel zur Gelassenheit." },
   "0iv7e52": { name: "Cannur Yaren", position: [], satz: "" },
   "0r4agwv": { name: "Flora Trautwein", position: ["LA", "RL"], satz: "Ich lauf euch allen davon." },
