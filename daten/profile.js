@@ -10,7 +10,7 @@ window.HB_PROFILE = {
   "1lqwdic": { name: "Irena Goetze", position: [], satz: "" },
   "0n1j8do": { name: "Katharina Schneeberg", position: ["RL", "RR"], satz: "Harte Pässe sind ihr Ding." },
   "13vxzhb": { name: "Sassina Schwaderer", position: [], satz: "" },
-  "1jac3bl": { name: "Carola Maack", position: [], satz: "" },
+  "1jac3bl": { name: "Carola Maack", position: ["RA", "LA"], satz: "3-fach-Mama Sita als Flügelstürmer." },
   "0jotezw": { name: "Silja Paul", position: [], satz: "" },
   "1bjxdb2": { name: "Zoé Raethe", position: [], satz: "" },
   "0liff2d": { name: "Nele Petersen", position: [], satz: "" },
