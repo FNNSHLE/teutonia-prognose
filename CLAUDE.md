@@ -43,6 +43,7 @@ daten/spielberichte.js     Generated: window.HB_DETAILS (lineups + events per fi
 daten/torwart.js           Generated: window.HB_TORWART = { goalkeepers: permanent list, records: [...] } (see daten/torwart/)
 daten/fotos.js             Generated: window.HB_FOTOS = { playerId: key } for the own team's photos (see "Player photos")
 daten/fotos/               Generated: <playerId>.jpg (128 px) + quellen.txt (playerId photo_url), own team only
+daten/profile.js           Hand-maintained: window.HB_PROFILE = { playerId: {name, position: [TW|LA|RL|RM|RR|RA|KM], satz} }, own team only
 daten/cache/<id>_l.json    Raw lineups per match (handball.net response)
 daten/cache/<id>_e.json    Raw live-ticker events per match
 daten/torwart/schema.json  JSON Schema of the goalkeeper record (tracker export)
