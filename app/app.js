@@ -165,6 +165,7 @@
   function ico(n, k) {
     const P = {
       tafel: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/>',
+      stern: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
       plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4"/>',
       kalender: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
       tabelle: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
@@ -958,7 +959,7 @@
       return `<tr class="klick" data-spiel="${g.id}" style="${dabei ? '' : 'opacity:.5'}"><td class="l t2">${tagKurz(g.datum)}</td><td class="l" style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${g.heim === s.team ? 'gegen' : 'bei'} ${esc(kurz(geg))}</td><td>${formSun(g, s.team)}</td><td style="font-weight:600">${dabei ? `${tore} Tore` : '<span class="cap t3">nicht dabei</span>'}</td></tr>`;
     }).join('');
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
-    oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:16px;align-items:center;margin-bottom:16px">${ava(s, 72)}<span style="display:grid;gap:8px"><span style="display:flex;gap:8px;align-items:center">${logo(s.team)} ${esc(lang(s.team))}</span>${positionen(s).length ? `<span class="profiltags">${positionen(s).map(x => etikett(POS[x], true)).join('')}</span>` : ''}</span></div>
+    oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:16px;align-items:center;margin-bottom:16px">${ava(s, 72)}<span style="display:grid;gap:8px"><span style="display:flex;gap:8px;align-items:center">${logo(s.team)} ${esc(lang(s.team))}</span>${positionen(s).length ? `<span class="profiltags">${positionen(s).map((x, i) => i === 0 && positionen(s).length > 1 ? `<span class="etikett lieb" title="Lieblingsposition">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}</span></div>
       ${profil(s) && profil(s).satz ? `<p class="profilsatz">${esc(profil(s).satz)}</p>` : ''}
       ${s.tw ? `<div class="kacheln">${kachel('Paradenquote', s.tw.rate == null ? '–' : `${Math.round(s.tw.rate * 100)}<span class="pz">%</span>`, `${s.tw.saves} von ${s.tw.onTarget} Würfen aufs Tor`)}${kachel('7-Meter gehalten', s.tw.sevenMeter.onTarget ? `${s.tw.sevenMeter.saves} von ${s.tw.sevenMeter.onTarget}` : 'keine', s.tw.sevenMeter.onTarget ? pct(s.tw.sevenMeter.rate) + ' Quote' : 'noch kein Siebenmeter erfasst')}${kachel('Erfasste Spiele', `${s.tw.matches}`, `${s.tw.minutes} Minuten im Tor`)}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), s.tw.reliable ? 'aus der Paradenquote' : `Paradenquote zählt ab ${GOALKEEPER.MIN_SHOTS} Würfen`) : kachel('Vorbei', `${s.tw.misses}`, 'Würfe neben das Tor')}</div>
       ${modul('Gehalten je Zone', goalZoneSvg(s.tw.zones, 320), { eyebrow: 'Aus Sicht der Werferin', fuss: 'Gehalten von Würfen aufs Tor je Zone, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung von der Bank.' })}` : `${s.torwart ? `<div class="hinweis">${ico('tor')}<span>Torhüterin. Paraden gibt es erst, wenn ein Spiel von der Bank erfasst wurde.</span></div>` : ''}
