@@ -226,8 +226,8 @@
     { id: 'labor', name: 'Durchspielen', kurz: 'Durchspielen', ico: 'labor' },
     { id: 'spielerinnen', name: 'Spielerinnen', kurz: 'Spielerinnen', ico: 'trikot' },
     { id: 'teams', name: 'Teams', kurz: 'Teams', ico: 'schilde' },
-    { id: 'methodik', name: 'So rechnet Anwurf', kurz: 'Methodik', ico: 'info' },
     { id: 'erfassung', name: 'Torhüterin erfassen', kurz: 'Erfassung', ico: 'tor' },
+    { id: 'methodik', name: 'So rechnet Anwurf', kurz: 'Methodik', ico: 'info' },
   ];
   // Bereich per Link öffnen, z. B. app/index.html#erfassung für die Bank
   const bereichAusHash = () => { const h = location.hash.replace('#', '').toLowerCase(); return BEREICHE.some(b => b.id === h) ? h : null; };
