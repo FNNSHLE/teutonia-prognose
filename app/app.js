@@ -827,7 +827,14 @@
   }
 
   // ================= Durchspielen (Labor) =================
-  function laborStandard(g) { labor.dabei = ueblicheBesetzung(B, [g.heim, g.gast]); labor.form = { f: 0, g: 0 }; labor.neutral = false; }
+  function laborStandard(g) {
+    labor.dabei = ueblicheBesetzung(B, [g.heim, g.gast]); labor.form = { f: 0, g: 0 }; labor.neutral = false;
+    // Eigenes Team: Zu- und Absagen aus SpielerPlus (daten/zusagen.js) und „immer raus“ übernehmen
+    if ((g.heim === UNSER || g.gast === UNSER) && B.teams[UNSER]) {
+      const z = zusagenFuer(g);
+      B.teams[UNSER].liste.forEach(s => { if (z) labor.dabei[s.id] = z.dabei.includes(s.id); if (immerRaus.includes(s.id)) labor.dabei[s.id] = false; });
+    }
+  }
   function laborRechne(g, ohne) {
     const s = sicht(g), fHeim = s.dabei ? s.heim : true;
     const dab = ohne ? Object.assign({}, labor.dabei, { [ohne]: false }) : labor.dabei;
@@ -861,7 +868,7 @@
     const t = B.teams[tid];
     if (!t) return modul(esc(kurz(tid)), '<p class="meta" style="margin:0">Für dieses Team liegen noch keine Spielberichte vor.</p>');
     const an = t.liste.filter(s => labor.dabei[s.id]).length;
-    return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei</span></div>
+    return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei${tid === UNSER && zusagenFuer(g) ? ` · Zusagen aus SpielerPlus, Stand ${datumKurz(zusagenFuer(g).stand)}` : ''}</span></div>
       <div class="zeilen">${t.liste.slice().sort((a, b) => a.nummer - b.nummer).map(s => {
         const dab = !!labor.dabei[s.id], eig = labor.eigene[s.id], w = eig != null ? eig : s.einfluss;
         const tagText = s.torwart ? 'Torhüterin' : !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
