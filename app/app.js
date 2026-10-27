@@ -733,10 +733,8 @@
     const kd = kaderVon(fokus);
     const o = optimiereAufstellung(modell, g, fokus, B, kd.verf, kd.pins, labor.eigene);
     const verf = t.liste.filter(s => kd.verf[s.id] !== false).length;
-    const rO = drei(o.chance.s, o.chance.u, o.chance.n), rU = drei(o.chanceUeblich.s, o.chanceUeblich.u, o.chanceUeblich.n);
-    const delta = rO[0] - rU[0];
+    const rO = drei(o.chance.s, o.chance.u, o.chance.n);
     const wertVon = s => { const a = o.auswahl.find(x => x.s === s); if (a) return a.wert; const gst = o.gestrichen.find(x => x.s === s); return gst ? gst.wert : null; };
-    const anders = t.liste.filter(s => (kd.verf[s.id] !== false) !== ueblichDabei(s));
     const sortiert = t.liste.slice().sort((a, b) => (kd.verf[a.id] === false) - (kd.verf[b.id] === false) || (wertVon(b) || 0) - (wertVon(a) || 0));
     const zeile = s => {
       const an = kd.verf[s.id] !== false, w = wertVon(s), pin = !!kd.pins[s.id], im = o.auswahl.some(x => x.s === s);
@@ -756,10 +754,10 @@
         <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, tag !== 'Torhüterin') : ''}</b><span class="cap zwei"><span class="nur-mobil">#${s.nummer} · ${tag && tag !== 'Torhüterin' ? tag + ' · ' : ''}</span>${mitPos(s)}${info.join(' · ')}</span></span>
         <span style="display:flex;align-items:center;gap:4px">${nadel}<span class="wirk">${wert}</span></span></label>`;
     };
-    const fehlen = anders.filter(s => kd.verf[s.id] === false), dazu = anders.filter(s => kd.verf[s.id] !== false && belegt(s, labor.eigene));
     const nameListe = l => l.length > 3 ? `${l.slice(0, 2).map(s => esc(s.name)).join(', ')} und ${l.length - 2} weitere` : l.map(s => esc(s.name)).join(', ');
-    const vergleich = [fehlen.length ? `Nicht dabei: ${nameListe(fehlen)}.` : '', dazu.length ? `Zusätzlich zur Stammbesetzung: ${nameListe(dazu)}.` : ''].join(' ').trim() || 'Gleich wie die Stammbesetzung.';
-    const ergebnis = `<div class="kacheln" style="margin-bottom:12px">${kachel('Mit diesem Kader', `${rO[0]}<span class="pz">%</span>`, `${o.auswahl.length} im Spielbericht (höchstens ${MATCHPLAN.K})`, delta ? `<span class="delta ${delta > 0 ? 'plus' : 'minus'}">${delta > 0 ? '+' : MINUS}${Math.abs(delta)}</span>` : '')}${kachel('Stammbesetzung', `${rU[0]}<span class="pz">%</span>`, 'wer bei mindestens der Hälfte der Spiele dabei war')}</div><p class="meta" style="margin:0 0 8px">${vergleich}</p>`;
+    const nichtDabei = t.liste.filter(s => kd.verf[s.id] === false);
+    const vergleich = nichtDabei.length ? `Nicht dabei: ${nameListe(nichtDabei)}.` : 'Alle sind dabei.';
+    const ergebnis = `<div class="kacheln" style="margin-bottom:12px;grid-template-columns:1fr">${kachel('Siegchance mit diesem Kader', `${rO[0]}<span class="pz">%</span>`, `${o.auswahl.length} im Spielbericht (höchstens ${MATCHPLAN.K})`)}</div><p class="meta" style="margin:0 0 8px">${vergleich}</p>`;
     const warn = [];
     if (o.ohnePins && !TW.teams[fokus]) warn.push('Torhüterinnen erfassen die Spielberichte nicht. Markiere sie mit der Stecknadel, dann stehen sie immer im Kader.');
     if (o.gestrichen.length) warn.push(`Nicht im Spielbericht (Grenze ${MATCHPLAN.K}): ${o.gestrichen.map(x => esc(x.s.name)).join(', ')}.`);
@@ -767,7 +765,7 @@
       ${zusagenFuer(g) ? `<div class="hinweis" style="margin-bottom:8px">${ico('haken', 1)}<span>Zu- und Absagen aus SpielerPlus übernommen, Stand ${datumKurz(zusagenFuer(g).stand)}. Umschalten geht weiter von Hand.</span></div>` : ''}
       <div class="listenkopf"><span class="meta">${verf} von ${t.liste.length} verfügbar</span><button class="textaktion" data-aktion="alleVerf">Alle verfügbar</button></div>
       <div class="zeilen">${sortiert.map(zeile).join('')}</div>`,
-      { eyebrow: 'Aufstellung', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen zählen über ihre Paradenquote aus der eigenen Erfassung (ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor), vorher neutral. Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
+      { eyebrow: 'Aufstellung', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance ungefähr an ihr hängen. Mehr Spielerinnen bringen nur begrenzt mehr, weil sieben auf dem Feld stehen. Torhüterinnen zählen über ihre Paradenquote aus der eigenen Erfassung (ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor), vorher neutral. Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
   }
 
   // ================= Spiele =================
@@ -863,7 +861,7 @@
     const t = B.teams[tid];
     if (!t) return modul(esc(kurz(tid)), '<p class="meta" style="margin:0">Für dieses Team liegen noch keine Spielberichte vor.</p>');
     const an = t.liste.filter(s => labor.dabei[s.id]).length;
-    return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei</span><button class="textaktion" data-aktion="laborUeblich">Stammbesetzung</button></div>
+    return modul(`${logo(tid, 24)} ${esc(kurz(tid))}`, `<div class="listenkopf" style="padding:0 0 4px"><span class="meta">${an} von ${t.liste.length} dabei</span></div>
       <div class="zeilen">${t.liste.slice().sort((a, b) => a.nummer - b.nummer).map(s => {
         const dab = !!labor.dabei[s.id], eig = labor.eigene[s.id], w = eig != null ? eig : s.einfluss;
         const tagText = s.torwart ? 'Torhüterin' : !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
@@ -1009,7 +1007,6 @@
       ['Prozentpunkte', 'Unterschied zwischen zwei Prozentwerten. Von 42 % auf 27 % sind 15 Prozentpunkte.'],
       ['Teamstärke', 'So viele Tore ist ein Team im Schnitt besser oder schlechter als ein Durchschnittsteam der Liga, auf neutralem Platz.'],
       ['Spielbericht', 'Spiel mit Aufstellung, Torschützinnen und Liveticker auf handball.net.'],
-      ['Stammbesetzung', 'Alle, die bei mindestens der Hälfte der Spiele dabei waren.'],
       ['Torwirkung', 'So viele Tore Unterschied macht eine Spielerin im Schnitt, wenn sie spielt. Torhüterinnen und Abwehrarbeit fehlen darin.'],
       ['Am grünen Tisch', 'Spiel, das per Urteil gewertet wurde.'],
       ['Paradenquote', 'Anteil der Würfe aufs Tor, die die Torhüterin hält. Kommt aus der eigenen Erfassung von der Bank, nicht von handball.net.'],
