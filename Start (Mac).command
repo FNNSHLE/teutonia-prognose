@@ -79,6 +79,9 @@ fi
     [ $erst = 1 ] || printf ','; erst=0; cat "$f"
   done; printf ']};\n'; } > daten/torwart.js
 
+# Spielerinnenfotos des eigenen Teams (nur mit Zustimmung, siehe scripts/fotos.sh)
+bash scripts/fotos.sh || true
+
 # Browser-Cache umgehen: Datenstand als Versionsmerkmal in die Seite schreiben
 sed -i '' -E "s/\\?t=[0-9]+/?t=$(date +%s)/g" app/index.html
 

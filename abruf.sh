@@ -77,6 +77,9 @@ fi
     [ $erst = 1 ] || printf ','; erst=0; cat "$f"
   done; printf ']};\n'; } > daten/torwart.js
 
+# Spielerinnenfotos des eigenen Teams (nur mit Zustimmung, siehe scripts/fotos.sh)
+bash scripts/fotos.sh || true
+
 # Browser-Cache umgehen
 STAMP=$(date +%s)
 sed -E "s/\?t=[0-9]+/?t=$STAMP/g" app/index.html > "$TMP/index.html" && cat "$TMP/index.html" > app/index.html

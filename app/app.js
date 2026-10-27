@@ -192,6 +192,16 @@
     const img = t && t.logo ? `<img alt="" loading="lazy" src="${esc(t.logo)}" onload="this.classList.add('da')" onerror="this.remove()">` : '';
     return `<span class="logo l${g}" aria-hidden="true"><span class="mono">${esc(t ? t.mono : '?')}</span>${img}</span>`;
   }
+  // Spielerin als runder Avatar. Fotos gibt es nur fürs eigene Team (nur dieses hat zugestimmt, scripts/fotos.sh);
+  // alle anderen, auch ohne Foto, bekommen Initialen.
+  const FOTOS = window.HB_FOTOS || {};
+  const initialen = name => String(name || '').trim().split(/\s+/).filter(Boolean).map((w, i, a) => i === 0 || i === a.length - 1 ? w.charAt(0) : '').join('').toUpperCase() || '?';
+  function avatar(id, name, team, g = 32) {
+    const k = Number(team) === Number(UNSER) && FOTOS[id];
+    const img = k ? `<img alt="" loading="lazy" src="../daten/fotos/${encodeURIComponent(id)}.jpg?u=${encodeURIComponent(k)}" onload="this.classList.add('da')" onerror="this.remove()">` : '';
+    return `<span class="ava a${g}" aria-hidden="true"><span class="ini">${esc(initialen(name))}</span>${img}</span>`;
+  }
+  const ava = (s, g) => avatar(s.id, s.name, s.team, g);
 
   // ================= Datum (Ortszeit mit falscher UTC-Kennung, UTC-Werte direkt lesen) =================
   const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
@@ -543,22 +553,22 @@
       else if (e.id === 'DI2') links = `<span class="kpi">${dez(K[fokus].zweiProSpiel)}</span><small>Zeitstrafen pro Spiel</small>`;
       else if (e.id === 'TW1') links = `<span class="kpi gut">${Math.round(e.person.tw.rate * 100)}<span class="pz">%</span></span><small>gehalten</small>`;
       else if (e.id === 'TW3') links = `<span class="kpi gut">${e.person.tw.sevenMeter.saves}<span class="pz">/${e.person.tw.sevenMeter.onTarget}</span></span><small>7 m gehalten</small>`;
-      return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3>${esc(e.titel)}</h3><p>${esc(e.text)}</p><div class="belege">${ausSpielen(e.n)}</div></div></article>`;
+      return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3${e.person ? ' style="display:flex;gap:8px;align-items:center"' : ''}>${e.person ? ava(e.person, 28) : ''}<span>${esc(e.titel)}</span></h3><p>${esc(e.text)}</p><div class="belege">${ausSpielen(e.n)}</div></div></article>`;
     };
     const karten = mp.empfehlungen.filter(e => e.id !== 'AU6');
     const empf = karten.length ? `<div class="karten zwei">${karten.map(karte).join('')}</div>` : modul('', `<div class="leer">${ico('plan')}<b>Noch zu früh für Empfehlungen</b><p>Ab 2 Spielberichten je Team stehen hier Hinweise zur Aufstellung. Bisher: ${n || 0}.</p></div>`);
-    const siebenmeter = au6 ? modul('7-Meter-Reihenfolge', `<div class="siebenmeter">${au6.siebenmeter.slice(0, 4).map((x, i) => `<div class="platz7"><span class="nr">${i + 1}.</span><span><b style="font-weight:600">${esc(x.s.name)}</b><span class="cap t2" style="display:block">#${x.s.nummer}</span></span><span style="font-weight:600">${x.s.sm} von ${x.s.smVers}</span></div>`).join('')}</div>`,
+    const siebenmeter = au6 ? modul('7-Meter-Reihenfolge', `<div class="siebenmeter">${au6.siebenmeter.slice(0, 4).map((x, i) => `<div class="platz7"><span class="nr">${i + 1}.</span><span style="display:flex;gap:12px;align-items:center;min-width:0">${ava(x.s, 40)}<span style="min-width:0"><b style="font-weight:600">${esc(x.s.name)}</b><span class="cap t2" style="display:block">#${x.s.nummer}</span></span></span><span style="font-weight:600">${x.s.sm} von ${x.s.smVers}</span></div>`).join('')}</div>`,
       { id: 'mp7m', fuss: `Reihenfolge nach Trefferquote, bei wenigen Würfen vorsichtig Richtung Ligaschnitt (${pct(LIGA.smQuote)}) gezogen. Das Team trifft ${B.teams[fokus].liste.reduce((a, x) => a + x.sm, 0)} von ${B.teams[fokus].liste.reduce((a, x) => a + x.smVers, 0)}.` }) : '';
     const befund = b => `<div class="satz"><span class="micro">${b.kat}</span><div style="font-weight:600;margin:2px 0">${esc(b.titel)}</div><div class="t2">${esc(b.text)}</div></div>`;
     const phasenBef = mp.befunde.filter(b => b.id === 'PH1' || b.id === 'PH2'), weitere = mp.befunde.filter(b => b.id !== 'PH1' && b.id !== 'PH2' && b.id !== 'TW4');
-    const gegnerinnen = mp.gegnerinnen.length ? `<div class="mkopf" style="margin-top:8px"><div><span class="micro">${esc(kurz(mp.gegner))}</span><h2 class="titel">Gegnerinnen im Blick</h2></div></div><div class="karten zwei">${mp.gegnerinnen.map(x => `<article class="karte"><div class="eff"><span class="kpi">#${x.s.nummer}</span></div><div><h3 style="margin-top:0">${esc(x.s.name)}</h3><div class="tags">${x.tags.map(t => etikett(esc(t.replace(/(\d)× 2'/, '$1 Zeitstrafen').replace(' Sp.', ' Spielen').replace('HZ', 'Hälfte')))).join('')}</div></div></article>`).join('')}</div>` : '';
+    const gegnerinnen = mp.gegnerinnen.length ? `<div class="mkopf" style="margin-top:8px"><div><span class="micro">${esc(kurz(mp.gegner))}</span><h2 class="titel">Gegnerinnen im Blick</h2></div></div><div class="karten zwei">${mp.gegnerinnen.map(x => `<article class="karte"><div class="eff"><span class="kpi">#${x.s.nummer}</span></div><div><h3 style="margin-top:0;display:flex;gap:8px;align-items:center">${ava(x.s, 28)}<span>${esc(x.s.name)}</span></h3><div class="tags">${x.tags.map(t => etikett(esc(t.replace(/(\d)× 2'/, '$1 Zeitstrafen').replace(' Sp.', ' Spielen').replace('HZ', 'Hälfte')))).join('')}</div></div></article>`).join('')}</div>` : '';
     const twTeam = TW.teams[fokus];
     // Siegchance je Torhüterin: sie im Tor, die anderen Torhüterinnen nicht, sonst die übliche Besetzung
     const keeperinnen = B.teams[fokus].liste.filter(x => x.tw || x.torwart);
     const basisDabei = ueblicheBesetzung(B, [fokus, mp.gegner]);
     const mitIhr = k => { const d = Object.assign({}, basisDabei); keeperinnen.forEach(x => d[x.id] = x.id === k.id); return chanceFokus(modell, g, fokus, B, d, labor.eigene).s; };
     const belegbar = keeperinnen.some(x => x.tw && x.tw.reliable);
-    const imTor = twTeam ? modul('Im Tor', `<div class="zeilen">${keeperinnen.filter(x => x.tw).sort((a, b) => mitIhr(b) - mitIhr(a) || b.tw.onTarget - a.tw.onTarget).map(x => `<button class="spiel" style="grid-template-columns:minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(x.id)}"><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(x.name)}</span></div><div style="height:auto"><span class="cap t2">#${x.nummer} · ${x.tw.saves} von ${x.tw.onTarget} gehalten (${x.tw.onTarget ? pct(x.tw.rate) : '–'})${x.tw.sevenMeter.onTarget ? ` · 7 m ${x.tw.sevenMeter.saves}/${x.tw.sevenMeter.onTarget}` : ''} · ${x.tw.matches} Spiel${x.tw.matches === 1 ? '' : 'e'}</span></div></span><span style="text-align:right"><span style="font-weight:600;font-size:17px">${pct(mitIhr(x))}</span><span class="cap t3" style="display:block">Siegchance mit ihr</span></span></button>`).join('')}</div>`,
+    const imTor = twTeam ? modul('Im Tor', `<div class="zeilen">${keeperinnen.filter(x => x.tw).sort((a, b) => mitIhr(b) - mitIhr(a) || b.tw.onTarget - a.tw.onTarget).map(x => `<button class="spiel" style="grid-template-columns:40px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(x.id)}">${ava(x, 40)}<span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(x.name)}</span></div><div style="height:auto"><span class="cap t2">#${x.nummer} · ${x.tw.saves} von ${x.tw.onTarget} gehalten (${x.tw.onTarget ? pct(x.tw.rate) : '–'})${x.tw.sevenMeter.onTarget ? ` · 7 m ${x.tw.sevenMeter.saves}/${x.tw.sevenMeter.onTarget}` : ''} · ${x.tw.matches} Spiel${x.tw.matches === 1 ? '' : 'e'}</span></div></span><span style="text-align:right"><span style="font-weight:600;font-size:17px">${pct(mitIhr(x))}</span><span class="cap t3" style="display:block">Siegchance mit ihr</span></span></button>`).join('')}</div>`,
       { eyebrow: 'Eigene Erfassung', fuss: `Siegchance mit ihr im Tor und der üblichen Besetzung sonst${belegbar ? '' : `, vorerst gleich für alle: ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor zählt die Paradenquote`}. Team hält ${pct(twTeam.rate)} aus ${twTeam.matches} erfassten Spiel${twTeam.matches === 1 ? '' : 'en'}${TW.league.records > twTeam.matches ? `, alle erfassten Teams ${pct(TW.league.rate)}` : ''}.` }) : '';
     const tw4 = mp.befunde.find(b => b.id === 'TW4');
     const hinspiel = tw4 ? modul(`Letztes Spiel gegen ${esc(kurz(mp.gegner))}`, `${goalZoneSvg(tw4.zonen, 320)}<div class="satz" style="margin-top:8px"><div style="font-weight:600;margin:2px 0">${esc(tw4.titel)}</div><div class="t2">${esc(tw4.text)}</div></div>`, { eyebrow: 'Wohin die Gegentore kamen', fuss: 'Gehalten von Würfen aufs Tor je Zone aus Sicht der Werferin, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung.' }) : '';
@@ -611,10 +621,10 @@
       // Torhüterinnen aus der festen Liste stehen immer im Kader, die Stecknadel entfällt für sie.
       const nadel = s.torwart ? `<span class="pin an" title="Torhüterin, steht immer im Kader" aria-label="Torhüterin, immer dabei">${ico('pin')}</span>`
         : `<button type="button" class="pin${pin ? ' an' : ''}" data-pin="${esc(s.id)}" aria-pressed="${pin}" aria-label="${esc(s.name)} immer dabei" title="Immer dabei, etwa Torhüterin">${ico('pin')}</button>`;
-      return `<label class="sz label${an && im ? '' : ' aus'}">
+      return `<label class="sz label mitbild${an && im ? '' : ' aus'}">
         <input type="checkbox" role="switch" class="schalter" data-verf="${esc(s.id)}" ${an ? 'checked' : ''} aria-label="${esc(s.name)} dabei">
-        <span class="nr">#${s.nummer}</span>
-        <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, tag !== 'Torhüterin') : ''}</b><span class="cap zwei"><span class="nur-mobil">${tag && tag !== 'Torhüterin' ? tag + ' · ' : ''}</span>${info.join(' · ')}</span></span>
+        <span class="nr">#${s.nummer}</span>${ava(s, 28)}
+        <span class="wer"><b><span>${esc(s.name)}</span>${tag ? etikett(tag, tag !== 'Torhüterin') : ''}</b><span class="cap zwei"><span class="nur-mobil">#${s.nummer} · ${tag && tag !== 'Torhüterin' ? tag + ' · ' : ''}</span>${info.join(' · ')}</span></span>
         <span style="display:flex;align-items:center;gap:4px">${nadel}<span class="wirk">${wert}</span></span></label>`;
     };
     const fehlen = anders.filter(s => kd.verf[s.id] === false), dazu = anders.filter(s => kd.verf[s.id] !== false && belegt(s, labor.eigene));
@@ -728,8 +738,8 @@
         const dab = !!labor.dabei[s.id], eig = labor.eigene[s.id], w = eig != null ? eig : s.einfluss;
         const tagText = s.torwart ? 'Torhüterin' : !ueblichDabei(s) ? (belegt(s, labor.eigene) ? 'selten dabei' : 'noch keine Tore erfasst') : '';
         const rechts = TRAINERIN ? `<button type="button" class="wirk" data-einfluss="${esc(s.id)}" title="Eigene Einschätzung">${vz(w)}<small>Tore</small></button>` : `<span class="wirk"><small>${s.torwart ? (s.tw && s.tw.onTarget ? `${pct(s.tw.rate)} gehalten` : 'Torhüterin') : `${dez(s.toreProSpiel)} Tore/Sp.`}</small></span>`;
-        return `<label class="sz label${dab ? '' : ' aus'}" data-zeile="${esc(s.id)}"><input type="checkbox" role="switch" class="schalter" data-dabei="${esc(s.id)}" ${dab ? 'checked' : ''} aria-label="${esc(s.name)} spielt mit">
-          <span class="nr">#${s.nummer}</span><span class="wer"><b><span>${esc(s.name)}</span>${tagText ? etikett(tagText, tagText !== 'Torhüterin') : ''}</b><span class="cap"><span class="nur-mobil">${tagText && tagText !== 'Torhüterin' ? tagText + ' · ' : ''}</span>${s.anz} von ${t.spiele.length} Spielen${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
+        return `<label class="sz label mitbild${dab ? '' : ' aus'}" data-zeile="${esc(s.id)}"><input type="checkbox" role="switch" class="schalter" data-dabei="${esc(s.id)}" ${dab ? 'checked' : ''} aria-label="${esc(s.name)} spielt mit">
+          <span class="nr">#${s.nummer}</span>${ava(s, 28)}<span class="wer"><b><span>${esc(s.name)}</span>${tagText ? etikett(tagText, tagText !== 'Torhüterin') : ''}</b><span class="cap"><span class="nur-mobil">#${s.nummer} · ${tagText && tagText !== 'Torhüterin' ? tagText + ' · ' : ''}</span>${s.anz} von ${t.spiele.length} Spielen${s.smVers ? ` · 7m ${s.sm}/${s.smVers}` : ''}</span></span>
           ${rechts}
           ${TRAINERIN && labor.offen === s.id ? `<div class="regelzeile">${reglerEigen(s.id, w)}</div>` : ''}</label>`;
       }).join('')}</div>`, { fuss: TRAINERIN ? 'Zahl rechts: Torwirkung, also so viele Tore Unterschied macht sie im Schnitt. Antippen, um sie selbst einzuschätzen. Torhüterinnen bekommen sie aus der Paradenquote der eigenen Erfassung, vorher 0.' : 'Zeile antippen: dabei oder nicht dabei. Die Chancen oben rechnen sofort neu.' });
@@ -780,8 +790,8 @@
     const wert = s => ui.spSort === 'einfluss' ? vz(s.einfluss) : ui.spSort === 'tore' ? s.tore : ui.spSort === 'tps' ? dez(s.toreProSpiel) : ui.spSort === 'tw' ? (s.tw && s.tw.onTarget ? pct(s.tw.rate) : '') : (s.smVers ? `${s.sm}/${s.smVers}` : '');
     const zeile2 = s => s.tw ? `Torhüterin · ${s.tw.saves} von ${s.tw.onTarget} gehalten` : s.torwart ? `Torhüterin · ${s.anz} Spiel${s.anz > 1 ? 'e' : ''}` : `${s.tore} Tore in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`;
     const el = $('#spListe'); if (!el) return;
-    el.innerHTML = liste.length ? modul('', `<div class="zeilen">${liste.slice(0, 120).map((s, i) => `<button class="spiel${s.team === fokus ? ' fokus' : ''}" style="grid-template-columns:28px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(s.id)}">
-        <span class="cap t3" style="text-align:right">${i + 1}</span><span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${esc(kurz(s.team))} · ${zeile2(s)}</span></div></span>
+    el.innerHTML = liste.length ? modul('', `<div class="zeilen">${liste.slice(0, 120).map((s, i) => `<button class="spiel${s.team === fokus ? ' fokus' : ''}" style="grid-template-columns:24px 40px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(s.id)}">
+        <span class="cap t3" style="text-align:right">${i + 1}</span>${ava(s, 40)}<span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${esc(kurz(s.team))} · ${zeile2(s)}</span></div></span>
         <span style="font-weight:600;font-size:17px">${wert(s)}</span></button>`).join('')}</div>`) :
       modul('', `<div class="leer">${ico('trikot')}<b>Keine Spielerin gefunden</b><p>Keine Treffer für „${esc(ui.spSuche)}“.</p><button class="textaktion" data-aktion="filterWeg" style="margin:0">Filter zurücksetzen</button></div>`);
   }
@@ -871,7 +881,7 @@
         const spalte = (seite, tid) => {
           const ps = (d.l.data[seite].players || []).filter(p => !p.is_staff).sort((a, b) => b.goals - a.goals || a.number - b.number);
           return `<div class="micro" style="margin:20px 0 4px;display:flex;gap:8px;align-items:center">${logo(tid, 16)} ${esc(kurz(tid))}</div><table class="tab"><thead><tr><th>#</th><th class="l">Spielerin</th><th>Tore</th><th>7m</th><th>Zeitstr.</th></tr></thead><tbody>
-            ${ps.map(p => `<tr class="klick" data-spielerin="${esc(p.player.id)}"><td class="t3">${p.number}</td><td class="l" style="max-width:170px;overflow:hidden;text-overflow:ellipsis">${esc(p.player.first_name + ' ' + p.player.last_name)}</td><td style="font-weight:600">${p.goals || ''}</td><td class="t2">${p.seven_meter_attempts ? p.seven_meter_goals + '/' + p.seven_meter_attempts : ''}</td><td class="t2">${p.two_minutes || ''}</td></tr>`).join('')}</tbody></table>`;
+            ${ps.map(p => `<tr class="klick" data-spielerin="${esc(p.player.id)}"><td class="t3">${p.number}</td><td class="l" style="max-width:190px"><span style="display:flex;gap:8px;align-items:center;min-width:0">${avatar(p.player.id, p.player.first_name + ' ' + p.player.last_name, tid, 24)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.player.first_name + ' ' + p.player.last_name)}</span></span></td><td style="font-weight:600">${p.goals || ''}</td><td class="t2">${p.seven_meter_attempts ? p.seven_meter_goals + '/' + p.seven_meter_attempts : ''}</td><td class="t2">${p.two_minutes || ''}</td></tr>`).join('')}</tbody></table>`;
         };
         html += spalte('local', g.heim) + spalte('visitor', g.gast);
       } else html += `<div class="leer">${ico('info')}<b>Kein Spielbericht</b><p>Für dieses Spiel gibt es keinen Spielbericht. Ergebnis und Chance stehen oben.</p></div>`;
@@ -907,7 +917,7 @@
       return `<tr class="klick" data-spiel="${g.id}" style="${dabei ? '' : 'opacity:.5'}"><td class="l t2">${tagKurz(g.datum)}</td><td class="l" style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${g.heim === s.team ? 'gegen' : 'bei'} ${esc(kurz(geg))}</td><td>${formSun(g, s.team)}</td><td style="font-weight:600">${dabei ? `${tore} Tore` : '<span class="cap t3">nicht dabei</span>'}</td></tr>`;
     }).join('');
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
-    oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:8px;align-items:center;margin-bottom:16px">${logo(s.team)} ${esc(lang(s.team))}</div>
+    oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:16px;align-items:center;margin-bottom:16px">${ava(s, 72)}<span style="display:flex;gap:8px;align-items:center">${logo(s.team)} ${esc(lang(s.team))}</span></div>
       ${s.tw ? `<div class="kacheln">${kachel('Paradenquote', s.tw.rate == null ? '–' : `${Math.round(s.tw.rate * 100)}<span class="pz">%</span>`, `${s.tw.saves} von ${s.tw.onTarget} Würfen aufs Tor`)}${kachel('7-Meter gehalten', s.tw.sevenMeter.onTarget ? `${s.tw.sevenMeter.saves} von ${s.tw.sevenMeter.onTarget}` : 'keine', s.tw.sevenMeter.onTarget ? pct(s.tw.sevenMeter.rate) + ' Quote' : 'noch kein Siebenmeter erfasst')}${kachel('Erfasste Spiele', `${s.tw.matches}`, `${s.tw.minutes} Minuten im Tor`)}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), s.tw.reliable ? 'aus der Paradenquote' : `Paradenquote zählt ab ${GOALKEEPER.MIN_SHOTS} Würfen`) : kachel('Vorbei', `${s.tw.misses}`, 'Würfe neben das Tor')}</div>
       ${modul('Gehalten je Zone', goalZoneSvg(s.tw.zones, 320), { eyebrow: 'Aus Sicht der Werferin', fuss: 'Gehalten von Würfen aufs Tor je Zone, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung von der Bank.' })}` : `${s.torwart ? `<div class="hinweis">${ico('tor')}<span>Torhüterin. Paraden gibt es erst, wenn ein Spiel von der Bank erfasst wurde.</span></div>` : ''}
       <div class="kacheln">${kachel('Tore pro Spiel', dez(s.toreProSpiel), `${s.tore} Tore in ${s.anz} von ${t.spiele.length} Spielen`)}${kachel('Anteil an den Teamtoren', `${Math.round(s.anteil * 100)}<span class="pz">%</span>`, `erste Hälfte ${hz[0]}, zweite ${hz[1]}`)}${kachel('7-Meter', s.smVers ? `${s.sm} von ${s.smVers}` : 'keine', s.smVers ? pct(s.sm / s.smVers) + ' Quote' : 'noch keine Würfe')}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), 'Tore Unterschied, wenn sie spielt') : kachel('Zeitstrafen', `${s.zwei}`, `in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`)}</div>

@@ -41,12 +41,15 @@ daten/team_id.txt          Focus team id (86088). League/phase is auto-detected 
 daten/daten.js             Generated: window.HB_DATA (match list pages + standings)
 daten/spielberichte.js     Generated: window.HB_DETAILS (lineups + events per finished match)
 daten/torwart.js           Generated: window.HB_TORWART = { goalkeepers: permanent list, records: [...] } (see daten/torwart/)
+daten/fotos.js             Generated: window.HB_FOTOS = { playerId: key } for the own team's photos (see "Player photos")
+daten/fotos/               Generated: <playerId>.jpg (128 px) + quellen.txt (playerId photo_url), own team only
 daten/cache/<id>_l.json    Raw lineups per match (handball.net response)
 daten/cache/<id>_e.json    Raw live-ticker events per match
 daten/torwart/schema.json  JSON Schema of the goalkeeper record (tracker export)
 daten/torwart/goalkeepers.json  Permanent goalkeeper list per team: { "<teamId>": [{ playerId, name, number }] }
 daten/torwart/torwart-<matchId>-<teamId>.json   Goalkeeper records, one per match and team
 scripts/goalkeeper.mjs     Validate goalkeeper records, create empty ones (Node, no deps, English)
+scripts/fotos.sh           Downloads the own team's player photos (called by abruf.sh and Start (Mac).command)
 .github/workflows/daten.yml  Daily 05:00 UTC fetch, commits "Daten aktualisiert YYYY-MM-DD" as daten-bot
 ```
 
@@ -113,6 +116,16 @@ browser devtools while developing, and expect one extra reload after changing `s
 
 The three fetch scripts are near-duplicates (`abruf.sh`, `Start (Mac).command`, `app/abruf.ps1`). A logic
 change must be applied to all three.
+
+## Player photos
+
+Only the own team (`daten/team_id.txt`, SC Teutonia 10) has consented to showing their photos. `scripts/fotos.sh`
+(and its port in `app/abruf.ps1`) takes the `photo_url` (Handball 360, `handball360.isquad.de`) of non-staff
+players of the own team from the cached lineups, downloads them to `daten/fotos/<playerId>.jpg`, shrinks them to
+128 px (ImageMagick or `sips`, if present) and writes `daten/fotos.js`. **Never download or show photos of other
+teams.** In the app `avatar()`/`ava()` render a round avatar: photo only when the player belongs to `UNSER` and
+has an entry in `HB_FOTOS`, initials otherwise. If a player withdraws consent, delete her file, her line in
+`quellen.txt` and her entry in `daten/fotos.js`, and exclude her id in `scripts/fotos.sh` and `app/abruf.ps1`.
 
 ## Data shapes worth knowing
 

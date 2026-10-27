@@ -90,6 +90,42 @@ $liste = Join-Path $tw 'goalkeepers.json'
 $kader = if (Test-Path $liste) { [IO.File]::ReadAllText($liste) } else { '{}' }
 [IO.File]::WriteAllText((Join-Path $daten 'torwart.js'), "window.HB_TORWART = {`"goalkeepers`": $kader, `"records`": [" + ($teile -join ',') + "]};`n", $utf8)
 
+# Spielerinnenfotos nur für das eigene Team (nur dieses hat zugestimmt), Logik wie scripts/fotos.sh
+try {
+  $fotos = Join-Path $daten 'fotos'
+  New-Item -ItemType Directory -Force -Path $fotos | Out-Null
+  $qDatei = Join-Path $fotos 'quellen.txt'
+  $quellen = [ordered]@{}
+  if (Test-Path $qDatei) { foreach ($z in [IO.File]::ReadAllLines($qDatei)) { $t = $z.Split(' ', 2); if ($t.Count -eq 2) { $quellen[$t[0]] = $t[1] } } }
+  $liste = [ordered]@{}
+  $muster = '"player":\{"id":"([^"]*)","first_name":"[^"]*","last_name":"[^"]*","photo_url":"(https://[^"]*)"\},"number":[^,]*,"role":\{[^}]*\},"is_staff":false'
+  Get-ChildItem $cache -Filter '*_l.json' | ForEach-Object {
+    $txt = [IO.File]::ReadAllText($_.FullName)
+    $i = $txt.IndexOf('"visitor":{"team"')
+    $bloecke = if ($i -ge 0) { @($txt.Substring(0, $i), $txt.Substring($i)) } else { @($txt) }
+    foreach ($b in $bloecke) {
+      if ($b -notmatch ('^[^\[]*"team":\{"id":' + $teamId + ',')) { continue }
+      foreach ($m in [regex]::Matches($b, $muster)) { $liste[$m.Groups[1].Value] = $m.Groups[2].Value }
+    }
+  }
+  $wc = New-Object Net.WebClient
+  $wc.Headers.Add('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36')
+  foreach ($sid in $liste.Keys) {
+    if ($sid -notmatch '^[A-Za-z0-9]+$') { continue }
+    $ziel = Join-Path $fotos "$sid.jpg"
+    if ((Test-Path $ziel) -and $quellen[$sid] -eq $liste[$sid]) { continue }
+    try { $bytes = $wc.DownloadData($liste[$sid]); if ($bytes.Length -gt 3 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xD8) { [IO.File]::WriteAllBytes($ziel, $bytes); $quellen[$sid] = $liste[$sid] } } catch {}
+  }
+  [IO.File]::WriteAllLines($qDatei, [string[]]($quellen.Keys | Sort-Object | ForEach-Object { "$_ $($quellen[$_])" }), $utf8)
+  $eintraege = foreach ($sid in ($quellen.Keys | Sort-Object)) {
+    if (-not (Test-Path (Join-Path $fotos "$sid.jpg"))) { continue }
+    $k = [regex]::Match($quellen[$sid], '_([0-9a-f]+)\.[a-z]+$').Groups[1].Value
+    if ($k.Length -gt 8) { $k = $k.Substring($k.Length - 8) }
+    "`"$sid`":`"$k`""
+  }
+  [IO.File]::WriteAllText((Join-Path $daten 'fotos.js'), "window.HB_FOTOS = {" + (@($eintraege) -join ',') + "};`n", $utf8)
+} catch {}
+
 # Browser-Cache umgehen: Datenstand als Versionsmerkmal in die Seite schreiben
 $idx = Join-Path $root 'app\index.html'
 $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
