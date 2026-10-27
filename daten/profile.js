@@ -18,5 +18,5 @@ window.HB_PROFILE = {
   "0iv7e52": { name: "Cannur Yaren", position: [], satz: "" },
   "0r4agwv": { name: "Flora Trautwein", position: ["LA", "RL"], satz: "Ich lauf euch allen davon." },
   "0zq6bco": { name: "Phillis Dutschke", position: ["RM"], satz: "Sorry Leude – ich bin in Graz." },
-  "0cbebaf": { name: "Amelie Graß", position: [], satz: "" },
+  "0cbebaf": { name: "Amelie Graß", position: ["KM"], satz: "Ohne mich läuft der Bumbs hier eh nisch." },
 };
