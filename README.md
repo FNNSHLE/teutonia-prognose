@@ -6,8 +6,6 @@ Win probability, match plan, fixtures and table for the next handball match. Bui
 Private fan project, not an offering of SC Teutonia 10 or handball.net. Data: [handball.net](https://www.handball.net).
 
 - **Live app:** https://fnnshle.github.io/teutonia-prognose/
-- **Coach view:** https://fnnshle.github.io/teutonia-prognose/app/index.html#trainerin
-  (shows per-player values; no password, only an unlisted link)
 - **End-user guide in German:** [`LIESMICH.txt`](LIESMICH.txt)
 - **Developer orientation:** [`CLAUDE.md`](CLAUDE.md)
 

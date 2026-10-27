@@ -3,7 +3,6 @@ Handball-Prognose: Siegchance, Matchplan, Spielplan und Tabelle.
 Privates Fan-Projekt, kein Angebot von SC Teutonia 10 oder handball.net. Daten: handball.net.
 
 Online: https://fnnshle.github.io/teutonia-prognose/
-Ansicht für die Trainerin: https://fnnshle.github.io/teutonia-prognose/app/index.html#trainerin
 (Diese Ansicht zeigt Werte je Spielerin. Sie hat keinen Passwortschutz.)
 
 STARTEN

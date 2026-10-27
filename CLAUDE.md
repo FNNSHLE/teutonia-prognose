@@ -11,7 +11,6 @@ simulations and player statistics from public data on handball.net. Any team of 
 as focus; the own team is the default.
 
 - Live: https://fnnshle.github.io/teutonia-prognose/ (GitHub Pages, served from `main`)
-- Coach view: `app/index.html#trainerin` (shows per-player values, no access protection, only obscurity)
 - User-facing readme: `LIESMICH.txt` (German, written for non-technical users)
 - Not affiliated with SC Teutonia 10 or handball.net. Every page carries that disclaimer (`ABSENDER` in `app/app.js`).
 
@@ -187,8 +186,8 @@ Teilende (10002). `block` is `" 1. Halbzeit"` (leading space), `"Halbzeitpause"`
   switch areas. Sheets (`<dialog id="sheet">`) show details for matches, teams and players.
 - State in `localStorage` under `hbprog.*`: `bereich`, `fest`, `eigene`, `kader`, `intro`, `erfassung`. Focus team is
   intentionally not persisted.
-- `TRAINERIN` mode is toggled by `#trainerin` in the URL hash; it exposes player influence values, the
-  lineup optimiser and influence overrides. Treat it as a privacy courtesy, not security.
+- `TRAINERIN` is now always `true`: player influence values, the lineup optimiser and influence overrides are
+  visible to everyone and no longer labelled as a coach view (the separate `#trainerin` view was removed).
 - Printing: the Matchplan has a "Kabinenblatt" print layout (`body.druck-kabine`, `.nicht-druck`).
 - `window.kurzname` is deliberately exported from `app.js` for `matchplan.js`. Avoid adding more globals
   in that direction; pass what the rule engine needs through its `ctx` argument.

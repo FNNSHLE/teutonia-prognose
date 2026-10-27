@@ -9,8 +9,9 @@
     get(k, d) { try { const v = localStorage.getItem('hbprog.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('hbprog.' + k, JSON.stringify(v)); } catch (e) {} },
   };
-  // Trainerinnen-Modus: Werte je Spielerin nur über den Link mit #trainerin. Schutz vor dem beiläufigen Blick, kein Zugriffsschutz.
-  let TRAINERIN = /trainerin/i.test(location.hash);
+  // Früher eine eigene Trainerinnen-Ansicht (#trainerin). Jetzt für alle sichtbar und nicht mehr eigens gekennzeichnet;
+  // die Konstante bleibt, damit die Bedingungen im Code lesbar bleiben.
+  const TRAINERIN = true;
 
   // ================= Zahlensatz =================
   const NB = ' ', MINUS = '−';
@@ -251,9 +252,9 @@
       <button class="wechsler" data-aktion="team">${logo(fokus, 28)}<span class="txt"><span class="n" style="display:block">${esc(kurz(fokus))}</span><small>Platz ${platz(fokus)} · ${(tabelle.find(z => z.id === fokus) || {}).pkt || 0} Punkte</small></span>${ico('chev', 1)}</button>
       <button class="btn prim erfassen-knopf${bereich === 'erfassung' ? ' an' : ''}" data-bereich="erfassung">${ico('tor', 1)}<span>${erfassungLaeuft() ? 'Erfassung läuft' : 'Torhüterin erfassen'}</span>${erfassungLaeuft() ? '<span class="punkt" aria-hidden="true"></span>' : ''}</button>
       <nav>${BEREICHE.filter(b => b.id !== 'erfassung').map((b, i) => `${i === 4 ? '<div class="luecke"></div>' : ''}<button data-bereich="${b.id}" class="${bereich === b.id ? 'an' : ''}">${ico(b.ico)}${b.name}</button>`).join('')}</nav>
-      <div class="fuss">${TRAINERIN ? `<span class="etikett" style="margin-bottom:8px">${ico('schloss', 1)} Ansicht Trainerin</span><br>` : ''}${esc(datenstand)}<div class="absender">${esc(ABSENDER)}</div></div>`;
+      <div class="fuss">${esc(datenstand)}<div class="absender">${esc(ABSENDER)}</div></div>`;
     $('#kopf').innerHTML = `<button class="wechsler" data-aktion="team" aria-label="Team wählen">${logo(fokus, 24)}<span class="n">${esc(kurz(fokus))}</span>${ico('chev', 1)}</button><span class="platz"></span>
-      ${TRAINERIN ? `<span class="etikett">${ico('schloss', 1)} Trainerin</span>` : ''}`;
+      `;
     const tabs = ['heute', 'matchplan', 'spiele', 'tabelle'];
     $('#tabbar').innerHTML = tabs.map(id => { const b = BEREICHE.find(x => x.id === id); return `<button data-bereich="${id}" class="${bereich === id ? 'an' : ''}">${ico(b.ico)}<span>${b.kurz}</span></button>`; }).join('') +
       `<button data-aktion="mehr" class="${tabs.includes(bereich) ? '' : 'an'}">${ico('mehr')}<span>Mehr</span></button>`;
@@ -747,7 +748,7 @@
     return modul('Aufstellung durchrechnen', `${ergebnis}
       <div class="listenkopf"><span class="meta">${verf} von ${t.liste.length} verfügbar</span><button class="textaktion" data-aktion="alleVerf">Alle verfügbar</button></div>
       <div class="zeilen">${sortiert.map(zeile).join('')}</div>`,
-      { eyebrow: 'Ansicht Trainerin', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen zählen über ihre Paradenquote aus der eigenen Erfassung (ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor), vorher neutral. Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
+      { eyebrow: 'Aufstellung', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen zählen über ihre Paradenquote aus der eigenen Erfassung (ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor), vorher neutral. Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
   }
 
   // ================= Spiele =================
@@ -832,7 +833,7 @@
       ${modul('Tagesform und Halle', `${regler('formF', s.dabei ? kurz(fokus) : kurz(g.heim), labor.form.f)}${regler('formG', s.dabei ? kurz(s.gegner) : kurz(g.gast), labor.form.g)}
         <label class="sz label" style="padding:6px 0;grid-template-columns:44px minmax(0,1fr)"><input type="checkbox" role="switch" class="schalter" id="neutral" ${labor.neutral ? 'checked' : ''}><span class="meta" style="color:var(--text-1)">Neutrale Halle, ohne Heimvorteil von ${dez(modell.heim)} Toren</span></label>`, { fuss: 'Tagesform: besser oder schlechter als sonst, in Toren.' })}
       ${modul('So könnte es ausgehen', '<div id="laborVerteilung"></div>', { fuss: 'Wahrscheinlichkeit je Tordifferenz. Balken: mit deinen Einstellungen. Gestrichelt: ohne Kaderinfo.' })}
-      ${TRAINERIN ? modul('An wem hängt am meisten?', '<div id="laborWichtig"></div>', { eyebrow: 'Ansicht Trainerin', fuss: 'Um so viele Prozentpunkte sinkt die Siegchance, wenn nur diese eine Spielerin zusätzlich nicht dabei ist.' }) : ''}
+      ${TRAINERIN ? modul('An wem hängt am meisten?', '<div id="laborWichtig"></div>', { eyebrow: 'Einfluss', fuss: 'Um so viele Prozentpunkte sinkt die Siegchance, wenn nur diese eine Spielerin zusätzlich nicht dabei ist.' }) : ''}
       ${modul('Direktvergleich', h2h.length ? `<div class="zeilen">${h2h.map(x => spielZeile(x)).join('')}</div>` : '<p class="meta" style="margin:0">Die beiden Teams haben in dieser Saison noch nicht gegeneinander gespielt.</p>')}`;
   }
   function regler(id, name, wert) {
@@ -990,7 +991,7 @@
       ['Teamstärke', 'So viele Tore ist ein Team im Schnitt besser oder schlechter als ein Durchschnittsteam der Liga, auf neutralem Platz.'],
       ['Spielbericht', 'Spiel mit Aufstellung, Torschützinnen und Liveticker auf handball.net.'],
       ['Stammbesetzung', 'Alle, die bei mindestens der Hälfte der Spiele dabei waren.'],
-      ['Torwirkung', 'Nur in der Ansicht für die Trainerin: so viele Tore Unterschied macht eine Spielerin im Schnitt, wenn sie spielt. Torhüterinnen und Abwehrarbeit fehlen darin.'],
+      ['Torwirkung', 'So viele Tore Unterschied macht eine Spielerin im Schnitt, wenn sie spielt. Torhüterinnen und Abwehrarbeit fehlen darin.'],
       ['Am grünen Tisch', 'Spiel, das per Urteil gewertet wurde.'],
       ['Paradenquote', 'Anteil der Würfe aufs Tor, die die Torhüterin hält. Kommt aus der eigenen Erfassung von der Bank, nicht von handball.net.'],
     ];
@@ -998,7 +999,7 @@
       ${bildDa.keyvisual ? `<div style="border-radius:var(--r-xl);overflow:hidden;margin-bottom:var(--gap);background:var(--tafel)"><img src="assets/keyvisual-1600x900.png" alt="" style="display:block;width:100%;height:auto"></div>` : ''}
       <div class="kacheln vier">${kachel('Favorit gewann', `${treffer} von ${gewertet.length}`, 'gemessen vor dem Anpfiff')}${kachel('Chance fürs echte Ergebnis', `${Math.round(summe / n * 100)}<span class="pz">%</span>`, 'im Schnitt')}${kachel('Treffsicherheit', dez(brier / n, 2), '0 wäre perfekt, 0,67 wäre Raten')}${kachel('Heimvorteil', `${vz(modell.heim)}`, 'Tore in dieser Liga')}</div>
       ${modul('Teamstärke und Siegchance', `<div class="fliess"><p>Aus allen Ergebnissen schätzt ${APP} für jedes Team, wie viele Tore es mehr wirft und weniger kassiert als der Schnitt, dazu den Heimvorteil. Am Saisonanfang zieht die Rechnung alle Teams Richtung Durchschnitt und wird mit jedem Ergebnis mutiger.</p><p>Daraus ergibt sich für jedes Spiel eine erwartete Tordifferenz. Weil Handball streut, wird sie als Glockenkurve behandelt: Die Flächen links, in der Mitte und rechts sind Niederlage, Remis und Sieg. Die Zahlen oben sind ehrlich gemessen, jedes Spiel nur mit dem, was vor dem Anpfiff bekannt war.</p></div>`)}
-      ${modul('Matchplan', `<div class="fliess"><p>Der Matchplan zeigt nur, was die Spielberichte belegen: wer unverzichtbar ist, wen es lohnt anzufragen, die 7-Meter-Reihenfolge nach Quote, in welcher Hälfte wer trifft, Zeitstrafen, Spielphasen und die wichtigsten Gegnerinnen. Taktische Ratschläge gibt es bewusst nicht, weil Positionen, Einsatzzeiten und Paraden fehlen. Jede Karte sagt, aus wie vielen Spielen sie stammt.</p><p>Werte je Spielerin zeigt ${APP} nur in der Ansicht für die Trainerin. Sie ist über einen eigenen Link erreichbar und hat keinen Passwortschutz.</p></div>`)}
+      ${modul('Matchplan', `<div class="fliess"><p>Der Matchplan zeigt nur, was die Spielberichte belegen: wer unverzichtbar ist, wen es lohnt anzufragen, die 7-Meter-Reihenfolge nach Quote, in welcher Hälfte wer trifft, Zeitstrafen, Spielphasen und die wichtigsten Gegnerinnen. Taktische Ratschläge gibt es bewusst nicht, weil Positionen, Einsatzzeiten und Paraden fehlen. Jede Karte sagt, aus wie vielen Spielen sie stammt.</p></div>`)}
       ${modul('Begriffe', GLOSSAR.map(([k, v]) => `<div class="satz"><b>${k}</b><div class="t2">${v}</div></div>`).join(''))}
       ${modul('Grenzen', `<div class="fliess"><p>Torhüterinnen sind in den Spielberichten nicht gekennzeichnet, Paraden kennt handball.net nicht. Sie kommen nur aus der eigenen Erfassung von der Bank (Bereich „Torhüterin erfassen“)${TW.records ? `, bisher ${TW.records} Spiel${TW.records === 1 ? '' : 'e'}` : ', bisher kein Spiel'}. Ab ${GOALKEEPER.MIN_SHOTS} erfassten Würfen aufs Tor ersetzt die Paradenquote die generische Torwirkung einer Torhüterin. Verletzungen, Trainingsstand und die Vorsaison kennt die Rechnung nicht. Bei drei bis vier Spielen je Team sind alle Werte Richtwerte.</p></div>`)}
       ${modul('Absender', `<div class="meta">${esc(ABSENDER)}<br>${esc(datenstand)}. ${gewertet.length} gewertete Spiele, ${Object.keys(DETAILS).length} Spielberichte, ${TW.records} Torhüterinnen-Erfassung${TW.records === 1 ? '' : 'en'}, ${offen.length} offene Spiele.</div>`)}`;
@@ -1071,8 +1072,7 @@
     oeffneSheet('Team wählen', tabelle.map(z => `<button class="listezeile" data-fokus="${z.id}"><span class="platz">${platz(z.id)}</span>${logo(z.id, 28)}<span class="nm">${esc(kurz(z.id))} ${z.id === UNSER ? etikett('eigenes Team') : ''}</span>${z.id === fokus ? ico('haken', 1) : ''}</button>`).join('') + `<p class="cap t2" style="margin:12px 0 0">Beim nächsten Öffnen zeigt ${APP} wieder ${esc(kurz(UNSER))}.</p>`);
   }
   function mehrSheet() {
-    oeffneSheet('Mehr', `<button class="btn prim erfassen-knopf" data-bereich="erfassung" style="width:100%;margin-bottom:12px">${ico('tor', 1)}<span>${erfassungLaeuft() ? 'Erfassung läuft · fortsetzen' : 'Torhüterin erfassen'}</span></button>` + BEREICHE.slice(4).filter(b => b.id !== 'erfassung').map(b => `<button class="listezeile" data-bereich="${b.id}">${ico(b.ico)}<span class="nm">${b.name}</span>${bereich === b.id ? ico('haken', 1) : ico('chevr', 1).replace('class="ico k"', 'class="ico k t3"')}</button>`).join('') +
-      `<button class="listezeile" data-aktion="${TRAINERIN ? 'trainerinAus' : 'trainerin'}">${ico('schloss')}<span class="nm">${TRAINERIN ? 'Ansicht Trainerin verlassen' : 'Ansicht für die Trainerin'}</span></button>`);
+    oeffneSheet('Mehr', `<button class="btn prim erfassen-knopf" data-bereich="erfassung" style="width:100%;margin-bottom:12px">${ico('tor', 1)}<span>${erfassungLaeuft() ? 'Erfassung läuft · fortsetzen' : 'Torhüterin erfassen'}</span></button>` + BEREICHE.slice(4).filter(b => b.id !== 'erfassung').map(b => `<button class="listezeile" data-bereich="${b.id}">${ico(b.ico)}<span class="nm">${b.name}</span>${bereich === b.id ? ico('haken', 1) : ico('chevr', 1).replace('class="ico k"', 'class="ico k t3"')}</button>`).join(''));
   }
 
   // ================= Bilder vorhanden? =================
@@ -1122,8 +1122,6 @@
       if (a === 'waKopieren') { const t = whatsappText(); const ok = () => { el.textContent = 'Kopiert'; }; if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => {}); return; }
       if (a === 'kabine') { document.body.classList.add('druck-kabine'); window.print(); return; }
       if (a === 'teilen') { navigator.share({ title: `${APP}: Matchplan`, url: location.href.split('#')[0] }).catch(() => {}); return; }
-      if (a === 'trainerin') { location.hash = 'trainerin'; return; }
-      if (a === 'trainerinAus') { history.replaceState(null, '', location.pathname + location.search); TRAINERIN = false; delete SORT.einfluss; schliesseSheet(); return zeichne(); }
       if (a === 'introWeg') { merk.set('intro', true); return zeichne(); }
       if (a === 'alleInsights') return oeffneSheet('Auffälligkeiten', auffaelligkeiten(fokus).map(x => `<div class="satz">${x}</div>`).join(''));
       if (a === 'alleSpiele') { ui.spieleTeam = 'alle'; return wechsle('spiele'); }
@@ -1176,7 +1174,7 @@
     }
     if (t.id === 'spSuche') { ui.spSuche = t.value; return spListe(); }
   });
-  window.addEventListener('hashchange', () => { TRAINERIN = /trainerin/i.test(location.hash); if (TRAINERIN) SORT.einfluss = ['Torwirkung', s => s.einfluss]; else delete SORT.einfluss; if (bereichAusHash()) { bereich = bereichAusHash(); merk.set('bereich', bereich); } schliesseSheet(); zeichne(); });
+  window.addEventListener('hashchange', () => { if (bereichAusHash()) { bereich = bereichAusHash(); merk.set('bereich', bereich); } schliesseSheet(); zeichne(); });
   if (/^#whatsapp$/i.test(location.hash)) { history.replaceState(null, '', location.pathname + location.search); if (fokus !== UNSER) { fokus = UNSER; } wechsle('matchplan'); whatsappSheet(); }
   window.addEventListener('afterprint', () => document.body.classList.remove('druck-kabine'));
   document.addEventListener('keydown', e => {
