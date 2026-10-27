@@ -14,7 +14,7 @@ window.HB_PROFILE = {
   "1jac3bl": { name: "Carola Maack", position: ["RA", "LA"], satz: "3-fach-Mama Sita als Flügelstürmer.", aemter: [] },
   "0jotezw": { name: "Silja Paul", position: ["TW"], satz: "Leitertraining ist das Training mit einer Leiter.", aemter: ["Partykomitee", "Eiskoffer"] },
   "1bjxdb2": { name: "Zoé Raethe", position: ["RR"], satz: "Noch so'n Ding und ich werf die Axt auf dich.", aemter: ["Partykomitee", "Leibchen", "Instagram"] },
-  "0liff2d": { name: "Nele Petersen", position: ["RM", "LA", "RA"], satz: "Herausforderung – ich nenne es nächste Aufgabe.", aemter: ["Musik", "Mannschaftskasse"] },
+  "0liff2d": { name: "Nele Petersen", position: ["KM", "LA", "RA"], satz: "Herausforderung – ich nenne es nächste Aufgabe.", aemter: ["Musik", "Mannschaftskasse"] },
   "1r2lvr5": { name: "Veronika Graß", position: ["RM"], satz: "Bananenbrot als Schlüssel zur Gelassenheit.", aemter: ["Schiribezahlung", "Schiriobfrau", "E-Mail", "Spielverschiebung Handball360"] },
   "0iv7e52": { name: "Cannur Yaren", position: ["LA"], satz: "So nah an der Halle, doch warten müsst ihr oft auf mich!", aemter: ["Schlüssel"] },
   "0r4agwv": { name: "Flora Trautwein", position: ["LA", "RL"], satz: "Ich lauf euch allen davon.", aemter: ["Schiribezahlung", "Organisation Zeitnehmer Heimspiele", "Überblick Zusagen/Absagen zu Spielen"] },
