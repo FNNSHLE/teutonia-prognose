@@ -127,7 +127,22 @@
   let fest = merk.get('fest', {}); Object.keys(fest).forEach(k => { if (!spielNach[k] || !spielNach[k].offen) delete fest[k]; });
   const labor = { spiel: null, dabei: {}, eigene: merk.get('eigene', {}), form: { f: 0, g: 0 }, neutral: false, offen: null };
   const kader = merk.get('kader', {});
+  const datumKurz = iso => { const [j, m, t] = String(iso).split('-'); return `${t}.${m}.${j}`; };
   const kaderVon = id => (kader[id] = kader[id] || { verf: {}, pins: {} });
+  // Zu- und Absagen aus SpielerPlus (daten/zusagen.js, von Hand gepflegt). Für das Spiel g einmal je Stand in den
+  // lokalen Kader übernehmen; danach kann man am Gerät weiter umschalten, bis ein neuer Stand kommt.
+  const ZUSAGEN = window.HB_ZUSAGEN || {};
+  function zusagenFuer(g) { const z = g && (g.heim === UNSER || g.gast === UNSER) ? ZUSAGEN[g.id] : null; return z && Array.isArray(z.dabei) ? z : null; }
+  const immerRaus = Array.isArray(ZUSAGEN.immerRaus) ? ZUSAGEN.immerRaus : [];
+  function zusagenAnwenden(g) {
+    if (!g || fokus !== UNSER || !B.teams[UNSER]) return;
+    const z = zusagenFuer(g), kd = kaderVon(UNSER);
+    const key = z ? `${g.id}@${z.stand}` : `${g.id}@raus:${immerRaus.join(',')}`;
+    if (kd.zusagen === key) return;
+    if (z) { kd.verf = {}; B.teams[UNSER].liste.forEach(s => { if (!z.dabei.includes(s.id)) kd.verf[s.id] = false; }); }
+    immerRaus.forEach(id => { kd.verf[id] = false; });
+    kd.zusagen = key; merk.set('kader', kader);
+  }
 
   // ================= Perspektive =================
   function sicht(g) {
@@ -637,6 +652,7 @@
   const kurzName = n => { const t = n.split(' '); return t.length > 1 ? `${t[0]} ${t[t.length - 1][0]}.` : n; };
   function seiteMatchplan() {
     const g = naechstes(fokus);
+    zusagenAnwenden(g);
     if (!g) return seitenkopf('Matchplan') + modul('', `<div class="leer">${ico('plan')}<b>Kein offenes Spiel</b><p>Für ${esc(kurz(fokus))} steht kein Spiel mehr an.</p></div>`);
     const s = sicht(g);
     const mp = erzeugeMatchplan({ modell, B, K, liga: LIGA, g, fokus, eigene: labor.eigene, tw: TW });
@@ -748,6 +764,7 @@
     if (o.ohnePins && !TW.teams[fokus]) warn.push('Torhüterinnen erfassen die Spielberichte nicht. Markiere sie mit der Stecknadel, dann stehen sie immer im Kader.');
     if (o.gestrichen.length) warn.push(`Nicht im Spielbericht (Grenze ${MATCHPLAN.K}): ${o.gestrichen.map(x => esc(x.s.name)).join(', ')}.`);
     return modul('Aufstellung durchrechnen', `${ergebnis}
+      ${zusagenFuer(g) ? `<div class="hinweis" style="margin-bottom:8px">${ico('haken', 1)}<span>Zu- und Absagen aus SpielerPlus übernommen, Stand ${datumKurz(zusagenFuer(g).stand)}. Umschalten geht weiter von Hand.</span></div>` : ''}
       <div class="listenkopf"><span class="meta">${verf} von ${t.liste.length} verfügbar</span><button class="textaktion" data-aktion="alleVerf">Alle verfügbar</button></div>
       <div class="zeilen">${sortiert.map(zeile).join('')}</div>`,
       { eyebrow: 'Aufstellung', id: 'optimierer', fuss: `Zeile antippen schaltet: an heißt dabei. Die Zahl rechts sagt, wie viele Prozentpunkte Siegchance an ihr hängen, verglichen mit der Stammbesetzung. Mehr als die Stammbesetzung bringt höchstens ein Tor, weil sieben auf dem Feld stehen. Torhüterinnen zählen über ihre Paradenquote aus der eigenen Erfassung (ab ${GOALKEEPER.MIN_SHOTS} Würfen aufs Tor), vorher neutral. Abwehrarbeit erfassen die Spielberichte nicht, eine niedrige Zahl heißt nicht, dass jemand wenig bringt. ${warn.join(' ')}` });
