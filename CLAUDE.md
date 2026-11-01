@@ -118,6 +118,13 @@ browser devtools while developing, and expect one extra reload after changing `s
 The three fetch scripts are near-duplicates (`abruf.sh`, `Start (Mac).command`, `app/abruf.ps1`). A logic
 change must be applied to all three.
 
+## What changed (AEND)
+
+`AEND` in `app.js` compares the state without the newest results (all finished matches within 7 days of the latest
+one) with the current state: table position (who passed whom) and the own team's win chances for the next four
+matches (model refitted without those games). Shown as the card "Was sich geändert hat" on Start, as a hint above
+the table and in the Matchplan when the next match's chance moved by at least one point. Own team only.
+
 ## Player photos
 
 Only the own team (`daten/team_id.txt`, SC Teutonia 10) has consented to showing their photos. `scripts/fotos.sh`

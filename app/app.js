@@ -136,6 +136,52 @@
   const simBasis = simuliereSaison(modell, gewertet, offen, teamIds, 5000, {}, bonus);
   const rang = teamIds.slice().sort((a, b) => staerke(modell, b) - staerke(modell, a));
 
+  // ================= Was hat sich geändert? =================
+  // Neu = alle Ergebnisse der letzten 7 Tage bis zum jüngsten Ergebnis. Verglichen wird der Stand ohne diese Spiele
+  // (Tabelle und Modell) mit dem jetzigen: Platz, wer vorbeigezogen ist, Siegchancen der nächsten eigenen Spiele.
+  const AEND = (() => {
+    const fertig = gewertet.concat(urteile);
+    if (!fertig.length || !teams[UNSER]) return null;
+    const tag = d => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    const jungst = Math.max(...fertig.map(g => tag(g.datum)));
+    const neu = fertig.filter(g => tag(g.datum) >= jungst - 6 * 864e5).sort((a, b) => a.datum - b.datum);
+    const gewV = gewertet.filter(g => !neu.includes(g)), urtV = urteile.filter(g => !neu.includes(g));
+    if (!gewV.length) return null;
+    const tabV = tabelleAus(gewV, teamIds).map(z => {
+      const r = Object.assign({}, z), nu = urtV.filter(g => g.heim === z.id || g.gast === z.id).length;
+      if (nu) { const b = Math.min(2 * nu, bonus[z.id] || 0); r.pkt += b; r.sp += nu; r.mpkt += 2 * nu - b; }
+      return r;
+    }).sort((x, y) => y.pkt - x.pkt || x.mpkt - y.mpkt || (y.tp - y.tm) - (x.tp - x.tm) || y.tp - x.tp);
+    const platzV = id => tabV.findIndex(z => z.id === id) + 1;
+    const mV = schaetzeModell(gewV, teamIds);
+    const chance = (m, g) => { const p = prognose(m, g.heim, g.gast); return g.heim === UNSER ? p.pHeim : p.pGast; };
+    const meine = offen.filter(g => g.heim === UNSER || g.gast === UNSER).slice(0, 4);
+    const chancen = meine.map(g => ({ g, geg: g.heim === UNSER ? g.gast : g.heim, vorher: Math.round(chance(mV, g) * 100), jetzt: Math.round(chance(modell, g) * 100) }))
+      .map(x => Object.assign(x, { d: x.jetzt - x.vorher }));
+    const vorbei = teamIds.filter(id => id !== UNSER && platzV(id) > platzV(UNSER) && platz(id) < platz(UNSER));
+    const zurueck = teamIds.filter(id => id !== UNSER && platzV(id) < platzV(UNSER) && platz(id) > platz(UNSER));
+    return { neu, von: new Date(tag(neu[0].datum)), bis: new Date(jungst), platzVorher: platzV(UNSER), platzJetzt: platz(UNSER), vorbei, zurueck, chancen, chanceVon: g => chancen.find(x => x.g === g) };
+  })();
+  function ergebnisSatz(g) {
+    if (g.urteil) return `${kurz(g.heim)} gegen ${kurz(g.gast)} am grünen Tisch gewertet`;
+    const sieger = g.toreHeim > g.toreGast ? g.heim : g.toreHeim < g.toreGast ? g.gast : null;
+    const st = g.toreHeim >= g.toreGast ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim);
+    if (!sieger) return `${kurz(g.heim)} und ${kurz(g.gast)} spielen ${stand(g.toreHeim, g.toreGast)} unentschieden`;
+    const verlierer = sieger === g.heim ? g.gast : g.heim;
+    return `${kurz(sieger)} gewinnt ${st} ${sieger === g.heim ? 'gegen' : 'bei'} ${kurz(verlierer)}`;
+  }
+  function platzSatz(a) {
+    const nennen = l => l.map(id => kurz(id)).join(' und ');
+    if (a.platzJetzt === a.platzVorher) return `Ihr bleibt auf Platz ${a.platzJetzt}.`;
+    const wegen = a.platzJetzt > a.platzVorher ? (a.vorbei.length ? ` ${nennen(a.vorbei)} ${a.vorbei.length > 1 ? 'sind' : 'ist'} an euch vorbeigezogen.` : '') : (a.zurueck.length ? ` Ihr habt ${nennen(a.zurueck)} überholt.` : '');
+    return `Ihr ${a.platzJetzt > a.platzVorher ? 'rutscht' : 'klettert'} von Platz ${a.platzVorher} auf Platz ${a.platzJetzt}.${wegen}`;
+  }
+  function chanceSatz(x) {
+    const wo = x.g.heim === UNSER ? 'gegen' : 'bei';
+    if (Math.abs(x.d) < 1) return `${wo} ${kurz(x.geg)}: unverändert ${x.jetzt} %`;
+    return `${wo} ${kurz(x.geg)}: ${x.vorher} % → <b>${x.jetzt} %</b> <span class="delta ${x.d > 0 ? 'plus' : 'minus'}">${x.d > 0 ? '+' : MINUS}${Math.abs(x.d)}</span>`;
+  }
+
   // ================= Zustand =================
   // Der Fokus wird bewusst nicht gespeichert: Beim Öffnen zeigt die App immer das eigene Team.
   let fokus = teams[UNSER] ? UNSER : teamIds[0];
@@ -562,6 +608,7 @@
     return `${seitenkopf(esc(kurz(fokus)), `Platz ${pl} · ${z.pkt} Punkte · ${esc(ligaName)}`)}${alt}${intro}
       ${erfassungOben ? erfassungKarte(naechstes(fokus)) : ''}<div class="hero-raster">${tafel(fokus)}${kach}</div>
       ${erfassungOben ? '' : erfassungKarte(naechstes(fokus))}
+      ${aenderungKarte()}
       ${vibePlayer()}
       ${teamKarussell()}
       ${newsroom()}
@@ -689,6 +736,18 @@
     if (a.paused) a.play().catch(() => {}); else a.pause();
   }
 
+  // ================= Karte „Was sich geändert hat“ =================
+  function aenderungKarte() {
+    const a = AEND; if (!a || fokus !== UNSER) return '';
+    const relevant = a.chancen.filter(x => Math.abs(x.d) >= 1);
+    const zeitraum = a.von.getTime() === a.bis.getTime() ? tagLang(a.bis) : `${tagKurz(a.von)} bis ${tagKurz(a.bis)}`;
+    return modul('Was sich geändert hat', `<div class="aend">
+        <div class="aend-block"><span class="micro">Neue Ergebnisse</span><ul>${a.neu.map(g => `<li><button class="aend-spiel" data-spiel="${g.id}">${esc(ergebnisSatz(g))}</button></li>`).join('')}</ul></div>
+        <div class="aend-block"><span class="micro">Tabelle</span><p>${esc(platzSatz(a))}</p></div>
+        ${a.chancen.length ? `<div class="aend-block"><span class="micro">Eure Siegchancen</span><ul>${(relevant.length ? relevant : a.chancen.slice(0, 1)).map(x => `<li>${chanceSatz(x)}</li>`).join('')}</ul>${relevant.length ? '' : '<p class="cap" style="margin:4px 0 0">Die neuen Ergebnisse ändern an euren Chancen kaum etwas.</p>'}</div>` : ''}
+      </div>`, { eyebrow: zeitraum, klasse: 'aend-modul', fuss: 'Verglichen mit dem Stand vor diesen Ergebnissen. Die Teamstärken werden aus allen Ergebnissen neu geschätzt, deshalb verschieben auch fremde Spiele eure Chancen.' });
+  }
+
   // ================= Newsroom =================
   // Vorerst nur ein Verweis aufs Instagram-Profil. Beiträge selbst bräuchten einen Feed mit Zustimmung des Kontos
   // (z. B. Behold); ohne den lädt die App nichts von Instagram, es fließen also keine Daten an Meta.
@@ -756,7 +815,9 @@
     const tw4 = mp.befunde.find(b => b.id === 'TW4');
     const hinspiel = tw4 ? modul(`Letztes Spiel gegen ${esc(kurz(mp.gegner))}`, `${goalZoneSvg(tw4.zonen, 320)}<div class="satz" style="margin-top:8px"><div style="font-weight:600;margin:2px 0">${esc(tw4.titel)}</div><div class="t2">${esc(tw4.text)}</div></div>`, { eyebrow: 'Wohin die Gegentore kamen', fuss: 'Gehalten von Würfen aufs Tor je Zone aus Sicht der Werferin, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung.' }) : '';
     const trainerin = TRAINERIN ? optimiererModul(g) : modul('Aufstellung durchrechnen', `<p class="meta" style="margin:0 0 12px">Für die Trainerin: Absagen eintragen, Torhüterinnen festlegen und sehen, wie sich die Siegchance verändert. Die Ansicht zeigt Werte je Spielerin und ist deshalb nicht für die ganze Gruppe gedacht.</p><button class="btn" data-aktion="trainerin">${ico('schloss', 1)} Ansicht für die Trainerin öffnen</button>`, { eyebrow: 'Für die Trainerin', klasse: 'nicht-druck', fuss: 'Diese Ansicht hat keinen Passwortschutz. Sie ist über den Link mit #trainerin am Ende erreichbar.' });
-    return `${kopf}${aktionen}${das}${erfassungKarte(g)}${hinweis}
+    const ac = fokus === UNSER && AEND ? AEND.chanceVon(g) : null;
+    const aendHinweis = ac && Math.abs(ac.d) >= 1 ? `<div class="hinweis">${ico('info')}<span>Durch die neuen Ergebnisse (${esc(AEND.neu.map(ergebnisSatz).join('; '))}) ist eure Siegchance ${ac.d > 0 ? 'gestiegen' : 'gesunken'}: ${ac.vorher} % → ${ac.jetzt} %.</span></div>` : '';
+    return `${kopf}${aktionen}${das}${aendHinweis}${erfassungKarte(g)}${hinweis}
       <div class="mkopf" style="margin-top:8px"><div><span class="micro">Aufstellung und Disziplin</span><h2 class="titel">Empfehlungen</h2></div></div>
       ${empf}${siebenmeter}${imTor}${hinspiel}${trainerin}
       ${mp.phasen.fokus && mp.phasen.gegner ? modul('Spielphasen', `${phasenGrafik(mp)}${phasenBef.map(befund).join('')}`, { eyebrow: 'Befund', fuss: `Tordifferenz je 10 Minuten, Summe aus ${mp.phasen.nF === mp.phasen.nG ? 'je ' + mp.phasen.nF : mp.phasen.nF + ' und ' + mp.phasen.nG} Spielen mit Spielbericht. Gestrichelt: Halbzeit. Warum die Phasen so verlaufen, zeigen die Daten nicht.` }) : ''}
@@ -855,7 +916,8 @@
   function seiteTabelle() {
     const seg = `<div class="seg">${[['tabelle', 'Tabelle'], ['verlauf', 'Verlauf'], ['saison', 'Saisonende']].map(([k, l]) => `<button data-ui="tabelleAnsicht" data-wert="${k}" class="${ui.tabelleAnsicht === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
     let inhalt = '';
-    if (ui.tabelleAnsicht === 'tabelle') inhalt = modul('', tabelleHtml(tabelle), { fuss: `Tabelle laut handball.net. Team antippen für Details.${urteile.length ? ` ${urteile.length} Spiel${urteile.length > 1 ? 'e' : ''} am grünen Tisch gewertet.` : ''}` });
+    const tabHinweis = AEND && fokus === UNSER && AEND.platzJetzt !== AEND.platzVorher ? `<div class="hinweis">${ico('info')}<span>${esc(AEND.neu.map(ergebnisSatz).join('; '))}. ${esc(platzSatz(AEND))}</span></div>` : '';
+    if (ui.tabelleAnsicht === 'tabelle') inhalt = tabHinweis + modul('', tabelleHtml(tabelle), { fuss: `${offAktuell ? 'Tabelle laut handball.net.' : 'Aus den Ergebnissen berechnet, weil die Tabelle bei handball.net noch nicht alle Spiele enthält.'} Team antippen für Details.${urteile.length ? ` ${urteile.length} Spiel${urteile.length > 1 ? 'e' : ''} am grünen Tisch gewertet.` : ''}` });
     if (ui.tabelleAnsicht === 'verlauf') inhalt = modul('Platz je Spieltag', tabellenVerlauf(), { fuss: 'Linie antippen für Details zum Team.' });
     if (ui.tabelleAnsicht === 'saison') {
       const nFest = Object.keys(fest).length;
