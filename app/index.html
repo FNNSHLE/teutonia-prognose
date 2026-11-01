@@ -429,6 +429,13 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .btn.wa-knopf { text-decoration: none; }
 .btn.prim.wa-knopf { background: #1FAF55; color: #fff; }
 /* Was sich geändert hat */
+.ausruf { display: inline-grid; place-items: center; color: var(--niederlage); flex: none; margin-right: 8px; vertical-align: -3px; }
+.ausruf .ico { width: 20px; height: 20px; }
+.aend-modul { border-color: var(--niederlage); box-shadow: inset 4px 0 0 var(--niederlage); }
+.aend-modul .mkopf .micro { color: var(--niederlage-text); }
+.aend-hinweis { background: var(--niederlage-tint); }
+.aend-hinweis .ausruf { margin-right: 0; }
+
 .aend { display: grid; gap: 16px; }
 @media (min-width: 900px) { .aend { grid-template-columns: 1.2fr 1fr 1fr; } }
 .aend-block .micro { display: block; margin-bottom: 6px; }
@@ -640,6 +647,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="../daten/fotos.js?t=1793558860"></script>
 <script src="../daten/profile.js?t=1793558860"></script>
 <script src="../daten/zusagen.js?t=1793558860"></script>
+<script src="../daten/aenderung.js?t=1793558860"></script>
 <script src="lib/preact-10.29.2.umd.js"></script>
 <script src="lib/preact-hooks-10.29.2.umd.js"></script>
 <script src="lib/htm-3.1.1.umd.js"></script>
@@ -649,7 +657,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="matchplan.js?v=23"></script>
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
-<script src="app.js?v=44"></script>
+<script src="app.js?v=45"></script>
 
 </body>
 </html>

@@ -124,6 +124,9 @@ change must be applied to all three.
 one) with the current state: table position (who passed whom) and the own team's win chances for the next four
 matches (model refitted without those games). Shown as the card "Was sich geändert hat" on Start, as a hint above
 the table and in the Matchplan when the next match's chance moved by at least one point. Own team only.
+`daten/aenderung.js` (`window.HB_AENDERUNG = {sig, seit}`) holds when the set of finished matches last changed:
+`abruf.sh` and `Start (Mac).command` hash the finished match ids (cksum) and rewrite the file with the current UTC
+time only when the hash differs. The app shows that time as „Aktualisiert am …“ (fallback: fetch time).
 
 ## Player photos
 

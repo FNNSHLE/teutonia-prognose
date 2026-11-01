@@ -248,6 +248,7 @@
       extern: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
       play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>',
       pause: '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" stroke="none"/>',
+      ausruf: '<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M12 6.5v7" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.5" fill="#fff" stroke="none"/>',
       stern: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
       plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4"/>',
       kalender: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -737,15 +738,17 @@
   }
 
   // ================= Karte „Was sich geändert hat“ =================
+  const aendSeit = () => { const t = window.HB_AENDERUNG && window.HB_AENDERUNG.seit ? new Date(window.HB_AENDERUNG.seit) : geholt; return `${t.toLocaleDateString('de-DE')}, ${t.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`; };
+  const aendIco = () => `<span class="ausruf" role="img" aria-label="Neu">${ico('ausruf')}</span>`;
   function aenderungKarte() {
     const a = AEND; if (!a || fokus !== UNSER) return '';
     const relevant = a.chancen.filter(x => Math.abs(x.d) >= 1);
     const zeitraum = a.von.getTime() === a.bis.getTime() ? tagLang(a.bis) : `${tagKurz(a.von)} bis ${tagKurz(a.bis)}`;
-    return modul('Was sich geändert hat', `<div class="aend">
+    return modul(`${aendIco()}Was sich geändert hat`, `<div class="aend">
         <div class="aend-block"><span class="micro">Neue Ergebnisse</span><ul>${a.neu.map(g => `<li><button class="aend-spiel" data-spiel="${g.id}">${esc(ergebnisSatz(g))}</button></li>`).join('')}</ul></div>
         <div class="aend-block"><span class="micro">Tabelle</span><p>${esc(platzSatz(a))}</p></div>
         ${a.chancen.length ? `<div class="aend-block"><span class="micro">Eure Siegchancen</span><ul>${(relevant.length ? relevant : a.chancen.slice(0, 1)).map(x => `<li>${chanceSatz(x)}</li>`).join('')}</ul>${relevant.length ? '' : '<p class="cap" style="margin:4px 0 0">Die neuen Ergebnisse ändern an euren Chancen kaum etwas.</p>'}</div>` : ''}
-      </div>`, { eyebrow: zeitraum, klasse: 'aend-modul', fuss: 'Verglichen mit dem Stand vor diesen Ergebnissen. Die Teamstärken werden aus allen Ergebnissen neu geschätzt, deshalb verschieben auch fremde Spiele eure Chancen.' });
+      </div>`, { eyebrow: `Aktualisiert am ${aendSeit()} · Spiele vom ${zeitraum}`, klasse: 'aend-modul', fuss: 'Verglichen mit dem Stand vor diesen Ergebnissen. Die Teamstärken werden aus allen Ergebnissen neu geschätzt, deshalb verschieben auch fremde Spiele eure Chancen.' });
   }
 
   // ================= Newsroom =================
@@ -816,7 +819,7 @@
     const hinspiel = tw4 ? modul(`Letztes Spiel gegen ${esc(kurz(mp.gegner))}`, `${goalZoneSvg(tw4.zonen, 320)}<div class="satz" style="margin-top:8px"><div style="font-weight:600;margin:2px 0">${esc(tw4.titel)}</div><div class="t2">${esc(tw4.text)}</div></div>`, { eyebrow: 'Wohin die Gegentore kamen', fuss: 'Gehalten von Würfen aufs Tor je Zone aus Sicht der Werferin, dunkler heißt mehr Gegentore. Aus der eigenen Erfassung.' }) : '';
     const trainerin = TRAINERIN ? optimiererModul(g) : modul('Aufstellung durchrechnen', `<p class="meta" style="margin:0 0 12px">Für die Trainerin: Absagen eintragen, Torhüterinnen festlegen und sehen, wie sich die Siegchance verändert. Die Ansicht zeigt Werte je Spielerin und ist deshalb nicht für die ganze Gruppe gedacht.</p><button class="btn" data-aktion="trainerin">${ico('schloss', 1)} Ansicht für die Trainerin öffnen</button>`, { eyebrow: 'Für die Trainerin', klasse: 'nicht-druck', fuss: 'Diese Ansicht hat keinen Passwortschutz. Sie ist über den Link mit #trainerin am Ende erreichbar.' });
     const ac = fokus === UNSER && AEND ? AEND.chanceVon(g) : null;
-    const aendHinweis = ac && Math.abs(ac.d) >= 1 ? `<div class="hinweis">${ico('info')}<span>Durch die neuen Ergebnisse (${esc(AEND.neu.map(ergebnisSatz).join('; '))}) ist eure Siegchance ${ac.d > 0 ? 'gestiegen' : 'gesunken'}: ${ac.vorher} % → ${ac.jetzt} %.</span></div>` : '';
+    const aendHinweis = ac && Math.abs(ac.d) >= 1 ? `<div class="hinweis aend-hinweis">${aendIco()}<span>Durch die neuen Ergebnisse (${esc(AEND.neu.map(ergebnisSatz).join('; '))}) ist eure Siegchance ${ac.d > 0 ? 'gestiegen' : 'gesunken'}: ${ac.vorher} % → ${ac.jetzt} %.<span class="cap" style="display:block">Aktualisiert am ${aendSeit()}</span></span></div>` : '';
     return `${kopf}${aktionen}${das}${aendHinweis}${erfassungKarte(g)}${hinweis}
       <div class="mkopf" style="margin-top:8px"><div><span class="micro">Aufstellung und Disziplin</span><h2 class="titel">Empfehlungen</h2></div></div>
       ${empf}${siebenmeter}${imTor}${hinspiel}${trainerin}
@@ -916,7 +919,7 @@
   function seiteTabelle() {
     const seg = `<div class="seg">${[['tabelle', 'Tabelle'], ['verlauf', 'Verlauf'], ['saison', 'Saisonende']].map(([k, l]) => `<button data-ui="tabelleAnsicht" data-wert="${k}" class="${ui.tabelleAnsicht === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
     let inhalt = '';
-    const tabHinweis = AEND && fokus === UNSER && AEND.platzJetzt !== AEND.platzVorher ? `<div class="hinweis">${ico('info')}<span>${esc(AEND.neu.map(ergebnisSatz).join('; '))}. ${esc(platzSatz(AEND))}</span></div>` : '';
+    const tabHinweis = AEND && fokus === UNSER && AEND.platzJetzt !== AEND.platzVorher ? `<div class="hinweis aend-hinweis">${aendIco()}<span>${esc(AEND.neu.map(ergebnisSatz).join('; '))}. ${esc(platzSatz(AEND))}<span class="cap" style="display:block">Aktualisiert am ${aendSeit()}</span></span></div>` : '';
     if (ui.tabelleAnsicht === 'tabelle') inhalt = tabHinweis + modul('', tabelleHtml(tabelle), { fuss: `${offAktuell ? 'Tabelle laut handball.net.' : 'Aus den Ergebnissen berechnet, weil die Tabelle bei handball.net noch nicht alle Spiele enthält.'} Team antippen für Details.${urteile.length ? ` ${urteile.length} Spiel${urteile.length > 1 ? 'e' : ''} am grünen Tisch gewertet.` : ''}` });
     if (ui.tabelleAnsicht === 'verlauf') inhalt = modul('Platz je Spieltag', tabellenVerlauf(), { fuss: 'Linie antippen für Details zum Team.' });
     if (ui.tabelleAnsicht === 'saison') {

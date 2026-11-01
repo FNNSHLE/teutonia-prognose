@@ -47,6 +47,12 @@ if hole_token; then
       GRENZE=$(date -u -v-7d +%Y-%m-%d)
       grep -o '{"id":[0-9]*,"code":"[^"]*","parent_match_id":[^,]*,"round":[0-9]*,"order":[0-9]*,"date":"[^"]*","status":{"id":[0-9]*,"name":"[^"]*","short_name":"FIN"' "$TMP/alle.json" \
         | sed -E 's/^\{"id":([0-9]+).*"date":"([0-9-]{10}).*$/\1 \2/' > "$TMP/ids.txt"
+      # Zeitpunkt merken, wenn neue Ergebnisse dazukommen (Karte „Was sich geändert hat“ in der App)
+      SIG=$(cut -d' ' -f1 "$TMP/ids.txt" | sort | cksum | cut -d' ' -f1)
+      ALT=$(sed -n 's/.*"sig": *"\([0-9]*\)".*/\1/p' daten/aenderung.js 2>/dev/null)
+      if [ -n "$SIG" ] && [ "$SIG" != "$ALT" ]; then
+        printf 'window.HB_AENDERUNG = {"sig": "%s", "seit": "%s"};\n' "$SIG" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > daten/aenderung.js
+      fi
       neu=0
       while read -r MID TAG; do
         if [ ! -s "daten/cache/${MID}_l.json" ] || [ ! -s "daten/cache/${MID}_e.json" ] || [[ "$TAG" > "$GRENZE" ]]; then
