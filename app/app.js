@@ -108,11 +108,28 @@
   const maxRunde = Math.max(0, ...gewertet.map(g => g.runde));
   const offiziell = {};
   stRoh.forEach(z => { const id = z.team.id; if (!offiziell[id] || z.round > offiziell[id].round) offiziell[id] = z; });
-  const tabelle = Object.keys(offiziell).length === teamIds.length
-    ? Object.values(offiziell).sort((a, b) => a.position - b.position).map(z => ({ id: z.team.id, sp: z.played, s: z.won, u: z.drawn, n: z.lost, tp: z.goals_for, tm: z.goals_against, pkt: z.points }))
-    : eigeneTab.map(z => ({ id: z.id, sp: z.sp, s: z.s, u: z.u, n: z.n, tp: z.tp, tm: z.tm, pkt: z.pkt }));
+  // Offizielle Tabelle nur, wenn sie alle beendeten Spiele enthält. handball.net zieht sie oft erst Tage später
+  // nach; dann rechnet die App selbst und übernimmt aus der offiziellen nur die Punkte aus Urteilen.
+  const offAlle = Object.keys(offiziell).length === teamIds.length;
+  const offAktuell = offAlle && Object.values(offiziell).reduce((a, z) => a + z.played, 0) >= 2 * (gewertet.length + urteile.length);
   const bonus = {};
-  tabelle.forEach(z => { const e = eigeneTab.find(x => x.id === z.id); bonus[z.id] = Math.max(0, z.pkt - e.pkt); });
+  let tabelle;
+  if (offAktuell) {
+    tabelle = Object.values(offiziell).sort((a, b) => a.position - b.position).map(z => ({ id: z.team.id, sp: z.played, s: z.won, u: z.drawn, n: z.lost, tp: z.goals_for, tm: z.goals_against, pkt: z.points }));
+    tabelle.forEach(z => { const e = eigeneTab.find(x => x.id === z.id); bonus[z.id] = Math.max(0, z.pkt - e.pkt); });
+  } else {
+    const urteilVon = id => urteile.filter(g => g.heim === id || g.gast === id).length;
+    tabelle = eigeneTab.map(z => {
+      const r = { id: z.id, sp: z.sp, s: z.s, u: z.u, n: z.n, tp: z.tp, tm: z.tm, pkt: z.pkt, mpkt: z.mpkt }, nu = urteilVon(z.id);
+      if (!nu) return r;
+      // Punkte aus Urteilen: offizielle Punkte minus eigene Punkte aus genauso vielen gewerteten Spielen wie offiziell gezählt
+      const o = offiziell[z.id], frueh = gewertet.filter(g => g.heim === z.id || g.gast === z.id).slice(0, o ? Math.max(0, o.played - nu) : 0);
+      const pFrueh = frueh.reduce((a, g) => { const eig = g.heim === z.id ? g.toreHeim - g.toreGast : g.toreGast - g.toreHeim; return a + (eig > 0 ? 2 : eig === 0 ? 1 : 0); }, 0);
+      const b = o ? Math.max(0, Math.min(2 * nu, o.points - pFrueh)) : 0;
+      bonus[z.id] = b; r.pkt += b; r.sp += nu; r.s += Math.floor(b / 2); r.n += nu - Math.floor(b / 2); r.mpkt += 2 * nu - b;
+      return r;
+    }).sort((x, y) => y.pkt - x.pkt || x.mpkt - y.mpkt || (y.tp - y.tm) - (x.tp - x.tm) || y.tp - x.tp);
+  }
   const platz = id => tabelle.findIndex(z => z.id === id) + 1;
   const verlaufTab = {};
   stRoh.forEach(z => { if (z.round <= maxRunde) (verlaufTab[z.team.id] = verlaufTab[z.team.id] || {})[z.round] = z.position; });
