@@ -103,7 +103,7 @@
     // Liga und Saison klein über dem Titel; oben bleibt frei
     ctx.textAlign = 'center'; ctx.fillStyle = T.sub; ctx.font = `600 24px ${F.text}`;
     if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
-    ctx.fillText(`${d.liga.toUpperCase()} · SAISON ${d.saison}`, W / 2, L.titelY - Math.round(L.titel * 0.86) - 26);
+    ctx.fillText(`${d.liga.replace(/\s*(Frauen|Damen|Männer|Herren)\b.*$/i, '').toUpperCase()} HAMBURG · SAISON ${d.saison}`, W / 2, L.titelY - Math.round(L.titel * 0.86) - 26);
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     ctx.fillStyle = T.text;
     ctx.font = `${L.titel}px ${F.titel}`; ctx.fillText(md ? 'MATCHDAY' : 'ENDSTAND', W / 2, L.titelY);
