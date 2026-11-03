@@ -135,7 +135,7 @@
       ctx.fillStyle = T.boxText; ctx.font = `${d.zeit ? 112 : 92}px ${F.titel}`;
       ctx.fillText(d.zeit ? d.zeit : 'FOLGT', W / 2, sY + sH / 2 - 4);
       ctx.fillStyle = FARBE.grau; ctx.font = `600 22px ${F.text}`;
-      ctx.fillText(d.zeit ? 'UHR · ANWURF' : 'TERMIN', W / 2, sY + sH - 20);
+      ctx.fillText(d.zeit ? 'ANWURF' : 'TERMIN', W / 2, sY + sH - 20);
     } else {
       ctx.font = `120px ${F.titel}`;
       const th = String(d.toreHeim), tg = String(d.toreGast);
