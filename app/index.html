@@ -448,6 +448,8 @@ dialog.sheet::backdrop { background: var(--scrim); }
 /* Ergebnis-Bild */
 .ebild { margin-bottom: 20px; }
 .ebild-format { margin-bottom: 8px; }
+/* Spielerinnen, die die ganze Saison fehlen */
+.spiel.raus, .kk.raus { opacity: .45; filter: grayscale(1); }
 .ebild-raster { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .ebild-raster .ebild { margin-bottom: 0; }
 .ebild-vorschau.f-quadrat { aspect-ratio: 1 / 1; } .ebild-vorschau.f-story { aspect-ratio: 9 / 16; max-height: 70vh; margin: 0 auto; }
@@ -668,7 +670,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
 <script src="ergebnisbild.js?v=5"></script>
-<script src="app.js?v=49"></script>
+<script src="app.js?v=50"></script>
 
 </body>
 </html>

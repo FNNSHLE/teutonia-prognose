@@ -197,6 +197,12 @@
   const ZUSAGEN = window.HB_ZUSAGEN || {};
   function zusagenFuer(g) { const z = g && (g.heim === UNSER || g.gast === UNSER) ? ZUSAGEN[g.id] : null; return z && Array.isArray(z.dabei) ? z : null; }
   const immerRaus = Array.isArray(ZUSAGEN.immerRaus) ? ZUSAGEN.immerRaus : [];
+  // „Immer raus“ (z. B. die ganze Saison weg): bleibt in Listen sichtbar, aber ausgegraut, und fehlt im Matchplan,
+  // auf dem Kabinenblatt und in der WhatsApp-Nachricht. Dafür bekommt der Matchplan eine Sicht ohne sie (Bmp).
+  const istRaus = s => !!s && immerRaus.includes(s.id);
+  const Bmp = Object.assign({}, B, { teams: Object.fromEntries(Object.entries(B.teams).map(([k, t]) => [k, Object.assign({}, t, { liste: t.liste.filter(s => !istRaus(s)) })])) });
+  // Matchplan ohne „Anfragen“ (AU2): für das Team nicht hilfreich
+  const matchplanFuer = (g, f) => { const mp = erzeugeMatchplan({ modell, B: Bmp, K, liga: LIGA, g, fokus: f, eigene: labor.eigene, tw: TW }); mp.empfehlungen = mp.empfehlungen.filter(e => e.id !== 'AU2'); return mp; };
   function zusagenAnwenden(g) {
     if (!g || fokus !== UNSER || !B.teams[UNSER]) return;
     const z = zusagenFuer(g), kd = kaderVon(UNSER);
@@ -631,11 +637,12 @@
     if (!liste.length) return '';
     const karte = s => {
       const pos = positionen(s), p = profil(s);
-      return `<button class="kk" data-spielerin="${esc(s.id)}" aria-label="${esc(s.name)}, Nummer ${s.nummer}">
+      return `<button class="kk${istRaus(s) ? ' raus' : ''}" data-spielerin="${esc(s.id)}" aria-label="${esc(s.name)}, Nummer ${s.nummer}">
         <span class="kk-bild">${ava(s, 96)}<span class="kk-nr">${s.nummer}</span></span>
         <span class="kk-name">${esc(s.name)}</span>
         ${pos.length ? `<span class="kk-pos">${pos.map((x, i) => i === 0 ? `<span class="etikett lieb">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}
         ${p && p.satz ? `<span class="kk-satz">„${esc(p.satz)}“</span>` : ''}
+        ${istRaus(s) ? '<span class="kk-amt" style="color:var(--text-2)">Diese Saison nicht dabei</span>' : ''}
         ${aemter(s).length ? `<span class="kk-amt">${aemter(s).map(esc).join(' · ')}</span>` : ''}
       </button>`;
     };
@@ -673,7 +680,7 @@
   function whatsappText() {
     const g = naechstes(UNSER); if (!g) return '';
     const heim = g.heim === UNSER, geg = heim ? g.gast : g.heim;
-    const mp = erzeugeMatchplan({ modell, B, K, liga: LIGA, g, fokus: UNSER, eigene: labor.eigene, tw: TW });
+    const mp = matchplanFuer(g, UNSER);
     const r = drei(mp.basis.s, mp.basis.u, mp.basis.n);
     const kn = n => { const t = n.split(' '); return t.length > 1 ? `${t[0]} ${t[t.length - 1][0]}.` : n; };
     const z = [];
@@ -683,10 +690,9 @@
     if (g.lat && g.lon) z.push(`🗺️ https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.lat + ',' + g.lon)}`);
     z.push(`📊 Siegchance ${r[0]} % · Remis ${r[1]} % · Niederlage ${r[2]} %`);
     const w = [];
-    const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au2 = mp.empfehlungen.filter(e => e.id === 'AU2'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
+    const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
     const tw1 = mp.empfehlungen.find(e => e.id === 'TW1'), tw3 = mp.empfehlungen.find(e => e.id === 'TW3'), ph1 = mp.befunde.find(b => b.id === 'PH1');
     if (au1.length) w.push(`Einplanen: ${au1.map(e => e.person.name).join(', ')}`);
-    if (au2.length) w.push(`Anfragen: ${au2.map(e => e.person.name).join(', ')}`);
     if (au6) w.push(`7-Meter: ${au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${kn(x.s.name)}`).join(' · ')}`);
     if (tw1 || tw3) w.push(`Im Tor: ${[tw1 ? tw1.person.name : '', tw3 ? `bei 7 m ${tw3.person.name}` : ''].filter(Boolean).join(' · ')}`);
     if (ph1) w.push(`Achtung: ${ph1.titel}`);
@@ -868,13 +874,12 @@
     zusagenAnwenden(g);
     if (!g) return seitenkopf('Matchplan') + modul('', `<div class="leer">${ico('plan')}<b>Kein offenes Spiel</b><p>Für ${esc(kurz(fokus))} steht kein Spiel mehr an.</p></div>`);
     const s = sicht(g);
-    const mp = erzeugeMatchplan({ modell, B, K, liga: LIGA, g, fokus, eigene: labor.eigene, tw: TW });
+    const mp = matchplanFuer(g, fokus);
     const r = drei(mp.basis.s, mp.basis.u, mp.basis.n), n = Math.min(mp.n || 0, mp.nG || 0);
-    const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au2 = mp.empfehlungen.filter(e => e.id === 'AU2'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
+    const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
     const ph1 = mp.befunde.find(b => b.id === 'PH1');
     const wichtig = [];
     if (au1.length) wichtig.push(['Einplanen', au1.map(e => esc(e.person.name)).join(', ')]);
-    if (au2.length) wichtig.push(['Anfragen', au2.map(e => esc(e.person.name)).join(', ')]);
     if (au6) wichtig.push(['7-Meter', au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${esc(kurzName(x.s.name))}`).join(' · ')]);
     const tw1 = mp.empfehlungen.find(e => e.id === 'TW1'), tw3 = mp.empfehlungen.find(e => e.id === 'TW3');
     if (tw1 || tw3) wichtig.push(['Im Tor', [tw1 ? esc(tw1.person.name) : '', tw3 ? `bei 7 m ${esc(tw3.person.name)}` : ''].filter(Boolean).join(' · ')]);
@@ -1148,8 +1153,8 @@
     const wert = s => ui.spSort === 'einfluss' ? vz(s.einfluss) : ui.spSort === 'tore' ? s.tore : ui.spSort === 'tps' ? dez(s.toreProSpiel) : ui.spSort === 'tw' ? (s.tw && s.tw.onTarget ? pct(s.tw.rate) : '') : (s.smVers ? `${s.sm}/${s.smVers}` : '');
     const zeile2 = s => s.tw ? `Torhüterin · ${s.tw.saves} von ${s.tw.onTarget} gehalten` : s.torwart ? `Torhüterin · ${s.anz} Spiel${s.anz > 1 ? 'e' : ''}` : `${s.tore} Tore in ${s.anz} Spiel${s.anz > 1 ? 'en' : ''}`;
     const el = $('#spListe'); if (!el) return;
-    el.innerHTML = liste.length ? modul('', `<div class="zeilen">${liste.slice(0, 120).map((s, i) => `<button class="spiel${s.team === fokus ? ' fokus' : ''}" style="grid-template-columns:24px 40px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(s.id)}">
-        <span class="cap t3" style="text-align:right">${i + 1}</span>${ava(s, 40)}<span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${mitPos(s)}${esc(kurz(s.team))} · ${zeile2(s)}</span></div></span>
+    el.innerHTML = liste.length ? modul('', `<div class="zeilen">${liste.slice(0, 120).map((s, i) => `<button class="spiel${s.team === fokus ? ' fokus' : ''}${istRaus(s) ? ' raus' : ''}" style="grid-template-columns:24px 40px minmax(0,1fr) auto;min-height:56px" data-spielerin="${esc(s.id)}">
+        <span class="cap t3" style="text-align:right">${i + 1}</span>${ava(s, 40)}<span class="paar"><div style="height:auto"><span style="font-weight:500">${esc(s.name)}</span></div><div style="height:auto;gap:6px">${logo(s.team, 16)}<span class="cap t2">#${s.nummer} · ${istRaus(s) ? 'diese Saison nicht dabei · ' : ''}${mitPos(s)}${esc(kurz(s.team))} · ${zeile2(s)}</span></div></span>
         <span style="font-weight:600;font-size:17px">${wert(s)}</span></button>`).join('')}</div>`) :
       modul('', `<div class="leer">${ico('trikot')}<b>Keine Spielerin gefunden</b><p>Keine Treffer für „${esc(ui.spSuche)}“.</p><button class="textaktion" data-aktion="filterWeg" style="margin:0">Filter zurücksetzen</button></div>`);
   }
@@ -1300,6 +1305,7 @@
     }).join('');
     const hz = (K[s.team].torHz[s.name] || [0, 0]);
     oeffneSheet(`#${s.nummer} ${esc(s.name)}`, `<div class="meta" style="display:flex;gap:16px;align-items:center;margin-bottom:16px">${ava(s, 72)}<span style="display:grid;gap:8px"><span style="display:flex;gap:8px;align-items:center">${logo(s.team)} ${esc(lang(s.team))}</span>${positionen(s).length ? `<span class="profiltags">${positionen(s).map((x, i) => i === 0 ? `<span class="etikett lieb" title="Lieblingsposition">${ico('stern', 1)}${POS[x]}</span>` : etikett(POS[x], true)).join('')}</span>` : ''}</span></div>
+      ${istRaus(s) ? `<div class="hinweis">${ico('info')}<span>Diese Saison nicht dabei. Im Matchplan und auf dem Kabinenblatt taucht sie nicht auf.</span></div>` : ''}
       ${profil(s) && profil(s).satz ? `<p class="profilsatz">${esc(profil(s).satz)}</p>` : ''}
       ${aemter(s).length ? `<div class="aemter"><span class="micro">Ämter im Team</span><div class="profiltags">${aemter(s).map(a => etikett(esc(a))).join('')}</div></div>` : ''}
       ${s.tw ? `<div class="kacheln">${kachel('Paradenquote', s.tw.rate == null ? '–' : `${Math.round(s.tw.rate * 100)}<span class="pz">%</span>`, `${s.tw.saves} von ${s.tw.onTarget} Würfen aufs Tor`)}${kachel('7-Meter gehalten', s.tw.sevenMeter.onTarget ? `${s.tw.sevenMeter.saves} von ${s.tw.sevenMeter.onTarget}` : 'keine', s.tw.sevenMeter.onTarget ? pct(s.tw.sevenMeter.rate) + ' Quote' : 'noch kein Siebenmeter erfasst')}${kachel('Erfasste Spiele', `${s.tw.matches}`, `${s.tw.minutes} Minuten im Tor`)}${TRAINERIN ? kachel('Torwirkung', vz(s.einfluss), s.tw.reliable ? 'aus der Paradenquote' : `Paradenquote zählt ab ${GOALKEEPER.MIN_SHOTS} Würfen`) : kachel('Vorbei', `${s.tw.misses}`, 'Würfe neben das Tor')}</div>

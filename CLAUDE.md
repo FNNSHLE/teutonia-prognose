@@ -44,6 +44,7 @@ daten/fotos.js             Generated: window.HB_FOTOS = { playerId: key } for th
 daten/fotos/               Generated: <playerId>.jpg (128 px) + quellen.txt (playerId photo_url), own team only
 daten/profile.js           Hand-maintained: window.HB_PROFILE = { playerId: {name, position: [TW|LA|RL|RM|RR|RA|KM], satz, aemter: []} }, own team only
 daten/zusagen.js           Hand-maintained: window.HB_ZUSAGEN = { immerRaus: [playerId], <matchId>: {stand, dabei: [playerId]} } from SpielerPlus; seeds the optimiser once per stand
+                           immerRaus players stay visible but greyed out and are excluded from the Matchplan (Bmp), Kabinenblatt and WhatsApp text
 daten/cache/<id>_l.json    Raw lineups per match (handball.net response)
 daten/cache/<id>_e.json    Raw live-ticker events per match
 daten/torwart/schema.json  JSON Schema of the goalkeeper record (tracker export)
@@ -128,6 +129,8 @@ picked from `SPRUECHE` in `app.js` by result and margin (stable per match id). N
 „Bild teilen“ (Web Share with file, e.g. WhatsApp) and „Speichern“ in the match sheet, the change card and the area „Social & Assets“ (`seiteSocial`, also team message, song, Instagram).
 Crests must be same-origin, so `scripts/logos.sh` stores them in `daten/logos/<teamId>.jpg` + `daten/logos.js`.
 Fonts in `app/assets/fonts/` (Anton and Inter: OFL, Permanent Marker: Apache 2.0), subset to Latin as WOFF.
+
+Matchplan: the „Anfragen“ recommendation (AU2) is filtered out on purpose (`matchplanFuer`).
 
 ## What changed (AEND)
 
