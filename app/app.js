@@ -786,7 +786,7 @@
       datumLang: `${tagLang(g.datum)} ${j}`, ort: g.adresse ? adresseSchoen(g.adresse) : g.halle ? normalisiere(g.halle) : '',
       mannschaft: '1. Damen', eigenLogo: logoLokal(UNSER), eigenSeite: eigen,
       etikett: !eigen ? '' : eig > 0 ? 'SIEG' : eig === 0 ? 'REMIS' : 'NIEDERLAGE', etikettFarbe: eig > 0 ? '#E2231A' : '#6E6E73',
-      spruch: eigen ? spruchFuer(g) : 'Handball in Hamburg.', top,
+      spruch: eigen ? spruchFuer(g) : 'Handball in Hamburg.', top: null,
     };
   }
   const bildName = g => `ergebnis-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');

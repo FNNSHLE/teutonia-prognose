@@ -135,7 +135,7 @@
     }
 
     // Spruch
-    let y = bandY + bandH + 124;
+    let y = bandY + bandH + (d.top ? 124 : 168);
     ctx.save(); ctx.translate(W / 2, y); ctx.rotate(-0.035);
     ctx.fillStyle = FARBE.schwarz; ctx.textAlign = 'center';
     let g = 58; ctx.font = `${g}px ${F.hand}`;
