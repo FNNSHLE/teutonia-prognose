@@ -85,6 +85,8 @@ fi
 
 # Spielerinnenfotos des eigenen Teams (nur mit Zustimmung, siehe scripts/fotos.sh)
 bash scripts/fotos.sh || true
+# Teamlogos für das Ergebnis-Bild (siehe scripts/logos.sh)
+bash scripts/logos.sh || true
 
 # Browser-Cache umgehen
 STAMP=$(date +%s)

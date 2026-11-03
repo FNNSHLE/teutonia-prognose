@@ -87,6 +87,8 @@ fi
 
 # Spielerinnenfotos des eigenen Teams (nur mit Zustimmung, siehe scripts/fotos.sh)
 bash scripts/fotos.sh || true
+# Teamlogos für das Ergebnis-Bild (siehe scripts/logos.sh)
+bash scripts/logos.sh || true
 
 # Browser-Cache umgehen: Datenstand als Versionsmerkmal in die Seite schreiben
 sed -i '' -E "s/\\?t=[0-9]+/?t=$(date +%s)/g" app/index.html
