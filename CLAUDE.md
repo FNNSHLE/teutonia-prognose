@@ -121,9 +121,9 @@ browser devtools while developing, and expect one extra reload after changing `s
 The three fetch scripts are near-duplicates (`abruf.sh`, `Start (Mac).command`, `app/abruf.ps1`). A logic
 change must be applied to all three.
 
-## Result image (Ergebnis-Bild)
+## Social images (Endstand and Matchday)
 
-`app/ergebnisbild.js` draws a 1080 × 1350 PNG on a canvas for every finished match of the own team (Teutonia style:
+`app/ergebnisbild.js` draws `d.art` 'ergebnis' (light) or 'matchday' (dark, inverted; for every upcoming own match, time or „Termin folgt“, real venue address) as a 1080 × 1350 PNG on a canvas for every finished match of the own team (Teutonia style:
 black/white, Anton, red accent, „Schwarz Weiß Bunt“): crests, score with own goals in red, half-time, a saying
 picked from `SPRUECHE` in `app.js` by result and margin (stable per match id). No top scorer (deliberately left out). Three formats (`FORMATE` in `ergebnisbild.js`: feed 4:5, quadrat 1:1, story 9:16). Shown with
 „Bild teilen“ (Web Share with file, e.g. WhatsApp) and „Speichern“ in the match sheet, the change card and the area „Social & Assets“ (`seiteSocial`, also team message, song, Instagram).

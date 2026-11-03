@@ -771,13 +771,17 @@
     remis: ['Geteilte Punkte, volle Leidenschaft.', 'Ein Punkt Moral.', 'Unentschieden – aber nicht unverdient.'],
     niederlageKnapp: ['Ein Tor fehlt, der Kampf nicht.', 'So nah dran – nächstes Mal gehört der Abend uns.', 'Kopf hoch, weiter geht’s.'],
     niederlage: ['Abhaken, trainieren, zurückschlagen.', 'Nicht unser Tag – aber unser Team.', 'Aus Niederlagen lernt man. Wir lernen schnell.'],
+    heim: ['Heimspiel! Kommt vorbei und macht Lärm.', 'Unsere Halle, unser Abend.', 'Thedestraße wird laut – seid dabei!'],
+    auswaerts: ['Auswärts – wir holen uns die Punkte.', 'Fremde Halle, gleiche Leidenschaft.', 'Kommt mit, wir brauchen jede Stimme!'],
   };
   function spruchFuer(g) {
+    if (!g.gewertet) { const l = SPRUECHE[g.heim === UNSER ? 'heim' : 'auswaerts']; return l[Math.abs(Number(g.id)) % l.length]; }
     const eig = g.heim === UNSER ? g.toreHeim - g.toreGast : g.toreGast - g.toreHeim;
     const k = eig > 0 ? (eig <= 2 ? 'siegKnapp' : eig >= 8 ? 'siegHoch' : 'sieg') : eig === 0 ? 'remis' : (eig >= -2 ? 'niederlageKnapp' : 'niederlage');
     const l = SPRUECHE[k]; return l[Math.abs(Number(g.id)) % l.length];
   }
   function ergebnisDaten(g) {
+    if (!g.gewertet) return matchdayDaten(g);
     const eigen = g.heim === UNSER ? 'heim' : g.gast === UNSER ? 'gast' : null;
     const eig = eigen === 'heim' ? g.toreHeim - g.toreGast : g.toreGast - g.toreHeim;
     const v = B.verlaeufe[g.id], d = DETAILS[g.id];
@@ -795,12 +799,24 @@
       datumLang: `${tagLang(g.datum)} ${j}`, ort: HEIMHALLE,
       mannschaft: '1. Damen', eigenLogo: logoLokal(UNSER), eigenSeite: eigen,
       etikett: !eigen ? '' : eig > 0 ? 'SIEG' : eig === 0 ? 'REMIS' : 'NIEDERLAGE', etikettFarbe: eig > 0 ? '#E2231A' : '#6E6E73',
-      spruch: eigen ? spruchFuer(g) : 'Handball in Hamburg.', top: null,
+      spruch: eigen ? spruchFuer(g) : 'Handball in Hamburg.', top: null, art: 'ergebnis',
     };
   }
   const BILDFORMATE = [['feed', 'Feed 4:5'], ['quadrat', 'Quadrat 1:1'], ['story', 'Story 9:16']];
   let bildFormat = 'feed';
-  const bildName = g => `ergebnis-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+  function matchdayDaten(g) {
+    const j = g.datum.getUTCFullYear(), saison = g.datum.getUTCMonth() >= 6 ? `${j}/${String(j + 1).slice(2)}` : `${j - 1}/${String(j).slice(2)}`;
+    const team = id => ({ name: lang(id), logo: logoLokal(id), mono: teams[id] ? teams[id].mono : '?' });
+    const heim = g.heim === UNSER;
+    return {
+      art: 'matchday', heim: team(g.heim), gast: team(g.gast), runde: g.runde, saison, liga: ligaName, mannschaft: '1. Damen', eigenLogo: logoLokal(UNSER),
+      datumLang: g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)} ${j}`, zeit: g.terminOffen ? null : zeit(g.datum),
+      halle: g.halle ? normalisiere(g.halle) : '', ort: g.adresse ? adresseSchoen(g.adresse) : (heim ? HEIMHALLE : ''),
+      etikett: heim ? 'HEIMSPIEL' : 'AUSWÄRTS', etikettFarbe: heim ? '#E2231A' : '#FFFFFF', etikettText: heim ? '#FFFFFF' : '#0B0B0C',
+      spruch: spruchFuer(g),
+    };
+  }
+  const bildName = g => `${g.gewertet ? 'ergebnis' : 'matchday'}-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
   let bildCache = {};
   function ergebnisBildFuer(g) {
     const k = `${g.id}:${bildFormat}`;
@@ -816,14 +832,14 @@
       ergebnisBildFuer(g).then(blob => {
         const v = el.querySelector('.ebild-vorschau'); if (!v) return;
         v.className = `ebild-vorschau f-${bildFormat}`;
-        v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="Ergebnis-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
+        v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="${g.gewertet ? 'Ergebnis' : 'Matchday'}-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
       });
     });
   }
   async function bildTeilen(g, knopf) {
     const blob = await ergebnisBildFuer(g); if (!blob) return;
     const datei = new File([blob], bildName(g), { type: 'image/png' });
-    const text = `${kurz(g.heim)} ${g.toreHeim}:${g.toreGast} ${kurz(g.gast)} · ${spruchFuer(g)}`;
+    const text = g.gewertet ? `${kurz(g.heim)} ${g.toreHeim}:${g.toreGast} ${kurz(g.gast)} · ${spruchFuer(g)}` : `Matchday: ${kurz(g.heim)} gegen ${kurz(g.gast)} · ${g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)}, ${zeit(g.datum)} Uhr`}`;
     if (navigator.canShare && navigator.canShare({ files: [datei] })) { try { await navigator.share({ files: [datei], text }); } catch (e) {} return; }
     bildSpeichern(g, knopf);
   }
@@ -836,16 +852,22 @@
   // ================= Social & Assets =================
   // Alles zum Teilen an einem Ort: Ergebnis-Bilder, Nachricht fürs Team, Team-Song, Instagram.
   function seiteSocial() {
-    const kopf = seitenkopf('Social & Assets', `${esc(kurz(UNSER))} · Bilder und Nachrichten zum Teilen, z. B. in WhatsApp`);
-    const meine = gewertet.filter(g => g.heim === UNSER || g.gast === UNSER).slice().reverse();
-    const bilder = meine.length ? modul('Ergebnis-Bilder', `${formatWahl()}<div class="ebild-raster">${meine.map(g => `<div class="ebild-karte"><div class="cap t2" style="margin-bottom:6px">${tagKurz(g.datum)} · ${esc(kurz(g.heim))} ${g.toreHeim}:${g.toreGast} ${esc(kurz(g.gast))}</div>${ergebnisBildHtml(g, true)}</div>`).join('')}</div>`,
-      { eyebrow: 'Nach jedem Spiel automatisch', fuss: 'Feed 4:5 für Instagram-Beiträge und WhatsApp, Quadrat 1:1, Story 9:16 für Instagram-Story und WhatsApp-Status. „Bild teilen“ öffnet am Handy das Teilen-Menü.' })
-      : modul('Ergebnis-Bilder', '<p class="meta" style="margin:0">Nach dem ersten Spiel erscheint hier das Bild.</p>');
+    const kopf = seitenkopf('Social & Assets', `${esc(kurz(UNSER))} · Bilder, Nachrichten und Song zum Teilen, z. B. in WhatsApp`);
+    const meine = spiele.filter(g => g.heim === UNSER || g.gast === UNSER);
+    const kommend = meine.filter(g => g.offen), gespielt = meine.filter(g => g.gewertet).slice().reverse();
+    const naechstes = kommend[0];
+    const titelVon = g => `${g.terminOffen ? 'Termin folgt' : tagKurz(g.datum)} · ${g.heim === UNSER ? 'gegen' : 'bei'} ${esc(kurz(g.heim === UNSER ? g.gast : g.heim))}${g.gewertet ? ` · ${g.heim === UNSER ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)}` : ''}`;
+    const karte = g => `<div class="ebild-karte"><div class="ebild-titel">${titelVon(g)}</div>${ergebnisBildHtml(g, true)}</div>`;
+    const leiste = `<div class="social-leiste"><span class="cap t2">Format für alle Bilder</span>${formatWahl()}</div>`;
     const t = whatsappText();
-    const nachricht = t ? modul('Nachricht fürs Team', `<pre class="wa-vorschau">${esc(t)}</pre><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px"><a class="btn prim wa-knopf" href="${whatsappLink()}" target="_blank" rel="noopener">${ico('teilen', 1)} In WhatsApp öffnen</a><button class="btn" data-aktion="waKopieren">Text kopieren</button></div>`,
-      { eyebrow: 'Vor dem nächsten Spiel', fuss: 'Zusammenfassung aus dem Matchplan. In WhatsApp die Teamgruppe wählen und senden.' }) : '';
+    const nachricht = t ? `<div><div class="ebild-titel">Nachricht fürs Team</div><pre class="wa-vorschau">${esc(t)}</pre><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px"><a class="btn prim wa-knopf" href="${whatsappLink()}" target="_blank" rel="noopener">${ico('teilen', 1)} In WhatsApp öffnen</a><button class="btn" data-aktion="waKopieren">Text kopieren</button></div></div>` : '';
+    const vorSpiel = naechstes ? modul('Nächstes Spiel', `<div class="social-zwei">${karte(naechstes)}${nachricht}</div>`, { eyebrow: 'Vor dem Spiel teilen', klasse: 'social-naechstes' }) : '';
+    const weitere = kommend.slice(1);
+    const ankuend = weitere.length ? modul('Ankündigungen', `<div class="ebild-raster">${weitere.map(karte).join('')}</div>`, { eyebrow: `Matchday · ${weitere.length} weitere Spiele`, fuss: 'Für jedes kommende Spiel liegt ein Matchday-Bild bereit. Spiele ohne festen Termin zeigen „Termin folgt“ und aktualisieren sich, sobald handball.net den Termin kennt.' }) : '';
+    const ergebn = gespielt.length ? modul('Ergebnisse', `<div class="ebild-raster">${gespielt.map(karte).join('')}</div>`, { eyebrow: 'Endstand · nach jedem Spiel automatisch' }) : '';
     const songK = modul('Team-Song', `<p class="meta" style="margin:0 0 12px">„${SONG.titel}“ · ${mmss(SONG.dauer)}</p><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><button class="btn prim wa-knopf" data-aktion="songTeilen">${ico('teilen', 1)} Song teilen</button><a class="btn" href="${SONG.src}" download="teutonia-teutonia.mp3">Herunterladen</a></div>`, { eyebrow: 'Hier ist unser Vibe' });
-    return `${kopf}${bilder}<div class="zwei-sp">${nachricht}${songK}</div>${newsroom()}`;
+    return `${kopf}${leiste}${vorSpiel}${ankuend}${ergebn}<div class="mkopf" style="margin-top:8px"><div><span class="micro">Immer da</span><h2 class="titel">Mehr zum Teilen</h2></div></div><div class="zwei-sp">${songK}${newsroom()}</div>
+      <p class="fussnote">Formate: Feed 4:5 für Instagram-Beiträge und WhatsApp, Quadrat 1:1, Story 9:16 für Instagram-Story und WhatsApp-Status. „Bild teilen“ öffnet am Handy das Teilen-Menü.</p>`;
   }
   async function songTeilen() {
     try {
@@ -1261,7 +1283,7 @@
       <div>${g.gewertet ? `<div style="font:700 40px/40px var(--font-display);letter-spacing:-.03em">${stand(g.toreHeim, g.toreGast)}</div>${v ? `<div class="meta">Halbzeit ${stand(v.halbzeit.heim, v.halbzeit.gast)}</div>` : ''}` : `<div class="meta">${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)}<br>${zeit(g.datum)} Uhr`}</div>`}</div>
       <button data-team="${g.gast}" style="border:0;background:none;color:inherit">${logo(g.gast, 48)}<div style="font-weight:600;margin-top:8px">${esc(kurz(g.gast))}</div><div class="cap t2">Gast</div></button></div>`;
     if (g.halle) html += `<div class="hinweis" style="margin-bottom:16px">${ico('ort')}<span>${esc(normalisiere(g.halle))}${g.adresse ? `<br><span class="t2">${esc(adresseSchoen(g.adresse))}</span>` : ''}</span>${routeLink(g) ? `<span style="margin-left:auto">${routeLink(g)}</span>` : ''}</div>`;
-    if (g.gewertet && (g.heim === UNSER || g.gast === UNSER)) html += `<div class="micro" style="margin-bottom:8px">Ergebnis-Bild</div>${ergebnisBildHtml(g)}`;
+    if ((g.gewertet || g.offen) && (g.heim === UNSER || g.gast === UNSER)) html += `<div class="micro" style="margin-bottom:8px">${g.gewertet ? 'Ergebnis-Bild' : 'Matchday-Bild'}</div>${ergebnisBildHtml(g)}`;
     if (g.gewertet) {
       html += `<div class="micro">Chance vor dem Spiel</div>${dreiHG(vorher[g.id], g)}${streifenHG(vorher[g.id], g, true)}`;
       if (v && v.tore.length) html += `<div class="micro" style="margin:20px 0 4px">Spielverlauf</div>${spielverlaufSvg(g, v, W)}`;

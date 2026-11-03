@@ -1,4 +1,4 @@
-// Ergebnis-Bild nach einem Spiel (1080 × 1350, Hochformat für WhatsApp und Instagram).
+// Social-Bilder: Endstand nach einem Spiel und Matchday-Ankündigung davor (Feed 4:5, Quadrat 1:1, Story 9:16).
 // Stil angelehnt an die Teutonia-Posts: Schwarz-Weiß, schmale Großbuchstaben, Rot als Akzent, „Schwarz Weiß Bunt“.
 // Zeichnet auf ein Canvas; Logos und Fotos müssen vom eigenen Server kommen (daten/logos, daten/fotos),
 // sonst sperrt der Browser das Canvas und das Bild lässt sich nicht speichern.
@@ -48,14 +48,22 @@
     return zeilen;
   }
 
-  function wappen(ctx, img, mono, cx, cy, r) {
+  // Zwei Farbwelten: Endstand hell auf Papier, Matchday genau umgekehrt dunkel
+  const THEMA = {
+    hell: { grund: FARBE.papier, streifen: 'rgba(11,11,12,.06)', text: FARBE.schwarz, sub: FARBE.grau, band: FARBE.weiss, bandSchatten: 'rgba(0,0,0,.08)', ring: FARBE.linie,
+      box: FARBE.schwarz, boxText: FARBE.weiss, fuss: FARBE.schwarz, fussText: '#B9B9BE', motto: [FARBE.weiss, '#B9B9BE'] },
+    dunkel: { grund: '#0B0B0C', streifen: 'rgba(255,255,255,.07)', text: FARBE.weiss, sub: '#A1A1A6', band: '#1A1A1D', bandSchatten: 'rgba(0,0,0,.5)', ring: '#2C2C30',
+      box: FARBE.weiss, boxText: FARBE.schwarz, fuss: FARBE.papier, fussText: '#55555A', motto: [FARBE.schwarz, '#8E8E93'] },
+  };
+
+  function wappen(ctx, img, mono, cx, cy, r, T) {
     ctx.save();
     ctx.fillStyle = FARBE.weiss;
     ctx.shadowColor = 'rgba(0,0,0,.14)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     ctx.save();
-    ctx.lineWidth = 3; ctx.strokeStyle = FARBE.linie;
+    ctx.lineWidth = 3; ctx.strokeStyle = T.ring;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
     if (img) {
       const s = r * 1.42, q = Math.min(s / img.width, s / img.height);
@@ -69,114 +77,112 @@
     ctx.restore();
   }
 
-  function pinselStreifen(ctx, H) {
+  function pinselStreifen(ctx, H, farbe) {
     // ruhige diagonale Struktur oben rechts und unten links, als Anklang an die Pinselspuren der Posts
     ctx.save();
-    ctx.strokeStyle = 'rgba(11,11,12,.06)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = farbe; ctx.lineWidth = 2;
     for (let i = -6; i < 16; i++) { ctx.beginPath(); ctx.moveTo(760 + i * 26, 0); ctx.lineTo(1080 + i * 26, 320); ctx.stroke(); }
     for (let i = -6; i < 16; i++) { ctx.beginPath(); ctx.moveTo(-320 + i * 26, H - 320); ctx.lineTo(i * 26, H); ctx.stroke(); }
     ctx.restore();
   }
 
+  // d.art: 'ergebnis' (Endstand) oder 'matchday' (Ankündigung)
   async function zeichne(d, format = 'feed') {
     const L = FORMATE[format] || FORMATE.feed, H = L.h, dy = L.dy;
+    const md = d.art === 'matchday', T = md ? THEMA.dunkel : THEMA.hell;
     await ladeSchriften();
-    const [lHeim, lGast, lEigen, foto] = await Promise.all([ladeBild(d.heim.logo), ladeBild(d.gast.logo), ladeBild(d.eigenLogo), ladeBild(d.top && d.top.foto)]);
+    const [lHeim, lGast, lEigen] = await Promise.all([ladeBild(d.heim.logo), ladeBild(d.gast.logo), ladeBild(d.eigenLogo)]);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
 
     // Grund
-    ctx.fillStyle = FARBE.papier; ctx.fillRect(0, 0, W, H);
-    pinselStreifen(ctx, H);
+    ctx.fillStyle = T.grund; ctx.fillRect(0, 0, W, H);
+    pinselStreifen(ctx, H, T.streifen);
 
     // Kopfzeile: eigenes Wappen, Mannschaft, Saison
-    if (lEigen) { const s = 96, q = Math.min(s / lEigen.width, s / lEigen.height); ctx.drawImage(lEigen, 72, 56 + dy, lEigen.width * q, lEigen.height * q); }
-    ctx.fillStyle = FARBE.schwarz; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    ctx.font = `44px ${F.titel}`; ctx.fillText(d.mannschaft.toUpperCase(), lEigen ? 188 : 72, 122 + dy);
-    ctx.textAlign = 'right'; ctx.font = `600 26px ${F.text}`; ctx.fillStyle = FARBE.grau;
+    if (lEigen) {
+      const s = 96, q = Math.min(s / lEigen.width, s / lEigen.height);
+      if (md) { ctx.save(); ctx.fillStyle = FARBE.weiss; ctx.beginPath(); ctx.roundRect(66, 50 + dy, s + 12, s + 12, 12); ctx.fill(); ctx.restore(); }
+      ctx.drawImage(lEigen, 72, 56 + dy, lEigen.width * q, lEigen.height * q);
+    }
+    ctx.fillStyle = T.text; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    ctx.font = `44px ${F.titel}`; ctx.fillText(d.mannschaft.toUpperCase(), lEigen ? 192 : 72, 122 + dy);
+    ctx.textAlign = 'right'; ctx.font = `600 26px ${F.text}`; ctx.fillStyle = T.sub;
     ctx.fillText(`SAISON ${d.saison}`, W - 72, 100 + dy);
     ctx.fillText(d.liga.toUpperCase(), W - 72, 136 + dy);
 
     // Titel
-    ctx.textAlign = 'center'; ctx.fillStyle = FARBE.schwarz;
-    ctx.font = `${L.titel}px ${F.titel}`; ctx.fillText('ENDSTAND', W / 2, L.titelY);
-    ctx.font = `600 30px ${F.text}`; ctx.fillStyle = FARBE.grau;
+    ctx.textAlign = 'center'; ctx.fillStyle = T.text;
+    ctx.font = `${L.titel}px ${F.titel}`; ctx.fillText(md ? 'MATCHDAY' : 'ENDSTAND', W / 2, L.titelY);
+    ctx.font = `600 30px ${F.text}`; ctx.fillStyle = T.sub;
     ctx.fillText(`Spieltag ${d.runde} · ${d.datumLang}`, W / 2, L.subY);
 
-    // Ergebnis-Band
+    // Band mit beiden Teams
     const bandY = L.bandY, bandH = 372;
-    ctx.fillStyle = FARBE.weiss;
-    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.08)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
+    ctx.fillStyle = T.band;
+    ctx.save(); ctx.shadowColor = T.bandSchatten; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
     ctx.beginPath(); ctx.roundRect(56, bandY, W - 112, bandH, 28); ctx.fill(); ctx.restore();
 
     const xL = 248, xR = W - 248, yW = bandY + 150;
-    wappen(ctx, lHeim, d.heim.mono, xL, yW, 96);
-    wappen(ctx, lGast, d.gast.mono, xR, yW, 96);
-    // Namen
-    ctx.fillStyle = FARBE.schwarz; ctx.textAlign = 'center';
-    [[d.heim, xL], [d.gast, xR]].forEach(([t, x]) => {
-      passend(ctx, t.name.toUpperCase(), F.titel, 40, 300);
+    wappen(ctx, lHeim, d.heim.mono, xL, yW, 96, T);
+    wappen(ctx, lGast, d.gast.mono, xR, yW, 96, T);
+    ctx.textAlign = 'center';
+    [[d.heim, xL, 'HEIM'], [d.gast, xR, 'GAST']].forEach(([t, x, rolle]) => {
+      ctx.fillStyle = T.text; passend(ctx, t.name.toUpperCase(), F.titel, 40, 300);
       ctx.fillText(t.name.toUpperCase(), x, yW + 160);
-      ctx.font = `600 22px ${F.text}`; ctx.fillStyle = FARBE.grau;
-      ctx.fillText(t === d.heim ? 'HEIM' : 'GAST', x, yW + 196);
-      ctx.fillStyle = FARBE.schwarz;
+      ctx.font = `600 22px ${F.text}`; ctx.fillStyle = T.sub; ctx.fillText(rolle, x, yW + 196);
     });
-    // Spielstand: schwarzes Feld, die eigenen Tore in Rot
+
+    // Mitte: Spielstand (Endstand) oder Anwurfzeit (Matchday)
     const sW = 372, sH = 168, sX = W / 2 - sW / 2, sY = yW - 96;
-    ctx.fillStyle = FARBE.schwarz; ctx.beginPath(); ctx.roundRect(sX, sY, sW, sH, 20); ctx.fill();
-    ctx.font = `120px ${F.titel}`; ctx.textBaseline = 'middle';
-    const th = String(d.toreHeim), tg = String(d.toreGast);
-    ctx.fillStyle = d.eigenSeite === 'heim' ? '#FF4A3D' : FARBE.weiss; ctx.textAlign = 'right'; ctx.fillText(th, W / 2 - 30, sY + sH / 2 + 6);
-    ctx.fillStyle = d.eigenSeite === 'gast' ? '#FF4A3D' : FARBE.weiss; ctx.textAlign = 'left'; ctx.fillText(tg, W / 2 + 30, sY + sH / 2 + 6);
-    ctx.fillStyle = FARBE.weiss; ctx.textAlign = 'center'; ctx.fillText(':', W / 2, sY + sH / 2 - 2);
-    ctx.textBaseline = 'alphabetic';
-    if (d.halbzeit) { ctx.font = `600 24px ${F.text}`; ctx.fillStyle = FARBE.grau; ctx.fillText(`Halbzeit ${d.halbzeit}`, W / 2, sY + sH + 44); }
-    // Ergebnis-Etikett, schräg wie das „VS“ der Posts
+    ctx.fillStyle = T.box; ctx.beginPath(); ctx.roundRect(sX, sY, sW, sH, 20); ctx.fill();
+    ctx.textBaseline = 'middle';
+    if (md) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = T.boxText; ctx.font = `${d.zeit ? 112 : 92}px ${F.titel}`;
+      ctx.fillText(d.zeit ? d.zeit : 'FOLGT', W / 2, sY + sH / 2 - 4);
+      ctx.fillStyle = FARBE.grau; ctx.font = `600 22px ${F.text}`;
+      ctx.fillText(d.zeit ? 'UHR · ANWURF' : 'TERMIN', W / 2, sY + sH - 20);
+    } else {
+      ctx.font = `120px ${F.titel}`;
+      const th = String(d.toreHeim), tg = String(d.toreGast);
+      ctx.fillStyle = d.eigenSeite === 'heim' ? '#FF4A3D' : T.boxText; ctx.textAlign = 'right'; ctx.fillText(th, W / 2 - 30, sY + sH / 2 + 6);
+      ctx.fillStyle = d.eigenSeite === 'gast' ? '#FF4A3D' : T.boxText; ctx.textAlign = 'left'; ctx.fillText(tg, W / 2 + 30, sY + sH / 2 + 6);
+      ctx.fillStyle = T.boxText; ctx.textAlign = 'center'; ctx.fillText(':', W / 2, sY + sH / 2 - 2);
+    }
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
+    const unter = md ? d.halle : (d.halbzeit ? `Halbzeit ${d.halbzeit}` : '');
+    if (unter) { ctx.fillStyle = T.sub; passend(ctx, unter, F.text, 24, 330, '600'); ctx.fillText(unter, W / 2, sY + sH + 44); }
+    // Etikett, schräg wie das „VS“ der Posts
     if (d.etikett) {
       ctx.save(); ctx.translate(W / 2, sY - 18); ctx.font = `40px ${F.titel}`;
       const tw = ctx.measureText(d.etikett).width + 64;
       ctx.fillStyle = d.etikettFarbe || FARBE.rot;
       ctx.beginPath(); ctx.moveTo(-tw / 2 + 14, -30); ctx.lineTo(tw / 2 + 14, -30); ctx.lineTo(tw / 2 - 14, 30); ctx.lineTo(-tw / 2 - 14, 30); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = FARBE.weiss; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.etikett, 0, 3);
+      ctx.fillStyle = d.etikettText || FARBE.weiss; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.etikett, 0, 3);
       ctx.restore(); ctx.textBaseline = 'alphabetic';
     }
 
     // Spruch
-    let y = bandY + bandH + (d.top ? 124 : L.spruchAbst);
+    const y = bandY + bandH + L.spruchAbst;
     ctx.save(); ctx.translate(W / 2, y); ctx.rotate(-0.035);
-    ctx.fillStyle = FARBE.schwarz; ctx.textAlign = 'center';
+    ctx.fillStyle = T.text; ctx.textAlign = 'center';
     let g = L.spruchMax; ctx.font = `${g}px ${F.hand}`;
     let zeilen = zeilenUmbruch(ctx, d.spruch, 880);
     while (zeilen.length > 2 && g > 36) { g -= 4; ctx.font = `${g}px ${F.hand}`; zeilen = zeilenUmbruch(ctx, d.spruch, 880); }
     zeilen.forEach((z, i) => ctx.fillText(z, 0, i * (g + 10)));
-    // roter Pinselstrich darunter
     const uy = (zeilen.length - 1) * (g + 10) + 24, uw = Math.min(520, ctx.measureText(zeilen[zeilen.length - 1]).width);
     ctx.strokeStyle = FARBE.rot; ctx.lineWidth = 8; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-uw / 2, uy); ctx.quadraticCurveTo(0, uy + 10, uw / 2, uy - 4); ctx.stroke();
     ctx.restore();
-    y += (zeilen.length - 1) * (g + 10);
-
-    // Top-Werferin des eigenen Teams
-    if (d.top) {
-      const ty = y + 92, fx = W / 2 - 230;
-      ctx.save(); ctx.beginPath(); ctx.arc(fx, ty, 44, 0, Math.PI * 2); ctx.closePath();
-      ctx.fillStyle = '#E9E8E4'; ctx.fill();
-      if (foto) { ctx.clip(); ctx.drawImage(foto, fx - 44, ty - 44, 88, 88); }
-      else { ctx.fillStyle = FARBE.schwarz; ctx.font = `34px ${F.titel}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.top.ini, fx, ty + 2); }
-      ctx.restore();
-      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.font = `600 22px ${F.text}`; ctx.fillStyle = FARBE.grau; ctx.fillText('TOP-WERFERIN', fx + 66, ty - 12);
-      ctx.font = `40px ${F.titel}`; ctx.fillStyle = FARBE.schwarz;
-      ctx.fillText(`${d.top.name.toUpperCase()} · ${d.top.tore} TORE`, fx + 66, ty + 32);
-    }
 
     // Fuß: Ort und Motto
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    const fb = H - L.fuss + (L.fuss - 120) / 2; // Fußinhalt mittig im schwarzen Balken
-    ctx.fillStyle = FARBE.schwarz; ctx.fillRect(0, H - L.fuss, W, L.fuss);
-    ctx.font = `600 24px ${F.text}`; ctx.fillStyle = '#B9B9BE';
+    const fb = H - L.fuss + (L.fuss - 120) / 2;
+    ctx.fillStyle = T.fuss; ctx.fillRect(0, H - L.fuss, W, L.fuss);
+    ctx.font = `600 24px ${F.text}`; ctx.fillStyle = T.fussText;
     if (d.ort) ctx.fillText(d.ort, W / 2, fb + 44);
-    const motto = [['SCHWARZ ', FARBE.weiss], ['WEISS ', '#B9B9BE']];
+    const motto = [['SCHWARZ ', T.motto[0]], ['WEISS ', T.motto[1]]];
     ctx.font = `34px ${F.titel}`;
     const bunt = 'BUNT', bB = ctx.measureText(bunt).width;
     const gesamt = motto.reduce((a, [t]) => a + ctx.measureText(t).width, 0) + bB;
