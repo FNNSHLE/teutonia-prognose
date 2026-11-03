@@ -834,7 +834,7 @@
       art: 'matchday', heim: team(g.heim), gast: team(g.gast), runde: g.runde, saison, liga: ligaName, mannschaft: '1. Damen', eigenLogo: logoLokal(UNSER),
       datumLang: g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)} ${j}`, zeit: g.terminOffen ? null : zeit(g.datum),
       halle: g.halle ? normalisiere(g.halle) : '', ort: g.adresse ? adresseSchoen(g.adresse) : (heim ? HEIMHALLE : ''),
-      etikett: heim ? 'HEIMSPIEL' : 'AUSWÄRTS', etikettFarbe: heim ? '#E2231A' : '#FFFFFF', etikettText: heim ? '#FFFFFF' : '#0B0B0C',
+      etikett: heim ? 'HEIMSPIEL' : 'AUSWÄRTS', etikettFarbe: heim ? '#E2231A' : '#F5C21B', etikettText: heim ? '#FFFFFF' : '#0B0B0C',
       spruch: spruchFuer(g),
     };
   }
