@@ -136,7 +136,9 @@ Matchplan: the „Anfragen“ recommendation (AU2) is filtered out on purpose (`
 
 `spielberichtText(g)` in `app.js` writes an Instagram caption for every finished own match from the goal timeline
 (`B.verlaeufe`): start after ten minutes, biggest leads, runs of 4+ goals, half-time, comeback/equaliser, from when
-the winner led for good, tight finish, result, next match, hashtags. Sentences are collected with a minute and sorted.
+the winner led for good, timeouts (effect in the next five minutes), disqualifications, tight finish; then 7m on
+both sides, second half, number of scorers, suspensions, saves from the own goalkeeper record (if any) and a
+„Zahlen zum Spiel“ block; result, next match, hashtags. Sentences are collected with a minute and sorted.
 Deliberately no player names. Shown under each result image („Spielbericht für Instagram“, „Text kopieren“).
 
 ## What changed (AEND)

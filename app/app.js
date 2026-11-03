@@ -881,12 +881,62 @@
           : (wieder ? `Doch in der ${ab.min}. Minute ging ${geg} wieder in Führung (${st(ab.w, ab.s)}) und brachte sie über die Zeit.` : `Ab der ${ab.min}. Minute (${st(ab.w, ab.s)}) lag ${geg} vorn und gab die Führung nicht mehr her.`)]);
         else if (!ausgl2 && start2 !== 0 && Math.sign(start2) === Math.sign(diff)) ev.push([45, diff > 0 ? 'Nach der Pause blieb es umkämpft, die Führung gaben wir aber nicht mehr her.' : `Auch nach der Pause rannten wir hinterher.`]);
       }
+      // Auszeiten: was in den fünf Minuten danach passierte
+      const ev2 = (DETAILS[g.id] && DETAILS[g.id].e && DETAILS[g.id].e.data) || [];
+      ev2.filter(e => e.event_type && e.event_type.id === 30).forEach(e => {
+        const m = e.global_minute || 0, unsere = e.is_home === heim;
+        const vor = bis(m), nach = bis(m + 5), w5 = nach.w - vor.w, s5 = nach.s - vor.s;
+        const stand0 = st(vor.w, vor.s);
+        if (unsere && m >= 45 && Math.abs(vor.d) <= 1 && diff > 0) ev.push([m + 0.2, `Unsere Auszeit beim ${stand0} (${m}.) saß: Danach haben wir die Nerven behalten. ⏱️`]);
+        else if (unsere && w5 - s5 >= 2) ev.push([m + 0.2, `Nach unserer Auszeit in der ${m}. Minute (${stand0}) drehten wir auf: ${st(w5, s5)} in den folgenden fünf Minuten.`]);
+        else if (!unsere && m >= 45 && diff > 0 && Math.abs(vor.d) <= 2) ev.push([m + 0.2, `Auch die Auszeit von ${geg} beim ${stand0} (${m}.) brachte uns nicht aus dem Konzept.`]);
+        else if (!unsere && s5 - w5 >= 3) ev.push([m + 0.2, `Nach einer Auszeit von ${geg} in der ${m}. Minute zog der Gegner mit ${st(s5, w5)} an.`]);
+      });
+      // Disqualifikationen ohne Namen
+      ev2.filter(e => e.event_type && e.event_type.id === 8).forEach(e => { const m = e.global_minute || 0; ev.push([m + 0.1, e.is_home === heim ? `In der ${m}. Minute mussten wir nach einer Disqualifikation eine Spielerin ersetzen.` : `${geg} musste ab der ${m}. Minute nach einer Disqualifikation auf eine Spielerin verzichten.`]); });
       // Schlussphase, wenn es eng war und nicht gerade erst ausgeglichen wurde
       const z55 = bis(55);
       if (Math.abs(z55.d) <= 2 && !(ausgl2 && ausgl2.min >= 52)) ev.push([55, `Fünf Minuten vor Schluss stand es ${st(z55.w, z55.s)} – Spannung bis zum Ende! 😮‍💨`]);
       else if (ausgl2 && ausgl2.min >= 52 && diff > 0) ev.push([59, 'Spannung bis zum Schluss! 😮‍💨']);
       const satz = ev.sort((x, y) => x[0] - y[0]).map(x => x[1]);
       zeilen.push(satz.join(' '));
+      zeilen.push('');
+    }
+    // Zahlen aus Aufstellung und eigener Torhüterinnen-Erfassung
+    const L = DETAILS[g.id] && DETAILS[g.id].l && DETAILS[g.id].l.data;
+    if (L) {
+      const seite = k => ((L[k] || {}).players || []).filter(p => !p.is_staff);
+      const uns = seite(heim ? 'local' : 'visitor'), die = seite(heim ? 'visitor' : 'local');
+      const summe = (l, f) => l.reduce((a, p) => a + (p[f] || 0), 0);
+      const smW = summe(uns, 'seven_meter_goals'), smV = summe(uns, 'seven_meter_attempts'), smGW = summe(die, 'seven_meter_goals'), smGV = summe(die, 'seven_meter_attempts');
+      const zw = summe(uns, 'two_minutes'), zg = summe(die, 'two_minutes');
+      const schuetz = uns.filter(p => p.goals > 0).length;
+      const saetze = [];
+      if (smV) saetze.push(smW === smV ? `Vom Siebenmeterpunkt blieben wir eiskalt: ${smW} von ${smV} verwandelt. 🎯` : `Vom Siebenmeterpunkt trafen wir ${smW} von ${smV}.`);
+      if (smGV && smGV - smGW >= 2) saetze.push(`${geg} vergab ${smGV - smGW} von ${smGV} Siebenmetern. 🧤`);
+      const v1 = B.verlaeufe[g.id];
+      if (v1) { const a1 = heim ? v1.halbzeit.heim : v1.halbzeit.gast, b1 = heim ? v1.halbzeit.gast : v1.halbzeit.heim, a2 = wir - a1, b2 = sie - b1;
+        if (a2 > b2 && a1 <= b1) saetze.push(`Die zweite Hälfte ging mit ${st(a2, b2)} an uns${diff < 0 ? ' – darauf lässt sich aufbauen' : ''}.`); }
+      if (schuetz >= 7) saetze.push(`${schuetz} verschiedene Torschützinnen – das war echte Teamleistung! 🙌`);
+      if (zw + zg && Math.abs(zw - zg) >= 2) saetze.push(zw < zg ? `Diszipliniert: nur ${zw} Zeitstrafe${zw === 1 ? '' : 'n'} gegen uns, ${zg} gegen ${geg}.` : `Mit ${zw} Zeitstrafen machten wir es uns selbst schwer.`);
+      // Paraden aus der eigenen Erfassung von der Bank
+      const rec = ((window.HB_TORWART || {}).records || []).find(r => String(r.matchId) === String(g.id) && Number(r.teamId) === Number(UNSER));
+      let par = null;
+      if (rec && Array.isArray(rec.events)) {
+        const sh = rec.events.filter(e => e.type === 'shot'), auf = sh.filter(e => e.result !== 'miss'), geh = auf.filter(e => e.result === 'save');
+        const sm = auf.filter(e => e.sevenMeter), smG = sm.filter(e => e.result === 'save');
+        if (auf.length) { par = { geh: geh.length, auf: auf.length, sm: sm.length, smG: smG.length };
+          saetze.push(`Unsere Torhüterinnen parierten ${geh.length} von ${auf.length} Würfen aufs Tor (${Math.round(geh.length / auf.length * 100)} %)${smG.length ? `, darunter ${smG.length} Siebenmeter` : ''}. 🧤`); }
+      }
+      if (saetze.length) { zeilen.push(saetze.join(' ')); zeilen.push(''); }
+      const v0 = B.verlaeufe[g.id];
+      const hzW = v0 ? (heim ? v0.halbzeit.heim : v0.halbzeit.gast) : null, hzS = v0 ? (heim ? v0.halbzeit.gast : v0.halbzeit.heim) : null;
+      zeilen.push('📊 Zahlen zum Spiel');
+      if (v0) zeilen.push(`• Halbzeiten: ${st(hzW, hzS)} | ${st(wir - hzW, sie - hzS)}`);
+      zeilen.push(`• Siebenmeter: ${smW}/${smV} (${geg}: ${smGW}/${smGV})`);
+      zeilen.push(`• Zeitstrafen: ${zw} (${geg}: ${zg})`);
+      zeilen.push(`• Torschützinnen: ${schuetz}`);
+      if (par) zeilen.push(`• Paraden: ${par.geh}/${par.auf} (${Math.round(par.geh / par.auf * 100)} %)${par.sm ? `, Siebenmeter ${par.smG}/${par.sm}` : ''}`);
       zeilen.push('');
     }
     zeilen.push(diff > 0 ? `Am Ende steht ein ${st(wir, sie)} – zwei Punkte für uns! 🎉${diff <= 2 ? ' Nervenstark, Mädels!' : ''}` : diff === 0 ? `Am Ende ein ${st(wir, sie)} – ein Punkt, den wir mitnehmen.` : `Am Ende ${st(wir, sie)}. Kopf hoch – wir haben gezeigt, was in uns steckt! 💪`);
