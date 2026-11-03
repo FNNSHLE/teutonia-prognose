@@ -51,6 +51,8 @@ daten/torwart/goalkeepers.json  Permanent goalkeeper list per team: { "<teamId>"
 daten/torwart/torwart-<matchId>-<teamId>.json   Goalkeeper records, one per match and team
 scripts/goalkeeper.mjs     Validate goalkeeper records, create empty ones (Node, no deps, English)
 scripts/fotos.sh           Downloads the own team's player photos (called by abruf.sh and Start (Mac).command)
+scripts/logos.sh           Downloads all league crests to daten/logos/ for the result image
+app/ergebnisbild.js        Canvas renderer for the result image (window.ergebnisBild / ergebnisBildBlob)
 .github/workflows/daten.yml  Daily 05:00 UTC fetch, commits "Daten aktualisiert YYYY-MM-DD" as daten-bot
 ```
 
@@ -117,6 +119,15 @@ browser devtools while developing, and expect one extra reload after changing `s
 
 The three fetch scripts are near-duplicates (`abruf.sh`, `Start (Mac).command`, `app/abruf.ps1`). A logic
 change must be applied to all three.
+
+## Result image (Ergebnis-Bild)
+
+`app/ergebnisbild.js` draws a 1080 × 1350 PNG on a canvas for every finished match of the own team (Teutonia style:
+black/white, Anton, red accent, „Schwarz Weiß Bunt“): crests, score with own goals in red, half-time, a saying
+picked from `SPRUECHE` in `app.js` by result and margin (stable per match id), top scorer with photo. Shown with
+„Bild teilen“ (Web Share with file, e.g. WhatsApp) and „Speichern“ in the match sheet and in the change card.
+Crests must be same-origin, so `scripts/logos.sh` stores them in `daten/logos/<teamId>.jpg` + `daten/logos.js`.
+Fonts in `app/assets/fonts/` (Anton and Inter: OFL, Permanent Marker: Apache 2.0), subset to Latin as WOFF.
 
 ## What changed (AEND)
 

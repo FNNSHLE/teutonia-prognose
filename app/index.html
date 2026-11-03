@@ -445,6 +445,11 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .aend-spiel { border: 0; background: none; padding: 0; color: inherit; text-align: left; font: inherit; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
 .aend-block .delta { font-size: 12px; font-weight: 600; margin-left: 4px; }
 .aend-block .delta.plus { color: var(--sieg-text); } .aend-block .delta.minus { color: var(--niederlage-text); }
+/* Ergebnis-Bild */
+.ebild { margin-bottom: 20px; }
+.ebild-vorschau { aspect-ratio: 4 / 5; border-radius: var(--r-m); background: var(--bg-2); display: grid; place-items: center; overflow: hidden; }
+.ebild-vorschau img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ebild-knoepfe { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
 /* Team-Song */
 .vibe { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) 64px; gap: 20px; align-items: center; padding: 20px; margin-bottom: var(--gap); border-radius: var(--r-l); background: radial-gradient(120% 140% at 0% 0%, #3A2C10 0%, #17181C 55%, #0E0F12 100%); color: #F2F3F5; overflow: hidden; }
 .vibe::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2px rgba(242,183,5,.55); pointer-events: none; }
@@ -648,6 +653,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="../daten/profile.js?t=1793705931"></script>
 <script src="../daten/zusagen.js?t=1793705931"></script>
 <script src="../daten/aenderung.js?t=1793705931"></script>
+<script src="../daten/logos.js?t=1793705931"></script>
 <script src="lib/preact-10.29.2.umd.js"></script>
 <script src="lib/preact-hooks-10.29.2.umd.js"></script>
 <script src="lib/htm-3.1.1.umd.js"></script>
@@ -657,7 +663,8 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="matchplan.js?v=23"></script>
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
-<script src="app.js?v=45"></script>
+<script src="ergebnisbild.js?v=2"></script>
+<script src="app.js?v=46"></script>
 
 </body>
 </html>

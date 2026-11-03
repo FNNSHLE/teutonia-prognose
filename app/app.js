@@ -746,9 +746,77 @@
     const zeitraum = a.von.getTime() === a.bis.getTime() ? tagLang(a.bis) : `${tagKurz(a.von)} bis ${tagKurz(a.bis)}`;
     return modul(`${aendIco()}Was sich geändert hat`, `<div class="aend">
         <div class="aend-block"><span class="micro">Neue Ergebnisse</span><ul>${a.neu.map(g => `<li><button class="aend-spiel" data-spiel="${g.id}">${esc(ergebnisSatz(g))}</button></li>`).join('')}</ul></div>
+        ${a.neu.filter(g => g.gewertet && (g.heim === UNSER || g.gast === UNSER)).map(g => `<div class="aend-block"><span class="micro">Euer Ergebnis-Bild</span><button class="btn prim wa-knopf" data-spiel="${g.id}">${ico('teilen', 1)} Bild ansehen und teilen</button></div>`).join('')}
         <div class="aend-block"><span class="micro">Tabelle</span><p>${esc(platzSatz(a))}</p></div>
         ${a.chancen.length ? `<div class="aend-block"><span class="micro">Eure Siegchancen</span><ul>${(relevant.length ? relevant : a.chancen.slice(0, 1)).map(x => `<li>${chanceSatz(x)}</li>`).join('')}</ul>${relevant.length ? '' : '<p class="cap" style="margin:4px 0 0">Die neuen Ergebnisse ändern an euren Chancen kaum etwas.</p>'}</div>` : ''}
       </div>`, { eyebrow: `Aktualisiert am ${aendSeit()} · Spiele vom ${zeitraum}`, klasse: 'aend-modul', fuss: 'Verglichen mit dem Stand vor diesen Ergebnissen. Die Teamstärken werden aus allen Ergebnissen neu geschätzt, deshalb verschieben auch fremde Spiele eure Chancen.' });
+  }
+
+  // ================= Ergebnis-Bild (app/ergebnisbild.js) =================
+  const LOGOS = window.HB_LOGOS || {};
+  const logoLokal = id => LOGOS[id] ? `../daten/logos/${id}.jpg?u=${encodeURIComponent(LOGOS[id])}` : null;
+  const SPRUECHE = {
+    siegKnapp: ['Nervenstark bis zur letzten Sekunde.', 'Knapp ist auch gewonnen.', 'Puls 180, Punkte zwei.', 'Ein Tor reicht, wenn es das richtige ist.'],
+    sieg: ['Zwei Punkte, null Diskussion.', 'So sieht Teamhandball aus.', 'Gemeinsam geackert, gemeinsam gewonnen.'],
+    siegHoch: ['Ein Abend zum Einrahmen.', 'Volle Kraft, volle Punkte.', 'Das war eine Ansage.'],
+    remis: ['Geteilte Punkte, volle Leidenschaft.', 'Ein Punkt Moral.', 'Unentschieden – aber nicht unverdient.'],
+    niederlageKnapp: ['Ein Tor fehlt, der Kampf nicht.', 'So nah dran – nächstes Mal gehört der Abend uns.', 'Kopf hoch, weiter geht’s.'],
+    niederlage: ['Abhaken, trainieren, zurückschlagen.', 'Nicht unser Tag – aber unser Team.', 'Aus Niederlagen lernt man. Wir lernen schnell.'],
+  };
+  function spruchFuer(g) {
+    const eig = g.heim === UNSER ? g.toreHeim - g.toreGast : g.toreGast - g.toreHeim;
+    const k = eig > 0 ? (eig <= 2 ? 'siegKnapp' : eig >= 8 ? 'siegHoch' : 'sieg') : eig === 0 ? 'remis' : (eig >= -2 ? 'niederlageKnapp' : 'niederlage');
+    const l = SPRUECHE[k]; return l[Math.abs(Number(g.id)) % l.length];
+  }
+  function ergebnisDaten(g) {
+    const eigen = g.heim === UNSER ? 'heim' : g.gast === UNSER ? 'gast' : null;
+    const eig = eigen === 'heim' ? g.toreHeim - g.toreGast : g.toreGast - g.toreHeim;
+    const v = B.verlaeufe[g.id], d = DETAILS[g.id];
+    let top = null;
+    if (eigen && d && d.l && d.l.data) {
+      const ps = ((d.l.data[eigen === 'heim' ? 'local' : 'visitor'] || {}).players || []).filter(p => !p.is_staff && p.goals > 0).sort((a, b) => b.goals - a.goals);
+      if (ps.length) { const p = ps[0], name = `${p.player.first_name} ${p.player.last_name}`.trim();
+        top = { name, tore: p.goals, ini: initialen(name), foto: FOTOS[p.player.id] ? `../daten/fotos/${encodeURIComponent(p.player.id)}.jpg?u=${encodeURIComponent(FOTOS[p.player.id])}` : null }; }
+    }
+    const j = g.datum.getUTCFullYear(), saison = g.datum.getUTCMonth() >= 6 ? `${j}/${String(j + 1).slice(2)}` : `${j - 1}/${String(j).slice(2)}`;
+    const team = id => ({ name: lang(id), logo: logoLokal(id), mono: teams[id] ? teams[id].mono : '?' });
+    return {
+      heim: team(g.heim), gast: team(g.gast), toreHeim: g.toreHeim, toreGast: g.toreGast,
+      halbzeit: v ? `${v.halbzeit.heim}:${v.halbzeit.gast}` : '', runde: g.runde, saison, liga: ligaName,
+      datumLang: `${tagLang(g.datum)} ${j}`, ort: g.adresse ? adresseSchoen(g.adresse) : g.halle ? normalisiere(g.halle) : '',
+      mannschaft: '1. Damen', eigenLogo: logoLokal(UNSER), eigenSeite: eigen,
+      etikett: !eigen ? '' : eig > 0 ? 'SIEG' : eig === 0 ? 'REMIS' : 'NIEDERLAGE', etikettFarbe: eig > 0 ? '#E2231A' : '#6E6E73',
+      spruch: eigen ? spruchFuer(g) : 'Handball in Hamburg.', top,
+    };
+  }
+  const bildName = g => `ergebnis-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+  let bildCache = {};
+  function ergebnisBildFuer(g) {
+    if (!bildCache[g.id]) bildCache[g.id] = window.ergebnisBildBlob ? window.ergebnisBildBlob(ergebnisDaten(g)) : Promise.resolve(null);
+    return bildCache[g.id];
+  }
+  const ergebnisBildHtml = g => `<div class="ebild" data-ebild="${g.id}"><div class="ebild-vorschau"><span class="cap t2">Bild wird erstellt …</span></div>
+      <div class="ebild-knoepfe"><button class="btn prim wa-knopf" data-aktion="bildTeilen" data-spiel-id="${g.id}">${ico('teilen', 1)} Bild teilen</button><button class="btn" data-aktion="bildSpeichern" data-spiel-id="${g.id}">Speichern</button></div></div>`;
+  function ergebnisBildZeigen() {
+    $$('[data-ebild]').forEach(el => {
+      const g = spielNach[el.dataset.ebild]; if (!g) return;
+      ergebnisBildFuer(g).then(blob => {
+        const v = el.querySelector('.ebild-vorschau'); if (!v) return;
+        v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="Ergebnis-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
+      });
+    });
+  }
+  async function bildTeilen(g, knopf) {
+    const blob = await ergebnisBildFuer(g); if (!blob) return;
+    const datei = new File([blob], bildName(g), { type: 'image/png' });
+    const text = `${kurz(g.heim)} ${g.toreHeim}:${g.toreGast} ${kurz(g.gast)} · ${spruchFuer(g)}`;
+    if (navigator.canShare && navigator.canShare({ files: [datei] })) { try { await navigator.share({ files: [datei], text }); } catch (e) {} return; }
+    bildSpeichern(g, knopf);
+  }
+  async function bildSpeichern(g) {
+    const blob = await ergebnisBildFuer(g); if (!blob) return;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = bildName(g);
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
   // ================= Newsroom =================
@@ -1157,6 +1225,7 @@
       <div>${g.gewertet ? `<div style="font:700 40px/40px var(--font-display);letter-spacing:-.03em">${stand(g.toreHeim, g.toreGast)}</div>${v ? `<div class="meta">Halbzeit ${stand(v.halbzeit.heim, v.halbzeit.gast)}</div>` : ''}` : `<div class="meta">${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)}<br>${zeit(g.datum)} Uhr`}</div>`}</div>
       <button data-team="${g.gast}" style="border:0;background:none;color:inherit">${logo(g.gast, 48)}<div style="font-weight:600;margin-top:8px">${esc(kurz(g.gast))}</div><div class="cap t2">Gast</div></button></div>`;
     if (g.halle) html += `<div class="hinweis" style="margin-bottom:16px">${ico('ort')}<span>${esc(normalisiere(g.halle))}${g.adresse ? `<br><span class="t2">${esc(adresseSchoen(g.adresse))}</span>` : ''}</span>${routeLink(g) ? `<span style="margin-left:auto">${routeLink(g)}</span>` : ''}</div>`;
+    if (g.gewertet && (g.heim === UNSER || g.gast === UNSER)) html += `<div class="micro" style="margin-bottom:8px">Ergebnis-Bild</div>${ergebnisBildHtml(g)}`;
     if (g.gewertet) {
       html += `<div class="micro">Chance vor dem Spiel</div>${dreiHG(vorher[g.id], g)}${streifenHG(vorher[g.id], g, true)}`;
       if (v && v.tore.length) html += `<div class="micro" style="margin:20px 0 4px">Spielverlauf</div>${spielverlaufSvg(g, v, W)}`;
@@ -1177,6 +1246,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${s.dabei ? '<button class="btn prim" data-bereich="matchplan">Matchplan</button>' : ''}<button class="btn${s.dabei ? '' : ' prim'}" data-labor="${g.id}" style="${s.dabei ? '' : 'grid-column:1/-1'}">Durchspielen</button></div>`;
     }
     oeffneSheet(`${g.gewertet ? 'Ergebnis' : 'Vorschau'} · Spieltag ${g.runde}`, html);
+    ergebnisBildZeigen();
   }
 
   function teamDetail(id) {
@@ -1262,6 +1332,8 @@
       if (a === 'team') return teamWechsler();
       if (a === 'mehr') return mehrSheet();
       if (a === 'vibe') return vibeUmschalten();
+      if (a === 'bildTeilen') return bildTeilen(spielNach[el.dataset.spielId], el);
+      if (a === 'bildSpeichern') return bildSpeichern(spielNach[el.dataset.spielId], el);
       if (a === 'whatsapp') return whatsappSheet();
       if (a === 'waKopieren') { const t = whatsappText(); const ok = () => { el.textContent = 'Kopiert'; }; if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => {}); return; }
       if (a === 'kabine') { document.body.classList.add('druck-kabine'); window.print(); return; }
