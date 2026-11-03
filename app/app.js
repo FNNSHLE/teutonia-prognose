@@ -816,6 +816,88 @@
       spruch: spruchFuer(g),
     };
   }
+  // ================= Spielbericht für Instagram =================
+  // Aus dem Liveticker (B.verlaeufe): Start, größte Führungen, Läufe, Halbzeit, Aufholjagden, Schlussphase.
+  // Bewusst ohne Namen von Spielerinnen. Aus Sicht des eigenen Teams („wir“).
+  function spielberichtText(g) {
+    if (!g || !g.gewertet || (g.heim !== UNSER && g.gast !== UNSER)) return '';
+    const heim = g.heim === UNSER, geg = kurz(heim ? g.gast : g.heim);
+    const wir = heim ? g.toreHeim : g.toreGast, sie = heim ? g.toreGast : g.toreHeim, diff = wir - sie;
+    const st = (a, b) => `${a}:${b}`;
+    const v = B.verlaeufe[g.id];
+    const zeilen = [];
+    const kopf = diff > 0 ? (heim ? '💪 Heimsieg!' : `💪 Auswärtssieg bei ${geg}!`) : diff === 0 ? `🤝 Unentschieden ${heim ? 'gegen' : 'bei'} ${geg}` : `${heim ? 'Niederlage gegen' : 'Niederlage bei'} ${geg}`;
+    zeilen.push(kopf);
+    zeilen.push(`🤾‍♀️ ${lang(g.heim)} – ${lang(g.gast)} ${g.toreHeim}:${g.toreGast}${v ? ` (${v.halbzeit.heim}:${v.halbzeit.gast})` : ''}`);
+    zeilen.push('');
+    if (v && v.tore.length > 4) {
+      // Verlauf aus unserer Sicht
+      const T = v.tore.map(t => ({ min: t.min, hz: t.hz, w: heim ? t.heim : t.gast, s: heim ? t.gast : t.heim })).map(t => Object.assign(t, { d: t.w - t.s }));
+      const bis = m => { let x = { w: 0, s: 0, d: 0 }; T.forEach(t => { if (t.min <= m) x = t; }); return x; };
+      const hz1 = T.filter(t => t.hz === 1), hz2 = T.filter(t => t.hz === 2);
+      const maxF = l => l.reduce((a, t) => t.d > a.d ? t : a, { d: 0 }), minF = l => l.reduce((a, t) => t.d < a.d ? t : a, { d: 0 });
+      // Läufe: längste Serie eines Teams
+      let lauf = { n: 0 }, cur = { n: 0 };
+      T.forEach((t, i) => { const prev = i ? T[i - 1] : { w: 0, s: 0 }; const wer = t.w > prev.w ? 'w' : 's';
+        if (cur.wer === wer) { cur.n++; cur.bis = t; } else cur = { wer, n: 1, von: prev, bis: t, start: t.min };
+        if (cur.n > lauf.n) lauf = Object.assign({}, cur); });
+      const zahl = n => ['null', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn'][n] || String(n);
+      const toreW = n => `${zahl(n)} Tor${n === 1 ? '' : 'e'}`, toreD = n => `${zahl(n)} Tor${n === 1 ? '' : 'en'}`;
+      const ev = []; // [Minute, Satz] – am Ende chronologisch sortiert
+      // Start
+      const z10 = bis(10);
+      if (Math.abs(z10.d) <= 1) ev.push([10, `Ausgeglichener Start: Nach zehn Minuten stand es ${st(z10.w, z10.s)}.`]);
+      else if (z10.d > 1) ev.push([10, `Wir sind hellwach gestartet und lagen nach zehn Minuten mit ${st(z10.w, z10.s)} vorn. 🔥`]);
+      else ev.push([10, `${geg} erwischte den besseren Start, nach zehn Minuten stand es ${st(z10.w, z10.s)}.`]);
+      // Erste Halbzeit: größte Führungen, nur wenn deutlicher als nach zehn Minuten
+      const m1 = maxF(hz1), n1 = minF(hz1);
+      if (m1.d >= 3 && m1.d > z10.d) ev.push([m1.min <= 10 ? 10.5 : m1.min, m1.min <= 12 ? `Zwischenzeitlich führten wir sogar mit ${toreD(m1.d)} (${st(m1.w, m1.s)}).` : `Bis zur ${m1.min}. Minute konnten wir uns auf ${toreW(m1.d)} absetzen (${st(m1.w, m1.s)}).`]);
+      if (n1.d <= -3 && n1.d < z10.d) ev.push([n1.min <= 10 ? 10.5 : n1.min, `${geg} zog in der ${n1.min}. Minute auf ${toreW(-n1.d)} davon (${st(n1.w, n1.s)}).`]);
+      // Läufe ab Minute 11 (der Start ist oben schon beschrieben)
+      const h0 = v.halbzeit, start2v = (heim ? h0.heim - h0.gast : h0.gast - h0.heim);
+      const ausgl2v = T.filter(t => t.hz === 2).find(t => (start2v > 0 && t.d <= 0) || (start2v < 0 && t.d >= 0));
+      const laufInAusgleich = ausgl2v && lauf.n >= 4 && lauf.start >= 30 && lauf.start <= ausgl2v.min && ((lauf.wer === 'w' && start2v < 0) || (lauf.wer === 's' && start2v > 0));
+      if (lauf.n >= 4 && lauf.start > 10 && !laufInAusgleich) {
+        const vorher = lauf.von.w - lauf.von.s;
+        ev.push([lauf.start, lauf.wer === 'w'
+          ? (vorher < 0 ? `Mit einem ${lauf.n}:0-Lauf ab der ${lauf.start}. Minute haben wir uns zurückgekämpft. 🚀` : `Mit einem ${lauf.n}:0-Lauf ab der ${lauf.start}. Minute haben wir uns abgesetzt. 🚀`)
+          : (vorher > 0 ? `Mit einem ${lauf.n}:0-Lauf ab der ${lauf.start}. Minute kam ${geg} zurück.` : `Ein ${lauf.n}:0-Lauf von ${geg} ab der ${lauf.start}. Minute hat uns wehgetan.`)]);
+      }
+      // Halbzeit
+      const h = v.halbzeit, hw = heim ? h.heim : h.gast, hs = heim ? h.gast : h.heim;
+      ev.push([30, hw > hs ? `Zur Pause führten wir mit ${st(hw, hs)}.` : hw < hs ? `Zur Pause lagen wir mit ${st(hw, hs)} hinten.` : `Zur Pause stand es ${st(hw, hs)} – alles offen.`]);
+      // Zweite Halbzeit: Ausgleich oder Wende, dann wer die Führung bis zum Ende hielt
+      const start2 = hw - hs;
+      const ausgl2 = hz2.find(t => (start2 > 0 && t.d <= 0) || (start2 < 0 && t.d >= 0));
+      const mitLauf = laufInAusgleich ? `Mit einem ${lauf.n}:0-Lauf ab der ${lauf.start}. Minute ` : '';
+      if (ausgl2 && start2 > 0) ev.push([ausgl2.min, `${mitLauf ? mitLauf + 'kämpfte sich ' + geg + ' heran' : 'Nach dem Wechsel kämpfte sich ' + geg + ' heran'} und ${ausgl2.d === 0 ? `glich in der ${ausgl2.min}. Minute zum ${st(ausgl2.w, ausgl2.s)} aus` : `drehte in der ${ausgl2.min}. Minute das Spiel (${st(ausgl2.w, ausgl2.s)})`}.`]);
+      else if (ausgl2 && start2 < 0) ev.push([ausgl2.min, `${mitLauf ? mitLauf + 'kämpften wir uns zurück' : 'Nach dem Wechsel kamen wir zurück'} und ${ausgl2.d === 0 ? `glichen in der ${ausgl2.min}. Minute zum ${st(ausgl2.w, ausgl2.s)} aus` : `drehten in der ${ausgl2.min}. Minute das Spiel (${st(ausgl2.w, ausgl2.s)})`}. 💥`]);
+      // Ab wann stand der Sieger dauerhaft vorn?
+      if (diff !== 0) {
+        let ab = null; for (let i = T.length - 1; i >= 0; i--) { if ((diff > 0 && T[i].d <= 0) || (diff < 0 && T[i].d >= 0)) { ab = T[i + 1]; break; } }
+        const wieder = ausgl2 && ab && ab.min >= ausgl2.min;
+        if (ab && ab.hz === 2) ev.push([ab.min + 0.5, diff > 0
+          ? (wieder ? `In der ${ab.min}. Minute gingen wir wieder in Führung (${st(ab.w, ab.s)}) und gaben sie nicht mehr her.` : `Ab der ${ab.min}. Minute (${st(ab.w, ab.s)}) lagen wir vorn und gaben die Führung nicht mehr her.`)
+          : (wieder ? `Doch in der ${ab.min}. Minute ging ${geg} wieder in Führung (${st(ab.w, ab.s)}) und brachte sie über die Zeit.` : `Ab der ${ab.min}. Minute (${st(ab.w, ab.s)}) lag ${geg} vorn und gab die Führung nicht mehr her.`)]);
+        else if (!ausgl2 && start2 !== 0 && Math.sign(start2) === Math.sign(diff)) ev.push([45, diff > 0 ? 'Nach der Pause blieb es umkämpft, die Führung gaben wir aber nicht mehr her.' : `Auch nach der Pause rannten wir hinterher.`]);
+      }
+      // Schlussphase, wenn es eng war und nicht gerade erst ausgeglichen wurde
+      const z55 = bis(55);
+      if (Math.abs(z55.d) <= 2 && !(ausgl2 && ausgl2.min >= 52)) ev.push([55, `Fünf Minuten vor Schluss stand es ${st(z55.w, z55.s)} – Spannung bis zum Ende! 😮‍💨`]);
+      else if (ausgl2 && ausgl2.min >= 52 && diff > 0) ev.push([59, 'Spannung bis zum Schluss! 😮‍💨']);
+      const satz = ev.sort((x, y) => x[0] - y[0]).map(x => x[1]);
+      zeilen.push(satz.join(' '));
+      zeilen.push('');
+    }
+    zeilen.push(diff > 0 ? `Am Ende steht ein ${st(wir, sie)} – zwei Punkte für uns! 🎉${diff <= 2 ? ' Nervenstark, Mädels!' : ''}` : diff === 0 ? `Am Ende ein ${st(wir, sie)} – ein Punkt, den wir mitnehmen.` : `Am Ende ${st(wir, sie)}. Kopf hoch – wir haben gezeigt, was in uns steckt! 💪`);
+    const n = offen.find(x => x.heim === UNSER || x.gast === UNSER);
+    if (n) zeilen.push(`📅 Nächstes Spiel: ${n.terminOffen ? 'Termin folgt' : `${tagLang(n.datum)}, ${zeit(n.datum)} Uhr`}, ${n.heim === UNSER ? 'zu Hause gegen' : 'bei'} ${kurz(n.heim === UNSER ? n.gast : n.heim)}.${n.heim === UNSER ? ' Kommt vorbei! 📣' : ''}`);
+    zeilen.push('');
+    zeilen.push('#SchwarzWeissBunt #Teutonia10 #Handball #Frauenhandball #Hamburg');
+    return zeilen.join('\n');
+  }
+  const berichtHtml = g => { const t = spielberichtText(g); return t ? `<details class="bericht"><summary>Spielbericht für Instagram</summary><pre class="wa-vorschau">${esc(t)}</pre><button class="btn" data-aktion="berichtKopieren" data-spiel-id="${g.id}" style="width:100%;margin-top:8px">Text kopieren</button></details>` : ''; };
+
   const bildName = g => `${g.gewertet ? 'ergebnis' : 'matchday'}-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
   let bildCache = {};
   function ergebnisBildFuer(g) {
@@ -857,7 +939,7 @@
     const kommend = meine.filter(g => g.offen), gespielt = meine.filter(g => g.gewertet).slice().reverse();
     const naechstes = kommend[0];
     const titelVon = g => `${g.terminOffen ? 'Termin folgt' : tagKurz(g.datum)} · ${g.heim === UNSER ? 'gegen' : 'bei'} ${esc(kurz(g.heim === UNSER ? g.gast : g.heim))}${g.gewertet ? ` · ${g.heim === UNSER ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)}` : ''}`;
-    const karte = g => `<div class="ebild-karte"><div class="ebild-titel">${titelVon(g)}</div>${ergebnisBildHtml(g, true)}</div>`;
+    const karte = g => `<div class="ebild-karte"><div class="ebild-titel">${titelVon(g)}</div>${ergebnisBildHtml(g, true)}${g.gewertet ? berichtHtml(g) : ''}</div>`;
     const leiste = `<div class="social-leiste"><span class="cap t2">Format für alle Bilder</span>${formatWahl()}</div>`;
     const t = whatsappText();
     const nachricht = t ? `<div><div class="ebild-titel">Nachricht fürs Team</div><pre class="wa-vorschau">${esc(t)}</pre><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px"><a class="btn prim wa-knopf" href="${whatsappLink()}" target="_blank" rel="noopener">${ico('teilen', 1)} In WhatsApp öffnen</a><button class="btn" data-aktion="waKopieren">Text kopieren</button></div></div>` : '';
@@ -1283,7 +1365,7 @@
       <div>${g.gewertet ? `<div style="font:700 40px/40px var(--font-display);letter-spacing:-.03em">${stand(g.toreHeim, g.toreGast)}</div>${v ? `<div class="meta">Halbzeit ${stand(v.halbzeit.heim, v.halbzeit.gast)}</div>` : ''}` : `<div class="meta">${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)}<br>${zeit(g.datum)} Uhr`}</div>`}</div>
       <button data-team="${g.gast}" style="border:0;background:none;color:inherit">${logo(g.gast, 48)}<div style="font-weight:600;margin-top:8px">${esc(kurz(g.gast))}</div><div class="cap t2">Gast</div></button></div>`;
     if (g.halle) html += `<div class="hinweis" style="margin-bottom:16px">${ico('ort')}<span>${esc(normalisiere(g.halle))}${g.adresse ? `<br><span class="t2">${esc(adresseSchoen(g.adresse))}</span>` : ''}</span>${routeLink(g) ? `<span style="margin-left:auto">${routeLink(g)}</span>` : ''}</div>`;
-    if ((g.gewertet || g.offen) && (g.heim === UNSER || g.gast === UNSER)) html += `<div class="micro" style="margin-bottom:8px">${g.gewertet ? 'Ergebnis-Bild' : 'Matchday-Bild'}</div>${ergebnisBildHtml(g)}`;
+    if ((g.gewertet || g.offen) && (g.heim === UNSER || g.gast === UNSER)) html += `<div class="micro" style="margin-bottom:8px">${g.gewertet ? 'Ergebnis-Bild' : 'Matchday-Bild'}</div>${ergebnisBildHtml(g)}${g.gewertet ? `<div style="margin:-8px 0 20px">${berichtHtml(g)}</div>` : ''}`;
     if (g.gewertet) {
       html += `<div class="micro">Chance vor dem Spiel</div>${dreiHG(vorher[g.id], g)}${streifenHG(vorher[g.id], g, true)}`;
       if (v && v.tore.length) html += `<div class="micro" style="margin:20px 0 4px">Spielverlauf</div>${spielverlaufSvg(g, v, W)}`;
@@ -1394,6 +1476,7 @@
       if (a === 'vibe') return vibeUmschalten();
       if (a === 'bildFormat') { bildFormat = el.dataset.format; $$('[data-aktion="bildFormat"]').forEach(b => b.classList.toggle('an', b.dataset.format === bildFormat)); $$('.ebild-vorschau').forEach(v => { v.className = `ebild-vorschau f-${bildFormat}`; v.innerHTML = '<span class="cap t2">Bild wird erstellt …</span>'; }); return ergebnisBildZeigen(); }
       if (a === 'songTeilen') return songTeilen();
+      if (a === 'berichtKopieren') { const t = spielberichtText(spielNach[el.dataset.spielId]); if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { el.textContent = 'Kopiert ✓'; setTimeout(() => { el.textContent = 'Text kopieren'; }, 2000); }, () => {}); return; }
       if (a === 'bildTeilen') return bildTeilen(spielNach[el.dataset.spielId], el);
       if (a === 'bildSpeichern') return bildSpeichern(spielNach[el.dataset.spielId], el);
       if (a === 'whatsapp') return whatsappSheet();
