@@ -130,7 +130,9 @@ picked from `SPRUECHE` in `app.js` by result and margin (stable per match id). N
 Crests must be same-origin, so `scripts/logos.sh` stores them in `daten/logos/<teamId>.jpg` + `daten/logos.js`.
 Fonts in `app/assets/fonts/` (Anton and Inter: OFL, Permanent Marker: Apache 2.0), subset to Latin as WOFF.
 
-Matchplan: the „Anfragen“ recommendation (AU2) is filtered out on purpose (`matchplanFuer`).
+Matchplan: the „Anfragen“ recommendation (AU2) is filtered out on purpose (`matchplanFuer`). „Das Wichtigste“ (page,
+Kabinenblatt, WhatsApp) shows the own 7m order and goalkeeper, otherwise the opponent (`gegnerWichtig`): top scorers,
+7m taker, strongest/weakest ten-minute window pair, form. No „Einplanen“ and no own weak phase on purpose.
 
 ## Match report text (Spielbericht)
 

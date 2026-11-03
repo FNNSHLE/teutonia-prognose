@@ -673,6 +673,29 @@
     }, 3500);
   }
 
+  // ================= Gegner im Blick (für „Das Wichtigste“, Kabinenblatt, WhatsApp) =================
+  // Torgefährlichste Werferinnen, Siebenmeterschützin, stärkste und schwächste Phase, Form der Gegnerin.
+  function gegnerWichtig(g, f) {
+    const geg = g.heim === f ? g.gast : g.heim, t = Bmp.teams[geg], k = K[geg], z = [];
+    const kn = n => { const x = n.split(' '); return x.length > 1 ? `${x[0]} ${x[x.length - 1]}` : n; };
+    if (t && t.spiele.length) {
+      const top = t.liste.filter(s => s.anz >= 1 && s.tore > 0).sort((a, b) => b.toreProSpiel - a.toreProSpiel || b.tore - a.tore).slice(0, 3);
+      if (top.length) z.push(['Torgefährlich', top.map(s => `#${s.nummer} ${kn(s.name)} (${dez(s.toreProSpiel)} pro Spiel)`).join(' · ')]);
+      const sm = t.liste.filter(s => s.smVers >= 2).sort((a, b) => b.smVers - a.smVers || b.sm - a.sm)[0];
+      if (sm) z.push(['7m-Schützin', `#${sm.nummer} ${kn(sm.name)} trifft ${sm.sm} von ${sm.smVers}`]);
+    }
+    if (k && k.spiele >= 1 && Array.isArray(k.tore)) {
+      const fenster = [0, 1, 2, 3, 4].map(i => ({ i, d: (k.tore[i] + k.tore[i + 1] - k.gegen[i] - k.gegen[i + 1]) / k.spiele }));
+      const best = fenster.slice().sort((a, b) => b.d - a.d)[0], worst = fenster.slice().sort((a, b) => a.d - b.d)[0];
+      const vz1 = x => `${x > 0 ? '+' : x < 0 ? MINUS : ''}${dez(Math.abs(x))}`;
+      if (best && best.d > 0.4) z.push(['Stärkste Phase', `Minute ${best.i * 10} bis ${best.i * 10 + 20} (im Schnitt ${vz1(best.d)} Tore) – hier dagegenhalten`]);
+      if (worst && worst.d < -0.4) z.push(['Schwächste Phase', `Minute ${worst.i * 10} bis ${worst.i * 10 + 20} (im Schnitt ${vz1(worst.d)} Tore) – hier zuschlagen`]);
+    }
+    const form = spieleVon(geg).slice(-3).reverse();
+    if (form.length) z.push(['Form', form.map(x => { const e = ergebnisAus(x, geg), w = x.heim === geg ? x.toreHeim : x.toreGast, s2 = x.heim === geg ? x.toreGast : x.toreHeim; return `${e === 'S' ? 'Sieg' : e === 'U' ? 'Remis' : 'Niederlage'} ${w}:${s2} ${x.heim === geg ? 'gegen' : 'bei'} ${kurz(x.heim === geg ? x.gast : x.heim)}`; }).join(' · ')]);
+    return z.map(([k2, v2]) => [`${kurz(geg)}: ${k2}`, v2]);
+  }
+
   // ================= WhatsApp-Zusammenfassung =================
   // Text fürs Team zum nächsten Spiel des eigenen Teams. Automatisch in eine Gruppe schreiben erlaubt WhatsApp nicht,
   // deshalb öffnet ein Knopf WhatsApp mit dem fertigen Text (wa.me), Empfänger und Senden wählt man selbst.
@@ -692,10 +715,9 @@
     const w = [];
     const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
     const tw1 = mp.empfehlungen.find(e => e.id === 'TW1'), tw3 = mp.empfehlungen.find(e => e.id === 'TW3'), ph1 = mp.befunde.find(b => b.id === 'PH1');
-    if (au1.length) w.push(`Einplanen: ${au1.map(e => e.person.name).join(', ')}`);
-    if (au6) w.push(`7-Meter: ${au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${kn(x.s.name)}`).join(' · ')}`);
+    if (au6) w.push(`Unsere 7-Meter: ${au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${kn(x.s.name)}`).join(' · ')}`);
     if (tw1 || tw3) w.push(`Im Tor: ${[tw1 ? tw1.person.name : '', tw3 ? `bei 7 m ${tw3.person.name}` : ''].filter(Boolean).join(' · ')}`);
-    if (ph1) w.push(`Achtung: ${ph1.titel}`);
+    gegnerWichtig(g, UNSER).forEach(([k, v]) => w.push(`${k}: ${v}`));
     if (w.length) { z.push(''); z.push('*Das Wichtigste*'); w.forEach(x => z.push(`• ${x}`)); }
     z.push(''); z.push(`👉 Matchplan: ${APP_URL}#matchplan`);
     return z.join('\n');
@@ -1038,11 +1060,10 @@
     const au1 = mp.empfehlungen.filter(e => e.id === 'AU1'), au6 = mp.empfehlungen.find(e => e.id === 'AU6');
     const ph1 = mp.befunde.find(b => b.id === 'PH1');
     const wichtig = [];
-    if (au1.length) wichtig.push(['Einplanen', au1.map(e => esc(e.person.name)).join(', ')]);
-    if (au6) wichtig.push(['7-Meter', au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${esc(kurzName(x.s.name))}`).join(' · ')]);
+    if (au6) wichtig.push(['Unsere 7-Meter', au6.siebenmeter.slice(0, 3).map((x, i) => `${i + 1}. ${esc(kurzName(x.s.name))}`).join(' · ')]);
     const tw1 = mp.empfehlungen.find(e => e.id === 'TW1'), tw3 = mp.empfehlungen.find(e => e.id === 'TW3');
     if (tw1 || tw3) wichtig.push(['Im Tor', [tw1 ? esc(tw1.person.name) : '', tw3 ? `bei 7 m ${esc(tw3.person.name)}` : ''].filter(Boolean).join(' · ')]);
-    if (ph1) wichtig.push(['Achtung', esc(ph1.titel)]);
+    gegnerWichtig(g, fokus).forEach(([k, v]) => wichtig.push([k, esc(v)]));
     const kopf = seitenkopf('Matchplan', `${s.heim ? 'gegen' : 'bei'} ${esc(kurz(mp.gegner))} · ${g.terminOffen ? 'Termin offen' : `${tagLang(g.datum)} · ${zeit(g.datum)} Uhr`}`,
       `<div style="text-align:right"><div class="kpi">${r[0]}<span class="pz">%</span></div><div class="cap t2">Siegchance</div></div>`);
     const aktionen = `<div style="display:flex;gap:8px;margin-bottom:var(--gap)" class="nicht-druck"><button class="btn prim" data-aktion="kabine">${ico('druck', 1)} Kabinenblatt</button>${fokus === UNSER ? `<button class="btn wa-knopf" data-aktion="whatsapp">${ico('teilen', 1)} WhatsApp</button>` : ''}${navigator.share ? `<button class="btn" data-aktion="teilen">${ico('teilen', 1)} Teilen</button>` : ''}</div>`;
