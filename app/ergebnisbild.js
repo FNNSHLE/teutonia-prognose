@@ -4,7 +4,13 @@
 // sonst sperrt der Browser das Canvas und das Bild lässt sich nicht speichern.
 (function () {
   'use strict';
-  const W = 1080, H = 1350;
+  const W = 1080;
+  // Formate: Feed 4:5, Quadrat 1:1, Story 9:16. dy verschiebt den Kopf (Story: Platz für die Instagram-Leiste oben).
+  const FORMATE = {
+    feed: { h: 1350, dy: 0, titel: 176, titelY: 372, subY: 424, bandY: 470, spruchAbst: 168, spruchMax: 58, fuss: 120 },
+    quadrat: { h: 1080, dy: -8, titel: 132, titelY: 292, subY: 336, bandY: 374, spruchAbst: 104, spruchMax: 46, fuss: 100 },
+    story: { h: 1920, dy: 190, titel: 214, titelY: 740, subY: 804, bandY: 890, spruchAbst: 300, spruchMax: 64, fuss: 190 },
+  };
   const F = { titel: 'AnwurfAnton', text: 'AnwurfInter', hand: 'AnwurfMarker' };
   const FARBE = { schwarz: '#0B0B0C', weiss: '#FFFFFF', papier: '#F6F5F2', grau: '#6E6E73', linie: '#D9D8D4', rot: '#E2231A' };
   const BUNT = ['#E2231A', '#F28C28', '#F5C21B', '#2DB35C', '#1E88E5', '#8E44AD'];
@@ -63,16 +69,17 @@
     ctx.restore();
   }
 
-  function pinselStreifen(ctx) {
+  function pinselStreifen(ctx, H) {
     // ruhige diagonale Struktur oben rechts und unten links, als Anklang an die Pinselspuren der Posts
     ctx.save();
     ctx.strokeStyle = 'rgba(11,11,12,.06)'; ctx.lineWidth = 2;
     for (let i = -6; i < 16; i++) { ctx.beginPath(); ctx.moveTo(760 + i * 26, 0); ctx.lineTo(1080 + i * 26, 320); ctx.stroke(); }
-    for (let i = -6; i < 16; i++) { ctx.beginPath(); ctx.moveTo(-320 + i * 26, 1030); ctx.lineTo(i * 26, 1350); ctx.stroke(); }
+    for (let i = -6; i < 16; i++) { ctx.beginPath(); ctx.moveTo(-320 + i * 26, H - 320); ctx.lineTo(i * 26, H); ctx.stroke(); }
     ctx.restore();
   }
 
-  async function zeichne(d) {
+  async function zeichne(d, format = 'feed') {
+    const L = FORMATE[format] || FORMATE.feed, H = L.h, dy = L.dy;
     await ladeSchriften();
     const [lHeim, lGast, lEigen, foto] = await Promise.all([ladeBild(d.heim.logo), ladeBild(d.gast.logo), ladeBild(d.eigenLogo), ladeBild(d.top && d.top.foto)]);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -80,24 +87,24 @@
 
     // Grund
     ctx.fillStyle = FARBE.papier; ctx.fillRect(0, 0, W, H);
-    pinselStreifen(ctx);
+    pinselStreifen(ctx, H);
 
     // Kopfzeile: eigenes Wappen, Mannschaft, Saison
-    if (lEigen) { const s = 96, q = Math.min(s / lEigen.width, s / lEigen.height); ctx.drawImage(lEigen, 72, 56, lEigen.width * q, lEigen.height * q); }
+    if (lEigen) { const s = 96, q = Math.min(s / lEigen.width, s / lEigen.height); ctx.drawImage(lEigen, 72, 56 + dy, lEigen.width * q, lEigen.height * q); }
     ctx.fillStyle = FARBE.schwarz; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    ctx.font = `44px ${F.titel}`; ctx.fillText(d.mannschaft.toUpperCase(), lEigen ? 188 : 72, 122);
+    ctx.font = `44px ${F.titel}`; ctx.fillText(d.mannschaft.toUpperCase(), lEigen ? 188 : 72, 122 + dy);
     ctx.textAlign = 'right'; ctx.font = `600 26px ${F.text}`; ctx.fillStyle = FARBE.grau;
-    ctx.fillText(`SAISON ${d.saison}`, W - 72, 100);
-    ctx.fillText(d.liga.toUpperCase(), W - 72, 136);
+    ctx.fillText(`SAISON ${d.saison}`, W - 72, 100 + dy);
+    ctx.fillText(d.liga.toUpperCase(), W - 72, 136 + dy);
 
     // Titel
     ctx.textAlign = 'center'; ctx.fillStyle = FARBE.schwarz;
-    ctx.font = `176px ${F.titel}`; ctx.fillText('ENDSTAND', W / 2, 372);
+    ctx.font = `${L.titel}px ${F.titel}`; ctx.fillText('ENDSTAND', W / 2, L.titelY);
     ctx.font = `600 30px ${F.text}`; ctx.fillStyle = FARBE.grau;
-    ctx.fillText(`Spieltag ${d.runde} · ${d.datumLang}`, W / 2, 424);
+    ctx.fillText(`Spieltag ${d.runde} · ${d.datumLang}`, W / 2, L.subY);
 
     // Ergebnis-Band
-    const bandY = 470, bandH = 372;
+    const bandY = L.bandY, bandH = 372;
     ctx.fillStyle = FARBE.weiss;
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.08)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
     ctx.beginPath(); ctx.roundRect(56, bandY, W - 112, bandH, 28); ctx.fill(); ctx.restore();
@@ -135,10 +142,10 @@
     }
 
     // Spruch
-    let y = bandY + bandH + (d.top ? 124 : 168);
+    let y = bandY + bandH + (d.top ? 124 : L.spruchAbst);
     ctx.save(); ctx.translate(W / 2, y); ctx.rotate(-0.035);
     ctx.fillStyle = FARBE.schwarz; ctx.textAlign = 'center';
-    let g = 58; ctx.font = `${g}px ${F.hand}`;
+    let g = L.spruchMax; ctx.font = `${g}px ${F.hand}`;
     let zeilen = zeilenUmbruch(ctx, d.spruch, 880);
     while (zeilen.length > 2 && g > 36) { g -= 4; ctx.font = `${g}px ${F.hand}`; zeilen = zeilenUmbruch(ctx, d.spruch, 880); }
     zeilen.forEach((z, i) => ctx.fillText(z, 0, i * (g + 10)));
@@ -165,19 +172,20 @@
 
     // Fuß: Ort und Motto
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = FARBE.schwarz; ctx.fillRect(0, H - 120, W, 120);
+    const fb = H - L.fuss + (L.fuss - 120) / 2; // Fußinhalt mittig im schwarzen Balken
+    ctx.fillStyle = FARBE.schwarz; ctx.fillRect(0, H - L.fuss, W, L.fuss);
     ctx.font = `600 24px ${F.text}`; ctx.fillStyle = '#B9B9BE';
-    if (d.ort) ctx.fillText(d.ort, W / 2, H - 76);
+    if (d.ort) ctx.fillText(d.ort, W / 2, fb + 44);
     const motto = [['SCHWARZ ', FARBE.weiss], ['WEISS ', '#B9B9BE']];
     ctx.font = `34px ${F.titel}`;
     const bunt = 'BUNT', bB = ctx.measureText(bunt).width;
     const gesamt = motto.reduce((a, [t]) => a + ctx.measureText(t).width, 0) + bB;
     let x = W / 2 - gesamt / 2; ctx.textAlign = 'left';
-    motto.forEach(([t, f]) => { ctx.fillStyle = f; ctx.fillText(t, x, H - 30); x += ctx.measureText(t).width; });
-    [...bunt].forEach((b, i) => { ctx.fillStyle = BUNT[i % BUNT.length]; ctx.fillText(b, x, H - 30); x += ctx.measureText(b).width; });
+    motto.forEach(([t, f]) => { ctx.fillStyle = f; ctx.fillText(t, x, fb + 90); x += ctx.measureText(t).width; });
+    [...bunt].forEach((b, i) => { ctx.fillStyle = BUNT[i % BUNT.length]; ctx.fillText(b, x, fb + 90); x += ctx.measureText(b).width; });
     return c;
   }
 
   window.ergebnisBild = zeichne;
-  window.ergebnisBildBlob = d => zeichne(d).then(c => new Promise(res => c.toBlob(res, 'image/png')));
+  window.ergebnisBildBlob = (d, format) => zeichne(d, format).then(c => new Promise(res => c.toBlob(res, 'image/png')));
 })();

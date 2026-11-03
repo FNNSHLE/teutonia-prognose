@@ -124,8 +124,8 @@ change must be applied to all three.
 
 `app/ergebnisbild.js` draws a 1080 × 1350 PNG on a canvas for every finished match of the own team (Teutonia style:
 black/white, Anton, red accent, „Schwarz Weiß Bunt“): crests, score with own goals in red, half-time, a saying
-picked from `SPRUECHE` in `app.js` by result and margin (stable per match id). No top scorer (deliberately left out). Shown with
-„Bild teilen“ (Web Share with file, e.g. WhatsApp) and „Speichern“ in the match sheet and in the change card.
+picked from `SPRUECHE` in `app.js` by result and margin (stable per match id). No top scorer (deliberately left out). Three formats (`FORMATE` in `ergebnisbild.js`: feed 4:5, quadrat 1:1, story 9:16). Shown with
+„Bild teilen“ (Web Share with file, e.g. WhatsApp) and „Speichern“ in the match sheet, the change card and the area „Social & Assets“ (`seiteSocial`, also team message, song, Instagram).
 Crests must be same-origin, so `scripts/logos.sh` stores them in `daten/logos/<teamId>.jpg` + `daten/logos.js`.
 Fonts in `app/assets/fonts/` (Anton and Inter: OFL, Permanent Marker: Apache 2.0), subset to Latin as WOFF.
 

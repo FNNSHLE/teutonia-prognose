@@ -31,7 +31,9 @@ Matchplan:     datenbelegte Tipps für das nächste Spiel: wer unverzichtbar ist
 Spiele:        Spielplan, jedes Spiel antippen für Verlauf und Aufstellungen
                Nach eigenen Spielen: Ergebnis-Bild im Spielbericht, mit „Bild teilen“ (z. B. WhatsApp) und „Speichern“
 Tabelle:       Tabelle, Verlauf, Saisonprognose und "Was wäre wenn"
-Mehr:          Torhüterin erfassen (oben, groß), Spiel-Labor, Spielerinnen, Teams, So rechnet die App
+Mehr:          Torhüterin erfassen (oben, groß), Spiel-Labor, Spielerinnen, Teams, Social & Assets, So rechnet die App
+Social:        Ergebnis-Bilder aller Spiele (Feed 4:5, Quadrat 1:1, Story 9:16), Nachricht fürs Team,
+               Team-Song und Instagram – alles mit „teilen“ direkt in WhatsApp
 Erfassung:     Auch als blauer Knopf links und als Karte auf Start und im Matchplan (am Spieltag ganz oben).
                Für die Bank: Spiel und Torhüterinnen wählen, Uhr starten, bei jedem Wurf ins Tor tippen,
                wo der Ball hinging, dann "Gehalten" oder "Tor". Neben das Tor tippen heißt vorbei.

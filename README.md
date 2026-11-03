@@ -17,7 +17,7 @@ Private fan project, not an offering of SC Teutonia 10 or handball.net. Data: [h
 | Matchplan | Data-backed recommendations for the next match: who is indispensable, who to ask, 7-metre order, half-time profiles, suspension risk, match phases, key opponents. Lineup optimiser for the coach (absences, pinned goalkeepers, best squad, resulting win chance). Printable as a locker-room sheet. |
 | Spiele | Fixtures and results; tap a match for the timeline and lineups |
 | Tabelle | Table, position history, season forecast, "what if" with fixed outcomes |
-| Mehr | Durchspielen (lineup lab), Spielerinnen (player stats), Teams, "So rechnet Anwurf" (method and backtest), Torhüterin erfassen (live goalkeeper tracker, see below) |
+| Mehr | Durchspielen (lineup lab), Spielerinnen (player stats), Teams, Social & Assets (result images in 4:5, 1:1 and 9:16, team message, song, Instagram – all shareable to WhatsApp), "So rechnet Anwurf" (method and backtest), Torhüterin erfassen (live goalkeeper tracker, see below) |
 | Erfassung | Prominent entry: own button in the sidebar, top of "Mehr", and a card on Start and Matchplan (moves to the top on match day or while a recording is running). Live goalkeeper tracker for the bench: pick the match and the goalkeepers, start the clock, tap the goal where the shot went, then "Gehalten" or "Tor"; a tap outside the frame logs a miss. Keyboard: 1–9 zone, 0 miss, Y save, N goal. Undo, keeper changes, half-time, draft survives reloads. Export as JSON via share sheet, clipboard or download. Deep link: `app/index.html#erfassung`. Committed records feed the player sheet, the match plan and the optimiser. |
 
 Any team of the league can be chosen top left; the own team is restored on the next open. Light and dark

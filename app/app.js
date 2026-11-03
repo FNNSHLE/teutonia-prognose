@@ -319,6 +319,7 @@
     { id: 'labor', name: 'Durchspielen', kurz: 'Durchspielen', ico: 'labor' },
     { id: 'spielerinnen', name: 'Spielerinnen', kurz: 'Spielerinnen', ico: 'trikot' },
     { id: 'teams', name: 'Teams', kurz: 'Teams', ico: 'schilde' },
+    { id: 'social', name: 'Social & Assets', kurz: 'Social', ico: 'kamera' },
     { id: 'erfassung', name: 'Torhüterin erfassen', kurz: 'Erfassung', ico: 'tor' },
     { id: 'methodik', name: 'So rechnet Anwurf', kurz: 'Methodik', ico: 'info' },
   ];
@@ -789,19 +790,24 @@
       spruch: eigen ? spruchFuer(g) : 'Handball in Hamburg.', top: null,
     };
   }
-  const bildName = g => `ergebnis-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+  const BILDFORMATE = [['feed', 'Feed 4:5'], ['quadrat', 'Quadrat 1:1'], ['story', 'Story 9:16']];
+  let bildFormat = 'feed';
+  const bildName = g => `ergebnis-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
   let bildCache = {};
   function ergebnisBildFuer(g) {
-    if (!bildCache[g.id]) bildCache[g.id] = window.ergebnisBildBlob ? window.ergebnisBildBlob(ergebnisDaten(g)) : Promise.resolve(null);
-    return bildCache[g.id];
+    const k = `${g.id}:${bildFormat}`;
+    if (!bildCache[k]) bildCache[k] = window.ergebnisBildBlob ? window.ergebnisBildBlob(ergebnisDaten(g), bildFormat) : Promise.resolve(null);
+    return bildCache[k];
   }
-  const ergebnisBildHtml = g => `<div class="ebild" data-ebild="${g.id}"><div class="ebild-vorschau"><span class="cap t2">Bild wird erstellt …</span></div>
+  const formatWahl = () => `<div class="seg ebild-format">${BILDFORMATE.map(([k, l]) => `<button data-aktion="bildFormat" data-format="${k}" class="${bildFormat === k ? 'an' : ''}">${l}</button>`).join('')}</div>`;
+  const ergebnisBildHtml = (g, ohneFormat) => `<div class="ebild" data-ebild="${g.id}">${ohneFormat ? '' : formatWahl()}<div class="ebild-vorschau f-${bildFormat}"><span class="cap t2">Bild wird erstellt …</span></div>
       <div class="ebild-knoepfe"><button class="btn prim wa-knopf" data-aktion="bildTeilen" data-spiel-id="${g.id}">${ico('teilen', 1)} Bild teilen</button><button class="btn" data-aktion="bildSpeichern" data-spiel-id="${g.id}">Speichern</button></div></div>`;
   function ergebnisBildZeigen() {
     $$('[data-ebild]').forEach(el => {
       const g = spielNach[el.dataset.ebild]; if (!g) return;
       ergebnisBildFuer(g).then(blob => {
         const v = el.querySelector('.ebild-vorschau'); if (!v) return;
+        v.className = `ebild-vorschau f-${bildFormat}`;
         v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="Ergebnis-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
       });
     });
@@ -817,6 +823,29 @@
     const blob = await ergebnisBildFuer(g); if (!blob) return;
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = bildName(g);
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  // ================= Social & Assets =================
+  // Alles zum Teilen an einem Ort: Ergebnis-Bilder, Nachricht fürs Team, Team-Song, Instagram.
+  function seiteSocial() {
+    const kopf = seitenkopf('Social & Assets', `${esc(kurz(UNSER))} · Bilder und Nachrichten zum Teilen, z. B. in WhatsApp`);
+    const meine = gewertet.filter(g => g.heim === UNSER || g.gast === UNSER).slice().reverse();
+    const bilder = meine.length ? modul('Ergebnis-Bilder', `${formatWahl()}<div class="ebild-raster">${meine.map(g => `<div class="ebild-karte"><div class="cap t2" style="margin-bottom:6px">${tagKurz(g.datum)} · ${esc(kurz(g.heim))} ${g.toreHeim}:${g.toreGast} ${esc(kurz(g.gast))}</div>${ergebnisBildHtml(g, true)}</div>`).join('')}</div>`,
+      { eyebrow: 'Nach jedem Spiel automatisch', fuss: 'Feed 4:5 für Instagram-Beiträge und WhatsApp, Quadrat 1:1, Story 9:16 für Instagram-Story und WhatsApp-Status. „Bild teilen“ öffnet am Handy das Teilen-Menü.' })
+      : modul('Ergebnis-Bilder', '<p class="meta" style="margin:0">Nach dem ersten Spiel erscheint hier das Bild.</p>');
+    const t = whatsappText();
+    const nachricht = t ? modul('Nachricht fürs Team', `<pre class="wa-vorschau">${esc(t)}</pre><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px"><a class="btn prim wa-knopf" href="${whatsappLink()}" target="_blank" rel="noopener">${ico('teilen', 1)} In WhatsApp öffnen</a><button class="btn" data-aktion="waKopieren">Text kopieren</button></div>`,
+      { eyebrow: 'Vor dem nächsten Spiel', fuss: 'Zusammenfassung aus dem Matchplan. In WhatsApp die Teamgruppe wählen und senden.' }) : '';
+    const songK = modul('Team-Song', `<p class="meta" style="margin:0 0 12px">„${SONG.titel}“ · ${mmss(SONG.dauer)}</p><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><button class="btn prim wa-knopf" data-aktion="songTeilen">${ico('teilen', 1)} Song teilen</button><a class="btn" href="${SONG.src}" download="teutonia-teutonia.mp3">Herunterladen</a></div>`, { eyebrow: 'Hier ist unser Vibe' });
+    return `${kopf}${bilder}<div class="zwei-sp">${nachricht}${songK}</div>${newsroom()}`;
+  }
+  async function songTeilen() {
+    try {
+      const blob = await (await fetch(SONG.src)).blob();
+      const datei = new File([blob], 'teutonia-teutonia.mp3', { type: 'audio/mpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [datei] })) return navigator.share({ files: [datei], text: `${SONG.titel} – der Song über ${kurz(UNSER)}` }).catch(() => {});
+    } catch (e) {}
+    const a = document.createElement('a'); a.href = SONG.src; a.download = 'teutonia-teutonia.mp3'; document.body.appendChild(a); a.click(); a.remove();
   }
 
   // ================= Newsroom =================
@@ -1295,7 +1324,7 @@
   // ================= Zeichnen =================
   let letzteBreite = 0;
   function zeichne(scrollOben) {
-    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik, erfassung: seiteErfassung };
+    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik, erfassung: seiteErfassung, social: seiteSocial };
     if (!seiten[bereich]) bereich = 'heute';
     if (window.trackerUnmount) trackerUnmount(); // Preact-Baum sauber abbauen, bevor der Inhalt ersetzt wird
     gerüst();
@@ -1304,6 +1333,7 @@
     document.title = `${(BEREICHE.find(b => b.id === bereich) || {}).name} · ${APP}`;
     if (bereich === 'labor') laborErgebnis();
     if (bereich === 'spielerinnen') spListe();
+    if (bereich === 'social') ergebnisBildZeigen();
     if (bereich === 'heute') karussellStart(); else { clearInterval(karussellUhr); karussellUhr = null; }
     letzteBreite = window.innerWidth;
     if (scrollOben) {
@@ -1332,6 +1362,8 @@
       if (a === 'team') return teamWechsler();
       if (a === 'mehr') return mehrSheet();
       if (a === 'vibe') return vibeUmschalten();
+      if (a === 'bildFormat') { bildFormat = el.dataset.format; $$('[data-aktion="bildFormat"]').forEach(b => b.classList.toggle('an', b.dataset.format === bildFormat)); $$('.ebild-vorschau').forEach(v => { v.className = `ebild-vorschau f-${bildFormat}`; v.innerHTML = '<span class="cap t2">Bild wird erstellt …</span>'; }); return ergebnisBildZeigen(); }
+      if (a === 'songTeilen') return songTeilen();
       if (a === 'bildTeilen') return bildTeilen(spielNach[el.dataset.spielId], el);
       if (a === 'bildSpeichern') return bildSpeichern(spielNach[el.dataset.spielId], el);
       if (a === 'whatsapp') return whatsappSheet();
