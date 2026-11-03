@@ -455,7 +455,20 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .bericht { margin-top: 10px; }
 .bericht summary { cursor: pointer; font-weight: 600; font-size: 14px; padding: 8px 0; color: var(--accent); }
 .bericht .wa-vorschau { max-height: none; }
-.ebild-titel { font-weight: 600; font-size: 14px; line-height: 20px; margin-bottom: 8px; }
+.ebild-titel { font-weight: 600; font-size: 14px; line-height: 20px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; list-style: none; }
+.ebild-titel::-webkit-details-marker { display: none; }
+.ebild-titel .sun { width: 20px; height: 20px; font-size: 11px; flex: none; }
+.ebild-titel .md-punkt { display: inline-grid; place-items: center; width: 20px; height: 20px; color: var(--text-2); flex: none; }
+.ebild-titel > span:nth-child(2) { flex: 1; min-width: 0; }
+details.ebild-karte > summary { cursor: default; }
+@media (max-width: 599px) {
+  .ebild-raster { gap: 0; }
+  .ebild-raster details.ebild-karte { border-bottom: 1px solid var(--line-1); }
+  .ebild-raster details.ebild-karte > summary { cursor: pointer; min-height: 52px; margin: 0; }
+  details.ebild-karte > summary > .ico { transition: transform var(--t-fast); color: var(--text-3); }
+  details.ebild-karte[open] > summary > .ico { transform: rotate(180deg); }
+  .ebild-raster details.ebild-karte[open] { padding-bottom: 16px; }
+}
 .social-leiste { position: sticky; top: calc(52px + env(safe-area-inset-top)); z-index: 3; display: grid; gap: 6px; padding: 10px 0 2px; margin-bottom: 8px; background: var(--bg-0); }
 .social-leiste .seg { margin-bottom: 0; }
 @media (min-width: 900px) { .social-leiste { top: 0; grid-template-columns: auto minmax(0, 420px); align-items: center; gap: 16px; } }
@@ -680,7 +693,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
 <script src="ergebnisbild.js?v=7"></script>
-<script src="app.js?v=55"></script>
+<script src="app.js?v=56"></script>
 
 </body>
 </html>

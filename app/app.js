@@ -647,7 +647,7 @@
       </button>`;
     };
     const pfeile = `<span class="kk-pfeile"><button class="icobtn" data-karussell="-1" aria-label="Zurück"><span style="display:inline-block;transform:scaleX(-1)">${ico('chevr', 1)}</span></button><button class="icobtn" data-karussell="1" aria-label="Weiter">${ico('chevr', 1)}</button></span>`;
-    return modul('Get to know the team', `<div class="karussell" id="karussell" tabindex="0" aria-label="Spielerinnen von ${esc(kurz(UNSER))}">${liste.map(karte).join('')}</div>`,
+    return modul('Get to know the team', `<div class="karussell" id="karussell" tabindex="0" aria-label="Spielerinnen von ${esc(kurz(UNSER))}">${liste.map(g => karte(g)).join('')}</div>`,
       { eyebrow: `${esc(kurz(UNSER))} · ${liste.length} Spielerinnen`, aktion: pfeile, klasse: 'karussell-modul' });
   }
   let karussellUhr = null, karussellPause = 0;
@@ -961,6 +961,7 @@
   function ergebnisBildZeigen() {
     $$('[data-ebild]').forEach(el => {
       const g = spielNach[el.dataset.ebild]; if (!g) return;
+      const zu = el.closest('details:not([open])'); if (zu) return;
       ergebnisBildFuer(g).then(blob => {
         const v = el.querySelector('.ebild-vorschau'); if (!v) return;
         v.className = `ebild-vorschau f-${bildFormat}`;
@@ -989,14 +990,16 @@
     const kommend = meine.filter(g => g.offen), gespielt = meine.filter(g => g.gewertet).slice().reverse();
     const naechstes = kommend[0];
     const titelVon = g => `${g.terminOffen ? 'Termin folgt' : tagKurz(g.datum)} · ${g.heim === UNSER ? 'gegen' : 'bei'} ${esc(kurz(g.heim === UNSER ? g.gast : g.heim))}${g.gewertet ? ` · ${g.heim === UNSER ? stand(g.toreHeim, g.toreGast) : stand(g.toreGast, g.toreHeim)}` : ''}`;
-    const karte = g => `<div class="ebild-karte"><div class="ebild-titel">${titelVon(g)}</div>${ergebnisBildHtml(g, true)}${g.gewertet ? berichtHtml(g) : ''}</div>`;
+    // Am Handy als aufklappbare Zeile (nur das nächste Spiel offen), am Computer immer offen
+    const mobil = window.innerWidth < 600;
+    const karte = (g, offen) => `<details class="ebild-karte"${!mobil || offen ? ' open' : ''}><summary class="ebild-titel">${g.gewertet ? `<span class="sun ${ergebnisAus(g, UNSER)}">${ergebnisAus(g, UNSER)}</span>` : `<span class="md-punkt">${ico('kalender', 1)}</span>`}<span>${titelVon(g)}</span>${mobil ? ico('chev', 1) : ''}</summary>${ergebnisBildHtml(g, true)}${g.gewertet ? berichtHtml(g) : ''}</details>`;
     const leiste = `<div class="social-leiste"><span class="cap t2">Format für alle Bilder</span>${formatWahl()}</div>`;
     const t = whatsappText();
     const nachricht = t ? `<div><div class="ebild-titel">Nachricht fürs Team</div><pre class="wa-vorschau">${esc(t)}</pre><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px"><a class="btn prim wa-knopf" href="${whatsappLink()}" target="_blank" rel="noopener">${ico('teilen', 1)} In WhatsApp öffnen</a><button class="btn" data-aktion="waKopieren">Text kopieren</button></div></div>` : '';
-    const vorSpiel = naechstes ? modul('Nächstes Spiel', `<div class="social-zwei">${karte(naechstes)}${nachricht}</div>`, { eyebrow: 'Vor dem Spiel teilen', klasse: 'social-naechstes' }) : '';
+    const vorSpiel = naechstes ? modul('Nächstes Spiel', `<div class="social-zwei">${karte(naechstes, true)}${nachricht}</div>`, { eyebrow: 'Vor dem Spiel teilen', klasse: 'social-naechstes' }) : '';
     const weitere = kommend.slice(1);
-    const ankuend = weitere.length ? modul('Ankündigungen', `<div class="ebild-raster">${weitere.map(karte).join('')}</div>`, { eyebrow: `Matchday · ${weitere.length} weitere Spiele`, fuss: 'Für jedes kommende Spiel liegt ein Matchday-Bild bereit. Spiele ohne festen Termin zeigen „Termin folgt“ und aktualisieren sich, sobald handball.net den Termin kennt.' }) : '';
-    const ergebn = gespielt.length ? modul('Ergebnisse', `<div class="ebild-raster">${gespielt.map(karte).join('')}</div>`, { eyebrow: 'Endstand · nach jedem Spiel automatisch' }) : '';
+    const ankuend = weitere.length ? modul('Ankündigungen', `<div class="ebild-raster">${weitere.map(g => karte(g)).join('')}</div>`, { eyebrow: `Matchday · ${weitere.length} weitere Spiele`, fuss: 'Für jedes kommende Spiel liegt ein Matchday-Bild bereit. Spiele ohne festen Termin zeigen „Termin folgt“ und aktualisieren sich, sobald handball.net den Termin kennt.' }) : '';
+    const ergebn = gespielt.length ? modul('Ergebnisse', `<div class="ebild-raster">${gespielt.map(g => karte(g)).join('')}</div>`, { eyebrow: 'Endstand · nach jedem Spiel automatisch' }) : '';
     const songK = modul('Team-Song', `<p class="meta" style="margin:0 0 12px">„${SONG.titel}“ · ${mmss(SONG.dauer)}</p><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><button class="btn prim wa-knopf" data-aktion="songTeilen">${ico('teilen', 1)} Song teilen</button><a class="btn" href="${SONG.src}" download="teutonia-teutonia.mp3">Herunterladen</a></div>`, { eyebrow: 'Hier ist unser Vibe' });
     return `${kopf}${leiste}${vorSpiel}${ankuend}${ergebn}<div class="mkopf" style="margin-top:8px"><div><span class="micro">Immer da</span><h2 class="titel">Mehr zum Teilen</h2></div></div><div class="zwei-sp">${songK}${newsroom()}</div>
       <p class="fussnote">Formate: Feed 4:5 für Instagram-Beiträge und WhatsApp, Quadrat 1:1, Story 9:16 für Instagram-Story und WhatsApp-Status. „Bild teilen“ öffnet am Handy das Teilen-Menü.</p>`;
@@ -1059,7 +1062,7 @@
       return `<article class="karte"><div class="eff">${links}</div><div><span class="micro">${e.kat}</span><h3${e.person ? ' style="display:flex;gap:8px;align-items:center"' : ''}>${e.person ? ava(e.person, 28) : ''}<span>${esc(e.titel)}</span></h3><p>${esc(e.text)}</p><div class="belege">${ausSpielen(e.n)}</div></div></article>`;
     };
     const karten = mp.empfehlungen.filter(e => e.id !== 'AU6');
-    const empf = karten.length ? `<div class="karten zwei">${karten.map(karte).join('')}</div>` : modul('', `<div class="leer">${ico('plan')}<b>Noch zu früh für Empfehlungen</b><p>Ab 2 Spielberichten je Team stehen hier Hinweise zur Aufstellung. Bisher: ${n || 0}.</p></div>`);
+    const empf = karten.length ? `<div class="karten zwei">${karten.map(g => karte(g)).join('')}</div>` : modul('', `<div class="leer">${ico('plan')}<b>Noch zu früh für Empfehlungen</b><p>Ab 2 Spielberichten je Team stehen hier Hinweise zur Aufstellung. Bisher: ${n || 0}.</p></div>`);
     const siebenmeter = au6 ? modul('7-Meter-Reihenfolge', `<div class="siebenmeter">${au6.siebenmeter.slice(0, 4).map((x, i) => `<div class="platz7"><span class="nr">${i + 1}.</span><span style="display:flex;gap:12px;align-items:center;min-width:0">${ava(x.s, 40)}<span style="min-width:0"><b style="font-weight:600">${esc(x.s.name)}</b><span class="cap t2" style="display:block">#${x.s.nummer}</span></span></span><span style="font-weight:600">${x.s.sm} von ${x.s.smVers}</span></div>`).join('')}</div>`,
       { id: 'mp7m', fuss: `Reihenfolge nach Trefferquote, bei wenigen Würfen vorsichtig Richtung Ligaschnitt (${pct(LIGA.smQuote)}) gezogen. Das Team trifft ${B.teams[fokus].liste.reduce((a, x) => a + x.sm, 0)} von ${B.teams[fokus].liste.reduce((a, x) => a + x.smVers, 0)}.` }) : '';
     const befund = b => `<div class="satz"><span class="micro">${b.kat}</span><div style="font-weight:600;margin:2px 0">${esc(b.titel)}</div><div class="t2">${esc(b.text)}</div></div>`;
@@ -1505,6 +1508,11 @@
   }
   function wechsle(b) { bereich = b; merk.set('bereich', b); if (bereichAusHash() && bereichAusHash() !== b) history.replaceState(null, '', location.pathname + location.search); schliesseSheet(); zeichne(true); }
   function setzeFokus(id) { fokus = id; labor.spiel = null; schliesseSheet(); zeichne(true); }
+
+  // Aufgeklappte Bild-Karte: jetzt erst das Bild erzeugen
+  // Am Computer bleiben die Karten offen
+  document.addEventListener('click', e => { const sm = e.target.closest && e.target.closest('details.ebild-karte > summary'); if (sm && window.innerWidth >= 600) e.preventDefault(); }, true);
+  document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details.ebild-karte') && e.target.open) ergebnisBildZeigen(); }, true);
 
   // ================= Ereignisse =================
   document.addEventListener('click', e => {
