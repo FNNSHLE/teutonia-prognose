@@ -91,7 +91,7 @@
     const L = FORMATE[format] || FORMATE.feed, H = L.h, dy = L.dy;
     const md = d.art === 'matchday', T = md ? THEMA.dunkel : THEMA.hell;
     await ladeSchriften();
-    const [lHeim, lGast, lEigen] = await Promise.all([ladeBild(d.heim.logo), ladeBild(d.gast.logo), ladeBild(d.eigenLogo)]);
+    const [lHeim, lGast] = await Promise.all([ladeBild(d.heim.logo), ladeBild(d.gast.logo)]);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
 
@@ -99,20 +99,13 @@
     ctx.fillStyle = T.grund; ctx.fillRect(0, 0, W, H);
     pinselStreifen(ctx, H, T.streifen);
 
-    // Kopfzeile: eigenes Wappen, Mannschaft, Saison
-    if (lEigen) {
-      const s = 96, q = Math.min(s / lEigen.width, s / lEigen.height);
-      if (md) { ctx.save(); ctx.fillStyle = FARBE.weiss; ctx.beginPath(); ctx.roundRect(66, 50 + dy, s + 12, s + 12, 12); ctx.fill(); ctx.restore(); }
-      ctx.drawImage(lEigen, 72, 56 + dy, lEigen.width * q, lEigen.height * q);
-    }
-    ctx.fillStyle = T.text; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    ctx.font = `44px ${F.titel}`; ctx.fillText(d.mannschaft.toUpperCase(), lEigen ? 192 : 72, 122 + dy);
-    ctx.textAlign = 'right'; ctx.font = `600 26px ${F.text}`; ctx.fillStyle = T.sub;
-    ctx.fillText(`SAISON ${d.saison}`, W - 72, 100 + dy);
-    ctx.fillText(d.liga.toUpperCase(), W - 72, 136 + dy);
-
     // Titel
-    ctx.textAlign = 'center'; ctx.fillStyle = T.text;
+    // Liga und Saison klein über dem Titel; oben bleibt frei
+    ctx.textAlign = 'center'; ctx.fillStyle = T.sub; ctx.font = `600 24px ${F.text}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+    ctx.fillText(`${d.liga.toUpperCase()} · SAISON ${d.saison}`, W / 2, L.titelY - Math.round(L.titel * 0.86) - 26);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    ctx.fillStyle = T.text;
     ctx.font = `${L.titel}px ${F.titel}`; ctx.fillText(md ? 'MATCHDAY' : 'ENDSTAND', W / 2, L.titelY);
     ctx.font = `600 30px ${F.text}`; ctx.fillStyle = T.sub;
     ctx.fillText(`Spieltag ${d.runde} · ${d.datumLang}`, W / 2, L.subY);
