@@ -984,7 +984,7 @@
     const h = new Date(), j = h.getFullYear(), saison = h.getMonth() >= 6 ? `${j}/${String(j + 1).slice(2)}` : `${j - 1}/${String(j).slice(2)}`;
     return { art: 'sponsor', variante: x.variante, name: SPONSOR.name, foto: SPONSOR.foto, logo: SPONSOR.logo, fokusY: SPONSOR.fokusY,
       kicker: `1. Damen · Saison ${saison}`, zeile1: 'Wir bedanken uns bei unserem neuen', zeile2: 'Trikotsponsor',
-      etikett: x.variante === 'logo' ? 'NEUER PARTNER' : 'DANKE!', spruch: `Danke, ${SPONSOR.name}!`, ort: HEIMHALLE };
+      etikett: x.variante === 'logo' ? 'NEUER PARTNER' : 'DANKE!', spruch: 'Gemeinsam stark durch die Saison!', ort: HEIMHALLE };
   }
   const sponsorText = () => [
     '🖤🤍 Neues Trikot, neuer Partner!', '',
