@@ -134,6 +134,13 @@ Matchplan: the „Anfragen“ recommendation (AU2) is filtered out on purpose (`
 Kabinenblatt, WhatsApp) shows the own 7m order and goalkeeper, otherwise the opponent (`gegnerWichtig`): top scorers,
 7m taker, strongest/weakest ten-minute window pair, form. No „Einplanen“ and no own weak phase on purpose.
 
+## Sponsor images
+
+`SPONSOR` and `SPONSOR_BILDER` in `app.js` (assets in `app/assets/sponsor/`) feed `d.art === 'sponsor'` in
+`ergebnisbild.js` (`zeichneSponsor`, layout in `SPONSOR_LAYOUT`): dark, „Wir bedanken uns bei unserem neuen
+Trikotsponsor“, variant 'logo' (logo large in a white card) or 'foto' (jersey photo + small logo card). Shown in
+Social & Assets with an Instagram caption (`sponsorText`). Swap the logo file for a higher resolution when available.
+
 ## Match report text (Spielbericht)
 
 `spielberichtText(g)` in `app.js` writes an Instagram caption for every finished own match from the goal timeline

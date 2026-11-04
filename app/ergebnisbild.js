@@ -86,8 +86,107 @@
     ctx.restore();
   }
 
+  // Sponsor-Post: dunkel wie das Trikot, Foto als Hauptmotiv, Logo (falls vorhanden) oder Name auf weißer Karte
+  const SPONSOR_LAYOUT = {
+    feed: { kicker: 150, z1: 232, z1g: 70, z2: 372, z2g: 150, fy: 410, fh: 520, fw: 820, ky: 950, kh: 112, spruch: 1124, spruchMax: 50 },
+    quadrat: { kicker: 104, z1: 170, z1g: 54, z2: 282, z2g: 116, fy: 312, fh: 372, fw: 700, ky: 708, kh: 92, spruch: 894, spruchMax: 42 },
+    story: { kicker: 330, z1: 420, z1g: 80, z2: 580, z2g: 166, fy: 630, fh: 720, fw: 900, ky: 1392, kh: 124, spruch: 1622, spruchMax: 58 },
+  };
+  async function zeichneSponsor(d, format) {
+    const L = FORMATE[format] || FORMATE.feed, S = SPONSOR_LAYOUT[format] || SPONSOR_LAYOUT.feed, H = L.h, T = THEMA.dunkel;
+    await ladeSchriften();
+    const [foto, logo] = await Promise.all([d.variante === 'logo' ? null : ladeBild(d.foto), ladeBild(d.logo)]);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = T.grund; ctx.fillRect(0, 0, W, H);
+    pinselStreifen(ctx, H, T.streifen);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    // Kopf
+    ctx.fillStyle = T.sub; ctx.font = `600 24px ${F.text}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+    ctx.fillText(d.kicker.toUpperCase(), W / 2, S.kicker);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    ctx.fillStyle = T.text; passend(ctx, d.zeile1.toUpperCase(), F.titel, S.z1g, 940); ctx.fillText(d.zeile1.toUpperCase(), W / 2, S.z1);
+    passend(ctx, d.zeile2.toUpperCase(), F.titel, S.z2g, 960); ctx.fillText(d.zeile2.toUpperCase(), W / 2, S.z2);
+    const fx = W / 2 - S.fw / 2;
+    if (d.variante === 'logo') {
+      const by = S.fy + 20, bh = S.ky + S.kh - S.fy - 40, bw = W - 140, bx = 70;
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
+      ctx.fillStyle = FARBE.weiss; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 28); ctx.fill(); ctx.restore();
+      if (logo) {
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        const q = Math.min((bw - 140) / logo.width, (bh - 140) / logo.height), w = logo.width * q, h = logo.height * q;
+        ctx.drawImage(logo, W / 2 - w / 2, by + bh / 2 - h / 2, w, h);
+      } else { ctx.fillStyle = FARBE.schwarz; ctx.textBaseline = 'middle'; passend(ctx, d.name.toUpperCase(), F.titel, 160, bw - 140); ctx.fillText(d.name.toUpperCase(), W / 2, by + bh / 2); ctx.textBaseline = 'alphabetic'; }
+      // Etikett oben auf der Karte
+      ctx.save(); ctx.translate(W / 2, by); ctx.font = `34px ${F.titel}`;
+      const tw2 = ctx.measureText(d.etikett).width + 56;
+      ctx.fillStyle = FARBE.rot; ctx.beginPath(); ctx.moveTo(-tw2 / 2 + 12, -26); ctx.lineTo(tw2 / 2 + 12, -26); ctx.lineTo(tw2 / 2 - 12, 24); ctx.lineTo(-tw2 / 2 - 12, 24); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = FARBE.weiss; ctx.textBaseline = 'middle'; ctx.fillText(d.etikett, 0, 1); ctx.restore(); ctx.textBaseline = 'alphabetic';
+    } else {
+    // Foto: leicht gedreht, weißer Rand, Schatten
+    ctx.save(); ctx.translate(W / 2, S.fy + S.fh / 2); ctx.rotate(-0.025); ctx.translate(-W / 2, -(S.fy + S.fh / 2));
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
+    ctx.fillStyle = FARBE.weiss; ctx.beginPath(); ctx.roundRect(fx - 12, S.fy - 12, S.fw + 24, S.fh + 24, 22); ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.save(); ctx.beginPath(); ctx.roundRect(fx, S.fy, S.fw, S.fh, 14); ctx.clip();
+    if (foto) {
+      const q = Math.max(S.fw / foto.width, S.fh / foto.height), w = foto.width * q, h = foto.height * q;
+      const fyFokus = d.fokusY == null ? 0.5 : d.fokusY;
+      ctx.drawImage(foto, fx + (S.fw - w) / 2, S.fy + Math.min(0, Math.max(S.fh - h, S.fh / 2 - h * fyFokus)), w, h);
+    } else { ctx.fillStyle = '#2C2C30'; ctx.fillRect(fx, S.fy, S.fw, S.fh); }
+    ctx.restore(); ctx.restore();
+    // Sponsor-Karte
+    const kw = 560, kx = W / 2 - kw / 2;
+    ctx.fillStyle = FARBE.weiss; ctx.beginPath(); ctx.roundRect(kx, S.ky, kw, S.kh, 18); ctx.fill();
+    if (logo) {
+      const q = Math.min((kw - 60) / logo.width, (S.kh - 28) / logo.height);
+      ctx.drawImage(logo, W / 2 - logo.width * q / 2, S.ky + S.kh / 2 - logo.height * q / 2, logo.width * q, logo.height * q);
+    } else {
+      ctx.fillStyle = FARBE.schwarz; ctx.textBaseline = 'middle';
+      passend(ctx, d.name.toUpperCase(), F.titel, Math.round(S.kh * 0.62), kw - 60); ctx.fillText(d.name.toUpperCase(), W / 2, S.ky + S.kh / 2 + 3);
+      ctx.textBaseline = 'alphabetic';
+    }
+    // Rotes Etikett über der Karte
+    ctx.save(); ctx.translate(W / 2, S.ky - 4); ctx.font = `30px ${F.titel}`;
+    const tw = ctx.measureText(d.etikett).width + 52;
+    ctx.fillStyle = FARBE.rot; ctx.beginPath(); ctx.moveTo(-tw / 2 + 12, -24); ctx.lineTo(tw / 2 + 12, -24); ctx.lineTo(tw / 2 - 12, 22); ctx.lineTo(-tw / 2 - 12, 22); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = FARBE.weiss; ctx.textBaseline = 'middle'; ctx.fillText(d.etikett, 0, 1); ctx.restore();
+    ctx.textBaseline = 'alphabetic';
+    }
+    // Spruch
+    ctx.save(); ctx.translate(W / 2, S.spruch); ctx.rotate(-0.035);
+    ctx.fillStyle = T.text; ctx.textAlign = 'center';
+    let g = S.spruchMax; ctx.font = `${g}px ${F.hand}`;
+    let zeilen = zeilenUmbruch(ctx, d.spruch, 900);
+    while (zeilen.length > 2 && g > 30) { g -= 4; ctx.font = `${g}px ${F.hand}`; zeilen = zeilenUmbruch(ctx, d.spruch, 900); }
+    zeilen.forEach((z, i) => ctx.fillText(z, 0, i * (g + 10)));
+    const uy = (zeilen.length - 1) * (g + 10) + 22, uw = Math.min(480, ctx.measureText(zeilen[zeilen.length - 1]).width);
+    ctx.strokeStyle = FARBE.rot; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-uw / 2, uy); ctx.quadraticCurveTo(0, uy + 10, uw / 2, uy - 4); ctx.stroke();
+    ctx.restore();
+    fussZeichnen(ctx, d, L, H, T);
+    return c;
+  }
+
+  function fussZeichnen(ctx, d, L, H, T) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    const fb = H - L.fuss + (L.fuss - 120) / 2;
+    ctx.fillStyle = T.fuss; ctx.fillRect(0, H - L.fuss, W, L.fuss);
+    ctx.font = `600 24px ${F.text}`; ctx.fillStyle = T.fussText;
+    if (d.ort) ctx.fillText(d.ort, W / 2, fb + 44);
+    const motto = [['SCHWARZ ', T.motto[0]], ['WEISS ', T.motto[1]]];
+    ctx.font = `34px ${F.titel}`;
+    const bunt = 'BUNT', bB = ctx.measureText(bunt).width;
+    const gesamt = motto.reduce((a, [t]) => a + ctx.measureText(t).width, 0) + bB;
+    let x = W / 2 - gesamt / 2; ctx.textAlign = 'left';
+    motto.forEach(([t, f]) => { ctx.fillStyle = f; ctx.fillText(t, x, fb + 90); x += ctx.measureText(t).width; });
+    [...bunt].forEach((b, i) => { ctx.fillStyle = BUNT[i % BUNT.length]; ctx.fillText(b, x, fb + 90); x += ctx.measureText(b).width; });
+  }
+
   // d.art: 'ergebnis' (Endstand) oder 'matchday' (Ankündigung)
   async function zeichne(d, format = 'feed') {
+    if (d.art === 'sponsor') return zeichneSponsor(d, format);
     const L = FORMATE[format] || FORMATE.feed, H = L.h, dy = L.dy;
     const md = d.art === 'matchday', T = md ? THEMA.dunkel : THEMA.hell;
     await ladeSchriften();
@@ -169,19 +268,7 @@
     ctx.beginPath(); ctx.moveTo(-uw / 2, uy); ctx.quadraticCurveTo(0, uy + 10, uw / 2, uy - 4); ctx.stroke();
     ctx.restore();
 
-    // Fuß: Ort und Motto
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    const fb = H - L.fuss + (L.fuss - 120) / 2;
-    ctx.fillStyle = T.fuss; ctx.fillRect(0, H - L.fuss, W, L.fuss);
-    ctx.font = `600 24px ${F.text}`; ctx.fillStyle = T.fussText;
-    if (d.ort) ctx.fillText(d.ort, W / 2, fb + 44);
-    const motto = [['SCHWARZ ', T.motto[0]], ['WEISS ', T.motto[1]]];
-    ctx.font = `34px ${F.titel}`;
-    const bunt = 'BUNT', bB = ctx.measureText(bunt).width;
-    const gesamt = motto.reduce((a, [t]) => a + ctx.measureText(t).width, 0) + bB;
-    let x = W / 2 - gesamt / 2; ctx.textAlign = 'left';
-    motto.forEach(([t, f]) => { ctx.fillStyle = f; ctx.fillText(t, x, fb + 90); x += ctx.measureText(t).width; });
-    [...bunt].forEach((b, i) => { ctx.fillStyle = BUNT[i % BUNT.length]; ctx.fillText(b, x, fb + 90); x += ctx.measureText(b).width; });
+    fussZeichnen(ctx, d, L, H, T);
     return c;
   }
 

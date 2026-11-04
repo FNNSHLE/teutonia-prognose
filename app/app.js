@@ -803,6 +803,7 @@
     const l = SPRUECHE[k]; return l[Math.abs(Number(g.id)) % l.length];
   }
   function ergebnisDaten(g) {
+    if (g.sponsor) return sponsorDaten(g);
     if (!g.gewertet) return matchdayDaten(g);
     const eigen = g.heim === UNSER ? 'heim' : g.gast === UNSER ? 'gast' : null;
     const eig = eigen === 'heim' ? g.toreHeim - g.toreGast : g.toreGast - g.toreHeim;
@@ -970,7 +971,30 @@
   }
   const berichtHtml = g => { const t = spielberichtText(g); return t ? `<details class="bericht"><summary>Spielbericht für Instagram</summary><pre class="wa-vorschau">${esc(t)}</pre><button class="btn" data-aktion="berichtKopieren" data-spiel-id="${g.id}" style="width:100%;margin-top:8px">Text kopieren</button></details>` : ''; };
 
-  const bildName = g => `${g.gewertet ? 'ergebnis' : 'matchday'}-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+  // ================= Sponsoren =================
+  // Bilder für Sponsoren (Social & Assets). Logo und Foto liegen in app/assets/sponsor/.
+  const SPONSOR = { name: 'Growport', foto: 'assets/sponsor/growport-trikot.jpg', logo: 'assets/sponsor/growport-logo.png', fokusY: 0.45 };
+  const SPONSOR_BILDER = [
+    { id: 'sponsor-growport-logo', sponsor: true, variante: 'logo', titel: 'Logo in der Mitte' },
+    { id: 'sponsor-growport-foto', sponsor: true, variante: 'foto', titel: 'Mit Trikotfoto' },
+  ];
+  const SPONSOR_NACH = Object.fromEntries(SPONSOR_BILDER.map(x => [x.id, x]));
+  const bildObj = id => spielNach[id] || SPONSOR_NACH[id];
+  function sponsorDaten(x) {
+    const h = new Date(), j = h.getFullYear(), saison = h.getMonth() >= 6 ? `${j}/${String(j + 1).slice(2)}` : `${j - 1}/${String(j).slice(2)}`;
+    return { art: 'sponsor', variante: x.variante, name: SPONSOR.name, foto: SPONSOR.foto, logo: SPONSOR.logo, fokusY: SPONSOR.fokusY,
+      kicker: `1. Damen · Saison ${saison}`, zeile1: 'Wir bedanken uns bei unserem neuen', zeile2: 'Trikotsponsor',
+      etikett: x.variante === 'logo' ? 'NEUER PARTNER' : 'DANKE!', spruch: `Danke, ${SPONSOR.name} – gemeinsam stark durch die Saison!`, ort: HEIMHALLE };
+  }
+  const sponsorText = () => [
+    '🖤🤍 Neues Trikot, neuer Partner!', '',
+    `Wir bedanken uns bei unserem neuen Trikotsponsor ${SPONSOR.name} für die Unterstützung unserer 1. Damen. 🙌`,
+    `Ab sofort laufen wir mit ${SPONSOR.name} auf der Brust auf – auf eine starke Saison in der Bezirksoberliga Hamburg! 💪`, '',
+    'Kommt vorbei und feuert uns an: Heimspiele in der Thedestraße 100. 📣', '',
+    `#SchwarzWeissBunt #Teutonia10 #Handball #Frauenhandball #Hamburg #${SPONSOR.name}`,
+  ].join('\n');
+
+  const bildName = g => g.sponsor ? `${g.id}-${bildFormat}.png` : `${g.gewertet ? 'ergebnis' : 'matchday'}-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
   let bildCache = {};
   function ergebnisBildFuer(g) {
     const k = `${g.id}:${bildFormat}`;
@@ -982,19 +1006,19 @@
       <div class="ebild-knoepfe"><button class="btn prim wa-knopf" data-aktion="bildTeilen" data-spiel-id="${g.id}">${ico('teilen', 1)} Bild teilen</button><button class="btn" data-aktion="bildSpeichern" data-spiel-id="${g.id}">Speichern</button></div></div>`;
   function ergebnisBildZeigen() {
     $$('[data-ebild]').forEach(el => {
-      const g = spielNach[el.dataset.ebild]; if (!g) return;
+      const g = bildObj(el.dataset.ebild); if (!g) return;
       const zu = el.closest('details:not([open])'); if (zu) return;
       ergebnisBildFuer(g).then(blob => {
         const v = el.querySelector('.ebild-vorschau'); if (!v) return;
         v.className = `ebild-vorschau f-${bildFormat}`;
-        v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="${g.gewertet ? 'Ergebnis' : 'Matchday'}-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
+        v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="${g.sponsor ? `Sponsor-Bild ${SPONSOR.name}` : `${g.gewertet ? 'Ergebnis' : 'Matchday'}-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}`}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
       });
     });
   }
   async function bildTeilen(g, knopf) {
     const blob = await ergebnisBildFuer(g); if (!blob) return;
     const datei = new File([blob], bildName(g), { type: 'image/png' });
-    const text = g.gewertet ? `${kurz(g.heim)} ${g.toreHeim}:${g.toreGast} ${kurz(g.gast)} · ${spruchFuer(g)}` : `Matchday: ${kurz(g.heim)} gegen ${kurz(g.gast)} · ${g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)}, ${zeit(g.datum)} Uhr`}`;
+    const text = g.sponsor ? `Danke an unseren neuen Trikotsponsor ${SPONSOR.name}!` : g.gewertet ? `${kurz(g.heim)} ${g.toreHeim}:${g.toreGast} ${kurz(g.gast)} · ${spruchFuer(g)}` : `Matchday: ${kurz(g.heim)} gegen ${kurz(g.gast)} · ${g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)}, ${zeit(g.datum)} Uhr`}`;
     if (navigator.canShare && navigator.canShare({ files: [datei] })) { try { await navigator.share({ files: [datei], text }); } catch (e) {} return; }
     bildSpeichern(g, knopf);
   }
@@ -1023,7 +1047,11 @@
     const ankuend = weitere.length ? modul('Ankündigungen', `<div class="ebild-raster">${weitere.map(g => karte(g)).join('')}</div>`, { eyebrow: `Matchday · ${weitere.length} weitere Spiele`, fuss: 'Für jedes kommende Spiel liegt ein Matchday-Bild bereit. Spiele ohne festen Termin zeigen „Termin folgt“ und aktualisieren sich, sobald handball.net den Termin kennt.' }) : '';
     const ergebn = gespielt.length ? modul('Ergebnisse', `<div class="ebild-raster">${gespielt.map(g => karte(g)).join('')}</div>`, { eyebrow: 'Endstand · nach jedem Spiel automatisch' }) : '';
     const songK = modul('Team-Song', `<p class="meta" style="margin:0 0 12px">„${SONG.titel}“ · ${mmss(SONG.dauer)}</p><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><button class="btn prim wa-knopf" data-aktion="songTeilen">${ico('teilen', 1)} Song teilen</button><a class="btn" href="${SONG.src}" download="teutonia-teutonia.mp3">Herunterladen</a></div>`, { eyebrow: 'Hier ist unser Vibe' });
-    return `${kopf}${leiste}${vorSpiel}${ankuend}${ergebn}<div class="mkopf" style="margin-top:8px"><div><span class="micro">Immer da</span><h2 class="titel">Mehr zum Teilen</h2></div></div><div class="zwei-sp">${songK}${newsroom()}</div>
+    const sponsK = g => `<details class="ebild-karte"${!mobil ? ' open' : ''}><summary class="ebild-titel"><span class="md-punkt">${ico('stern', 1)}</span><span>${SPONSOR.name} · ${g.titel}</span>${mobil ? ico('chev', 1) : ''}</summary>${ergebnisBildHtml(g, true)}</details>`;
+    const sponsoren = modul('Sponsoren', `<div class="ebild-raster">${SPONSOR_BILDER.map(sponsK).join('')}</div>
+      <details class="bericht"><summary>Text für Instagram</summary><pre class="wa-vorschau">${esc(sponsorText())}</pre><button class="btn" data-aktion="sponsorKopieren" style="width:100%;margin-top:8px">Text kopieren</button></details>`,
+      { eyebrow: `Danke an ${SPONSOR.name}`, fuss: 'Zwei Varianten: Logo groß in der Mitte oder mit dem Trikotfoto. Format oben wählen.' });
+    return `${kopf}${leiste}${vorSpiel}${ankuend}${ergebn}${sponsoren}<div class="mkopf" style="margin-top:8px"><div><span class="micro">Immer da</span><h2 class="titel">Mehr zum Teilen</h2></div></div><div class="zwei-sp">${songK}${newsroom()}</div>
       <p class="fussnote">Formate: Feed 4:5 für Instagram-Beiträge und WhatsApp, Quadrat 1:1, Story 9:16 für Instagram-Story und WhatsApp-Status. „Bild teilen“ öffnet am Handy das Teilen-Menü.</p>`;
   }
   async function songTeilen() {
@@ -1556,8 +1584,9 @@
       if (a === 'bildFormat') { bildFormat = el.dataset.format; $$('[data-aktion="bildFormat"]').forEach(b => b.classList.toggle('an', b.dataset.format === bildFormat)); $$('.ebild-vorschau').forEach(v => { v.className = `ebild-vorschau f-${bildFormat}`; v.innerHTML = '<span class="cap t2">Bild wird erstellt …</span>'; }); return ergebnisBildZeigen(); }
       if (a === 'songTeilen') return songTeilen();
       if (a === 'berichtKopieren') { const t = spielberichtText(spielNach[el.dataset.spielId]); if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { el.textContent = 'Kopiert ✓'; setTimeout(() => { el.textContent = 'Text kopieren'; }, 2000); }, () => {}); return; }
-      if (a === 'bildTeilen') return bildTeilen(spielNach[el.dataset.spielId], el);
-      if (a === 'bildSpeichern') return bildSpeichern(spielNach[el.dataset.spielId], el);
+      if (a === 'bildTeilen') return bildTeilen(bildObj(el.dataset.spielId), el);
+      if (a === 'bildSpeichern') return bildSpeichern(bildObj(el.dataset.spielId), el);
+      if (a === 'sponsorKopieren') { if (navigator.clipboard) navigator.clipboard.writeText(sponsorText()).then(() => { el.textContent = 'Kopiert ✓'; setTimeout(() => { el.textContent = 'Text kopieren'; }, 2000); }, () => {}); return; }
       if (a === 'whatsapp') return whatsappSheet();
       if (a === 'waKopieren') { const t = whatsappText(); const ok = () => { el.textContent = 'Kopiert'; }; if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => {}); return; }
       if (a === 'kabine') { document.body.classList.add('druck-kabine'); window.print(); return; }
