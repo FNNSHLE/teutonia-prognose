@@ -146,7 +146,7 @@
     const fb = H - L.fuss + (L.fuss - 120) / 2;
     ctx.fillStyle = T.fuss; ctx.fillRect(0, H - L.fuss, W, L.fuss);
     ctx.font = `600 24px ${F.text}`; ctx.fillStyle = T.fussText;
-    if (d.ort) ctx.fillText(d.ort, W / 2, fb + 44);
+    if (d.ort) { passend(ctx, d.ort, F.text, 24, 980, '600'); ctx.fillText(d.ort, W / 2, fb + 44); }
     const my = d.ort ? fb + 90 : H - L.fuss / 2 + 12;
     const motto = [['SCHWARZ ', T.motto[0]], ['WEISS ', T.motto[1]]];
     ctx.font = `34px ${F.titel}`;

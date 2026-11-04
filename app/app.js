@@ -786,6 +786,7 @@
   const logoLokal = id => LOGOS[id] ? `../daten/logos/${id}.jpg?u=${encodeURIComponent(LOGOS[id])}` : null;
   // Auf den Social-Bildern steht immer die eigene Halle (wie auf den Instagram-Posts), nicht der Spielort
   const HEIMHALLE = 'Thedestraße 100 · 22767 Hamburg';
+  const VEREIN = 'SC Teutonia von 1910 e.V.';
   const SPRUECHE = {
     siegKnapp: ['Nervenstark bis zur letzten Sekunde.', 'Knapp ist auch gewonnen.', 'Puls 180, Punkte zwei.', 'Ein Tor reicht, wenn es das richtige ist.'],
     sieg: ['Zwei Punkte, null Diskussion.', 'So sieht Teamhandball aus.', 'Gemeinsam geackert, gemeinsam gewonnen.'],
@@ -819,7 +820,7 @@
     return {
       heim: team(g.heim), gast: team(g.gast), toreHeim: g.toreHeim, toreGast: g.toreGast,
       halbzeit: v ? `${v.halbzeit.heim}:${v.halbzeit.gast}` : '', runde: g.runde, saison, liga: ligaName,
-      datumLang: `${tagLang(g.datum)} ${j}`, ort: HEIMHALLE,
+      datumLang: `${tagLang(g.datum)} ${j}`, ort: `${VEREIN} · ${HEIMHALLE}`,
       mannschaft: '1. Damen', eigenLogo: logoLokal(UNSER), eigenSeite: eigen,
       etikett: !eigen ? '' : eig > 0 ? 'SIEG' : eig === 0 ? 'REMIS' : 'NIEDERLAGE', etikettFarbe: eig > 0 ? '#E2231A' : '#6E6E73',
       spruch: eigen ? spruchFuer(g) : 'Handball in Hamburg.', top: null, art: 'ergebnis',
@@ -834,7 +835,7 @@
     return {
       art: 'matchday', heim: team(g.heim), gast: team(g.gast), runde: g.runde, saison, liga: ligaName, mannschaft: '1. Damen', eigenLogo: logoLokal(UNSER),
       datumLang: g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)} ${j}`, zeit: g.terminOffen ? null : zeit(g.datum),
-      halle: g.halle ? normalisiere(g.halle) : '', ort: g.adresse ? adresseSchoen(g.adresse) : (heim ? HEIMHALLE : ''),
+      halle: g.halle ? normalisiere(g.halle) : '', ort: `${VEREIN} · ${g.adresse ? adresseSchoen(g.adresse) : HEIMHALLE}`,
       etikett: heim ? 'HEIMSPIEL' : 'AUSWÄRTS', etikettFarbe: heim ? '#E2231A' : '#F5C21B', etikettText: heim ? '#FFFFFF' : '#0B0B0C',
       spruch: spruchFuer(g),
     };

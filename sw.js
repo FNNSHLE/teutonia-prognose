@@ -8,7 +8,7 @@
 //   offline der zuletzt gesehene. Fremde Ursprünge (Teamlogos von handball360.isquad.de) werden nicht angefasst.
 // Cache-Schlüssel sind die URLs ohne ?v= und ?t=, so finden sich die Dateien auch nach einem Versionswechsel.
 
-const CACHE = 'anwurf-6'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
+const CACHE = 'anwurf-7'; // hochzählen, wenn sich die Liste unten ändert; alte Caches werden beim Aktivieren gelöscht
 const SHELL = [
   'index.html',
   'app/index.html',
@@ -67,7 +67,7 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
   const key = schluessel(req.url);
   e.respondWith(caches.open(CACHE).then(c =>
-    fetch(req)
+    fetch(req, { cache: 'no-cache' }) // beim Server nachfragen statt bis zu 10 Minuten alte Kopien aus dem Browser-Cache
       .then(r => { if (r.ok) c.put(key, r.clone()); return r; })
       .catch(() => c.match(key).then(r => r || Promise.reject(new Error('offline'))))
   ));
