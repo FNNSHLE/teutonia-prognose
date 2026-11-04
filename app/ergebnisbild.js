@@ -137,7 +137,7 @@
     ctx.strokeStyle = FARBE.rot; ctx.lineWidth = 8; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-uw / 2, 26); ctx.quadraticCurveTo(0, 36, uw / 2, 22); ctx.stroke();
     ctx.restore();
-    fussZeichnen(ctx, Object.assign({}, d, { ort: 'SC Teutonia von 1910 e.V.' }), L, H, T);
+    fussZeichnen(ctx, Object.assign({}, d, { ort: 'SC Teutonia von 1910 e.V. · Thedestraße 100 · 22767 Hamburg' }), L, H, T);
     return c;
   }
 
