@@ -1,1 +1,1 @@
-window.HB_AENDERUNG = {"sig": "3763726711", "seit": "2026-11-03T05:38:33Z"};
+window.HB_AENDERUNG = {"sig": "2238403823", "seit": "2026-11-04T05:42:21Z"};

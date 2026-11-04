@@ -1,1 +1,15 @@
-window.HB_TORWART = {"goalkeepers": {"86088":[{"playerId":"1bt1pug","name":"Laura Kähler","number":1},{"playerId":"0jotezw","name":"Silja Paul","number":12}]}, "records": []};
+window.HB_TORWART = {"goalkeepers": {
+  "86088": [
+    {
+      "playerId": "1bt1pug",
+      "name": "Laura Kähler",
+      "number": 1
+    },
+    {
+      "playerId": "0jotezw",
+      "name": "Silja Paul",
+      "number": 12
+    }
+  ]
+}
+, "records": []};
