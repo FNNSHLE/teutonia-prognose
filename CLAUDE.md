@@ -43,6 +43,7 @@ daten/torwart.js           Generated: window.HB_TORWART = { goalkeepers: permane
 daten/fotos.js             Generated: window.HB_FOTOS = { playerId: key } for the own team's photos (see "Player photos")
 daten/fotos/               Generated: <playerId>.jpg (128 px) + quellen.txt (playerId photo_url), own team only
 daten/profile.js           Hand-maintained: window.HB_PROFILE = { playerId: {name, position: [TW|LA|RL|RM|RR|RA|KM], satz, aemter: []} }, own team only
+daten/berichte.js          Hand-maintained: window.HB_BERICHTE = { matchId: { einschub } } – own paragraph in the Instagram match report
 daten/zusagen.js           Hand-maintained: window.HB_ZUSAGEN = { immerRaus: [playerId], <matchId>: {stand, dabei: [playerId]} } from SpielerPlus; seeds the optimiser once per stand
                            immerRaus players stay visible but greyed out and are excluded from the Matchplan (Bmp), Kabinenblatt and WhatsApp text
 daten/cache/<id>_l.json    Raw lineups per match (handball.net response)

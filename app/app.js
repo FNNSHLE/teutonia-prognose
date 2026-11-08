@@ -926,6 +926,9 @@
       zeilen.push(satz.join(' '));
       zeilen.push('');
     }
+    // Von Hand ergänzter Absatz (daten/berichte.js), z. B. Einordnung des Spiels
+    const eigen = (window.HB_BERICHTE || {})[g.id];
+    if (eigen && eigen.einschub) { zeilen.push(eigen.einschub.trim()); zeilen.push(''); }
     // Zahlen aus Aufstellung und eigener Torhüterinnen-Erfassung
     const L = DETAILS[g.id] && DETAILS[g.id].l && DETAILS[g.id].l.data;
     if (L) {
@@ -942,7 +945,7 @@
       if (v1) { const a1 = heim ? v1.halbzeit.heim : v1.halbzeit.gast, b1 = heim ? v1.halbzeit.gast : v1.halbzeit.heim, a2 = wir - a1, b2 = sie - b1;
         if (a2 > b2 && a1 <= b1) saetze.push(`Die zweite Hälfte ging mit ${st(a2, b2)} an uns${diff < 0 ? ' – darauf lässt sich aufbauen' : ''}.`); }
       if (schuetz >= 7) saetze.push(`${schuetz} verschiedene Torschützinnen – das war echte Teamleistung! 🙌`);
-      if (zw + zg && Math.abs(zw - zg) >= 2) saetze.push(zw < zg ? `Diszipliniert: nur ${zw} Zeitstrafe${zw === 1 ? '' : 'n'} gegen uns, ${zg} gegen ${geg}.` : `Mit ${zw} Zeitstrafen machten wir es uns selbst schwer.`);
+      if (zw + zg && Math.abs(zw - zg) >= 2 && !(eigen && eigen.einschub)) saetze.push(zw < zg ? `Diszipliniert: nur ${zw} Zeitstrafe${zw === 1 ? '' : 'n'} gegen uns, ${zg} gegen ${geg}.` : `Mit ${zw} Zeitstrafen machten wir es uns selbst schwer.`);
       // Paraden aus der eigenen Erfassung von der Bank
       const rec = ((window.HB_TORWART || {}).records || []).find(r => String(r.matchId) === String(g.id) && Number(r.teamId) === Number(UNSER));
       let par = null;
