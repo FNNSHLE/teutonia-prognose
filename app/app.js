@@ -255,6 +255,7 @@
       play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>',
       pause: '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" stroke="none"/>',
       ausruf: '<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M12 6.5v7" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.5" fill="#fff" stroke="none"/>',
+      download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
       stern: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
       plan: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4"/>',
       kalender: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -734,7 +735,12 @@
 
   // ================= Team-Song „Teutonia, Teutonia“ =================
   // Ein einziges Audio-Objekt außerhalb des DOM, damit die Musik beim Wechsel der Bereiche weiterläuft.
-  const SONG = { src: 'assets/teutonia-vibe-norderstedt.mp3', cover: 'assets/teutonia-vibe-norderstedt-cover.jpg', titel: 'Teutonia, Teutonia', zusatz: 'unser Vibe für Norderstedt', datei: 'teutonia-teutonia-norderstedt.mp3', dauer: 183 };
+  // Alle Team-Songs, neuester zuerst. Der erste läuft im Player auf der Startseite, alle stehen unter Social & Assets.
+  const SONGS = [
+    { src: 'assets/teutonia-vibe-norderstedt.mp3', cover: 'assets/teutonia-vibe-norderstedt-cover.jpg', titel: 'Teutonia, Teutonia', zusatz: 'unser Vibe für Norderstedt', datei: 'teutonia-teutonia-norderstedt.mp3', dauer: 183 },
+    { src: 'assets/teutonia-vibe.mp3', cover: 'assets/teutonia-vibe-cover.jpg', titel: 'Teutonia, Teutonia', zusatz: 'der erste Team-Song', datei: 'teutonia-teutonia.mp3', dauer: 184 },
+  ];
+  const SONG = SONGS[0];
   let songAudio = null;
   const song = () => songAudio || (songAudio = Object.assign(new Audio(), { preload: 'none', src: SONG.src }));
   const mmss = t => { t = Math.max(0, Math.floor(t || 0)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
@@ -1050,7 +1056,7 @@
     const weitere = kommend.slice(1);
     const ankuend = weitere.length ? modul('Ankündigungen', `<div class="ebild-raster">${weitere.map(g => karte(g)).join('')}</div>`, { eyebrow: `Matchday · ${weitere.length} weitere Spiele`, fuss: 'Für jedes kommende Spiel liegt ein Matchday-Bild bereit. Spiele ohne festen Termin zeigen „Termin folgt“ und aktualisieren sich, sobald handball.net den Termin kennt.' }) : '';
     const ergebn = gespielt.length ? modul('Ergebnisse', `<div class="ebild-raster">${gespielt.map(g => karte(g)).join('')}</div>`, { eyebrow: 'Endstand · nach jedem Spiel automatisch' }) : '';
-    const songK = modul('Team-Song', `<p class="meta" style="margin:0 0 12px">„${SONG.titel}“ · ${SONG.zusatz} · ${mmss(SONG.dauer)}</p><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><button class="btn prim wa-knopf" data-aktion="songTeilen">${ico('teilen', 1)} Song teilen</button><a class="btn" href="${SONG.src}" download="${SONG.datei}">Herunterladen</a></div>`, { eyebrow: 'Hier ist unser Vibe' });
+    const songK = modul('Team-Songs', `<div class="songliste">${SONGS.map((x, i) => `<div class="songzeile"><img src="${x.cover}" alt="" width="56" height="56" loading="lazy"><div class="songinfo"><b>„${x.titel}“</b><span class="cap t2">${x.zusatz} · ${mmss(x.dauer)}</span></div><div class="songknoepfe"><button class="btn prim wa-knopf" data-aktion="songTeilen" data-song="${i}" aria-label="Song teilen">${ico('teilen', 1)}</button><a class="btn" href="${x.src}" download="${x.datei}" aria-label="Herunterladen">${ico('download', 1)}</a></div></div>`).join('')}</div>`, { eyebrow: 'Hier ist unser Vibe', fuss: 'Teilen öffnet am Handy das Teilen-Menü, z. B. für WhatsApp.' });
     const sponsK = g => `<details class="ebild-karte"${!mobil ? ' open' : ''}><summary class="ebild-titel"><span class="md-punkt">${ico('stern', 1)}</span><span>${SPONSOR.name} · ${g.titel}</span>${mobil ? ico('chev', 1) : ''}</summary>${ergebnisBildHtml(g, true)}</details>`;
     const sponsoren = modul('Sponsoren', `<div class="ebild-raster">${SPONSOR_BILDER.map(sponsK).join('')}</div>
       <details class="bericht"><summary>Text für Instagram</summary><pre class="wa-vorschau">${esc(sponsorText())}</pre><button class="btn" data-aktion="sponsorKopieren" style="width:100%;margin-top:8px">Text kopieren</button></details>`,
@@ -1058,13 +1064,13 @@
     return `${kopf}${leiste}${vorSpiel}${ankuend}${ergebn}${sponsoren}<div class="mkopf" style="margin-top:8px"><div><span class="micro">Immer da</span><h2 class="titel">Mehr zum Teilen</h2></div></div><div class="zwei-sp">${songK}${newsroom()}</div>
       <p class="fussnote">Formate: Feed 4:5 für Instagram-Beiträge und WhatsApp, Quadrat 1:1, Story 9:16 für Instagram-Story und WhatsApp-Status. „Bild teilen“ öffnet am Handy das Teilen-Menü.</p>`;
   }
-  async function songTeilen() {
+  async function songTeilen(x = SONG) {
     try {
-      const blob = await (await fetch(SONG.src)).blob();
-      const datei = new File([blob], SONG.datei, { type: 'audio/mpeg' });
-      if (navigator.canShare && navigator.canShare({ files: [datei] })) return navigator.share({ files: [datei], text: `${SONG.titel} – ${SONG.zusatz}` }).catch(() => {});
+      const blob = await (await fetch(x.src)).blob();
+      const datei = new File([blob], x.datei, { type: 'audio/mpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [datei] })) return navigator.share({ files: [datei], text: `${x.titel} – ${x.zusatz}` }).catch(() => {});
     } catch (e) {}
-    const a = document.createElement('a'); a.href = SONG.src; a.download = SONG.datei; document.body.appendChild(a); a.click(); a.remove();
+    const a = document.createElement('a'); a.href = x.src; a.download = x.datei; document.body.appendChild(a); a.click(); a.remove();
   }
 
   // ================= Newsroom =================
@@ -1586,7 +1592,7 @@
       if (a === 'mehr') return mehrSheet();
       if (a === 'vibe') return vibeUmschalten();
       if (a === 'bildFormat') { bildFormat = el.dataset.format; $$('[data-aktion="bildFormat"]').forEach(b => b.classList.toggle('an', b.dataset.format === bildFormat)); $$('.ebild-vorschau').forEach(v => { v.className = `ebild-vorschau f-${bildFormat}`; v.innerHTML = '<span class="cap t2">Bild wird erstellt …</span>'; }); return ergebnisBildZeigen(); }
-      if (a === 'songTeilen') return songTeilen();
+      if (a === 'songTeilen') return songTeilen(SONGS[Number(el.dataset.song) || 0]);
       if (a === 'berichtKopieren') { const t = spielberichtText(spielNach[el.dataset.spielId]); if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { el.textContent = 'Kopiert ✓'; setTimeout(() => { el.textContent = 'Text kopieren'; }, 2000); }, () => {}); return; }
       if (a === 'bildTeilen') return bildTeilen(bildObj(el.dataset.spielId), el);
       if (a === 'bildSpeichern') return bildSpeichern(bildObj(el.dataset.spielId), el);

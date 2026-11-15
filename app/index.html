@@ -479,6 +479,13 @@ details.ebild-karte > summary { cursor: default; }
 .ebild-vorschau { aspect-ratio: 4 / 5; border-radius: var(--r-m); background: var(--bg-2); display: grid; place-items: center; overflow: hidden; }
 .ebild-vorschau img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ebild-knoepfe { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
+/* Team-Songs in Social & Assets */
+.songliste { display: grid; gap: 12px; }
+.songzeile { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.songzeile img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; }
+.songinfo { display: grid; gap: 2px; min-width: 0; }
+.songknoepfe { display: flex; gap: 6px; }
+.songknoepfe .btn { width: 44px; padding: 0; justify-content: center; text-decoration: none; }
 /* Team-Song */
 .vibe { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) 64px; gap: 20px; align-items: center; padding: 20px; margin-bottom: var(--gap); border-radius: var(--r-l); background: radial-gradient(120% 140% at 0% 0%, #3A2C10 0%, #17181C 55%, #0E0F12 100%); color: #F2F3F5; overflow: hidden; }
 .vibe::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2px rgba(242,183,5,.55); pointer-events: none; }
@@ -694,7 +701,7 @@ details.ebild-karte > summary { cursor: default; }
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
 <script src="ergebnisbild.js?v=19"></script>
-<script src="app.js?v=66"></script>
+<script src="app.js?v=67"></script>
 
 </body>
 </html>
