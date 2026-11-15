@@ -734,7 +734,7 @@
 
   // ================= Team-Song „Teutonia, Teutonia“ =================
   // Ein einziges Audio-Objekt außerhalb des DOM, damit die Musik beim Wechsel der Bereiche weiterläuft.
-  const SONG = { src: 'assets/teutonia-vibe.mp3', cover: 'assets/teutonia-vibe-cover.jpg', titel: 'Teutonia, Teutonia', dauer: 184 };
+  const SONG = { src: 'assets/teutonia-vibe-norderstedt.mp3', cover: 'assets/teutonia-vibe-norderstedt-cover.jpg', titel: 'Teutonia, Teutonia', zusatz: 'unser Vibe für Norderstedt', datei: 'teutonia-teutonia-norderstedt.mp3', dauer: 183 };
   let songAudio = null;
   const song = () => songAudio || (songAudio = Object.assign(new Audio(), { preload: 'none', src: SONG.src }));
   const mmss = t => { t = Math.max(0, Math.floor(t || 0)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
@@ -746,7 +746,7 @@
       <div class="vibe-txt">
         <span class="micro">Unser Spirit passt in keine Statistik</span>
         <h2 class="titel">Hier ist unser Vibe!</h2>
-        <span class="cap">„${SONG.titel}“ · der Song über ${esc(kurz(UNSER))}</span>
+        <span class="cap">„${SONG.titel}“ · ${SONG.zusatz}</span>
         <div class="vibe-zeit"><span id="vibeJetzt">${mmss(pos)}</span><input type="range" id="vibeLeiste" min="0" max="${Math.round(dauer)}" step="1" value="${Math.round(pos)}" aria-label="Position im Song"><span id="vibeDauer">${mmss(dauer)}</span></div>
       </div>
       <button class="vibe-knopf" data-aktion="vibe" aria-label="${laeuft ? 'Pause' : 'Abspielen'}">${ico(laeuft ? 'pause' : 'play')}</button>
@@ -1050,7 +1050,7 @@
     const weitere = kommend.slice(1);
     const ankuend = weitere.length ? modul('Ankündigungen', `<div class="ebild-raster">${weitere.map(g => karte(g)).join('')}</div>`, { eyebrow: `Matchday · ${weitere.length} weitere Spiele`, fuss: 'Für jedes kommende Spiel liegt ein Matchday-Bild bereit. Spiele ohne festen Termin zeigen „Termin folgt“ und aktualisieren sich, sobald handball.net den Termin kennt.' }) : '';
     const ergebn = gespielt.length ? modul('Ergebnisse', `<div class="ebild-raster">${gespielt.map(g => karte(g)).join('')}</div>`, { eyebrow: 'Endstand · nach jedem Spiel automatisch' }) : '';
-    const songK = modul('Team-Song', `<p class="meta" style="margin:0 0 12px">„${SONG.titel}“ · ${mmss(SONG.dauer)}</p><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><button class="btn prim wa-knopf" data-aktion="songTeilen">${ico('teilen', 1)} Song teilen</button><a class="btn" href="${SONG.src}" download="teutonia-teutonia.mp3">Herunterladen</a></div>`, { eyebrow: 'Hier ist unser Vibe' });
+    const songK = modul('Team-Song', `<p class="meta" style="margin:0 0 12px">„${SONG.titel}“ · ${SONG.zusatz} · ${mmss(SONG.dauer)}</p><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><button class="btn prim wa-knopf" data-aktion="songTeilen">${ico('teilen', 1)} Song teilen</button><a class="btn" href="${SONG.src}" download="${SONG.datei}">Herunterladen</a></div>`, { eyebrow: 'Hier ist unser Vibe' });
     const sponsK = g => `<details class="ebild-karte"${!mobil ? ' open' : ''}><summary class="ebild-titel"><span class="md-punkt">${ico('stern', 1)}</span><span>${SPONSOR.name} · ${g.titel}</span>${mobil ? ico('chev', 1) : ''}</summary>${ergebnisBildHtml(g, true)}</details>`;
     const sponsoren = modul('Sponsoren', `<div class="ebild-raster">${SPONSOR_BILDER.map(sponsK).join('')}</div>
       <details class="bericht"><summary>Text für Instagram</summary><pre class="wa-vorschau">${esc(sponsorText())}</pre><button class="btn" data-aktion="sponsorKopieren" style="width:100%;margin-top:8px">Text kopieren</button></details>`,
@@ -1061,10 +1061,10 @@
   async function songTeilen() {
     try {
       const blob = await (await fetch(SONG.src)).blob();
-      const datei = new File([blob], 'teutonia-teutonia.mp3', { type: 'audio/mpeg' });
-      if (navigator.canShare && navigator.canShare({ files: [datei] })) return navigator.share({ files: [datei], text: `${SONG.titel} – der Song über ${kurz(UNSER)}` }).catch(() => {});
+      const datei = new File([blob], SONG.datei, { type: 'audio/mpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [datei] })) return navigator.share({ files: [datei], text: `${SONG.titel} – ${SONG.zusatz}` }).catch(() => {});
     } catch (e) {}
-    const a = document.createElement('a'); a.href = SONG.src; a.download = 'teutonia-teutonia.mp3'; document.body.appendChild(a); a.click(); a.remove();
+    const a = document.createElement('a'); a.href = SONG.src; a.download = SONG.datei; document.body.appendChild(a); a.click(); a.remove();
   }
 
   // ================= Newsroom =================
