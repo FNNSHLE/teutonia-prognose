@@ -481,6 +481,19 @@ details.ebild-karte > summary { cursor: default; }
 .ebild-knoepfe { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
 /* Team-Songs in Social & Assets */
 .songliste { display: grid; gap: 12px; }
+.folge { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; align-items: start; padding: 12px 0; border-top: 1px solid var(--linie, #e5e5e5); }
+.folge:first-child { border-top: 0; }
+.folge.neu { grid-template-columns: 200px minmax(0, 1fr); gap: 24px; padding: 0; }
+.folge-cover { width: 100%; height: auto; aspect-ratio: 1; border-radius: 14px; object-fit: cover; }
+.folge-txt { display: grid; gap: 8px; min-width: 0; }
+.folge-txt h3 { margin: 0; font-size: 20px; line-height: 1.25; }
+.folge.neu .folge-txt h3 { font-size: 24px; }
+.folge-txt p { margin: 0; }
+.folge-txt audio { width: 100%; }
+.folge-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; }
+.folge-knoepfe .btn { text-decoration: none; }
+.folge-link { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .folge.neu { grid-template-columns: 1fr; } .folge.neu .folge-cover { max-width: 260px; } }
 .songzeile { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
 .songzeile img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; }
 .songinfo { display: grid; gap: 2px; min-width: 0; }
@@ -701,7 +714,7 @@ details.ebild-karte > summary { cursor: default; }
 <script src="goalkeepers.js?v=23"></script>
 <script src="tracker.js?v=23"></script>
 <script src="ergebnisbild.js?v=20"></script>
-<script src="app.js?v=68"></script>
+<script src="app.js?v=69"></script>
 
 </body>
 </html>

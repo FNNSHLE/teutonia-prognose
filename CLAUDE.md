@@ -147,6 +147,12 @@ Social & Assets with an Instagram caption (`sponsorText`). Swap the logo file fo
 `AI_BILD` in `app.js` (`d.art === 'ai'`, `zeichneAi` in `ergebnisbild.js`): cover only, no content – dark dot grid,
 „KATTAS“ / „AI-ANALYSE“ (AI in red), yellow „FREITAG“ label, faint bar chart, shared footer. Own module in Social & Assets.
 
+## Analyse-Podcast
+
+Section `podcast` (`seitePodcast`): episodes of „Kattas AI-Analyse Freitag“ in `FOLGEN` (newest first), audio in
+`app/assets/podcast/`, cover `app/assets/podcast/cover.jpg` (square version of the AI cover). Each episode has a native
+player, share/copy of the direct link and a download. Direct links: https://fnnshle.github.io/teutonia-prognose/app/assets/podcast/<file>.
+
 ## Match report text (Spielbericht)
 
 `spielberichtText(g)` in `app.js` writes an Instagram caption for every finished own match from the goal timeline

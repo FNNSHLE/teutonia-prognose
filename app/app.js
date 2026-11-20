@@ -250,6 +250,7 @@
   function ico(n, k) {
     const P = {
       tafel: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/>',
+      mikro: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>',
       kamera: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',
       extern: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
       play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>',
@@ -327,6 +328,7 @@
     { id: 'spielerinnen', name: 'Spielerinnen', kurz: 'Spielerinnen', ico: 'trikot' },
     { id: 'teams', name: 'Teams', kurz: 'Teams', ico: 'schilde' },
     { id: 'social', name: 'Social & Assets', kurz: 'Social', ico: 'kamera' },
+    { id: 'podcast', name: 'Analyse-Podcast', kurz: 'Podcast', ico: 'mikro' },
     { id: 'erfassung', name: 'Torhüterin erfassen', kurz: 'Erfassung', ico: 'tor' },
     { id: 'methodik', name: 'So rechnet Anwurf', kurz: 'Methodik', ico: 'info' },
   ];
@@ -1081,6 +1083,43 @@
     const a = document.createElement('a'); a.href = x.src; a.download = x.datei; document.body.appendChild(a); a.click(); a.remove();
   }
 
+  // ================= Analyse-Podcast =================
+  // Folgen von „Kattas AI-Analyse Freitag“. Audio liegt in app/assets/podcast/, neue Folgen oben in FOLGEN eintragen.
+  const PODCAST = { titel: 'Kattas AI-Analyse Freitag', cover: 'assets/podcast/cover.jpg' };
+  const FOLGEN = [
+    { id: '2026-11-20', datum: '2026-11-20', titel: 'Die taktische Metamorphose der Teutonia-Handballerinnen', src: 'assets/podcast/2026-11-20-taktische-metamorphose.m4a', dauer: 1264,
+      text: 'Die erste Folge: Was die Spieldaten über die Saison der 1. Damen verraten.' },
+  ];
+  const folgeUrl = f => new URL(f.src, location.href).href;
+  const datumDe = s => { const [j, m, t] = s.split('-').map(Number); return `${t}. ${['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'][m - 1]} ${j}`; };
+  function seitePodcast() {
+    const kopf = seitenkopf('Analyse-Podcast', `${esc(PODCAST.titel)} · jeden Freitag`);
+    const folge = (f, neu) => `<article class="folge${neu ? ' neu' : ''}">
+        <img class="folge-cover" src="${PODCAST.cover}" alt="Cover ${esc(PODCAST.titel)}" width="${neu ? 200 : 72}" height="${neu ? 200 : 72}" loading="lazy">
+        <div class="folge-txt">
+          <span class="micro">${neu ? 'Neue Folge · ' : ''}${datumDe(f.datum)} · ${Math.round(f.dauer / 60)} Min.</span>
+          <h3>${esc(f.titel)}</h3>
+          ${f.text ? `<p class="t2">${esc(f.text)}</p>` : ''}
+          <audio controls preload="none" src="${f.src}"></audio>
+          <div class="folge-knoepfe">
+            <button class="btn prim wa-knopf" data-aktion="folgeTeilen" data-folge="${f.id}">${ico('teilen', 1)} Link teilen</button>
+            <button class="btn" data-aktion="folgeLink" data-folge="${f.id}">Link kopieren</button>
+            <a class="btn" href="${f.src}" download>${ico('download', 1)} Herunterladen</a>
+          </div>
+          <div class="folge-link cap t2">Direktlink: <a href="${f.src}" target="_blank" rel="noopener">${esc(folgeUrl(f))}</a></div>
+        </div>
+      </article>`;
+    const [erste, ...rest] = FOLGEN;
+    return `${kopf}${erste ? modul('', folge(erste, true), { klasse: 'podcast-neu' }) : ''}${rest.length ? modul('Alle Folgen', rest.map(f => folge(f)).join(''), { eyebrow: 'Archiv' }) : ''}
+      <p class="fussnote">Erstellt mit KI-Unterstützung auf Basis der Spieldaten von handball.net. Der Direktlink spielt die Folge in jedem Browser ab, auch ohne die App.</p>`;
+  }
+  function folgeAktion(a, el) {
+    const f = FOLGEN.find(x => x.id === el.dataset.folge); if (!f) return;
+    const url = folgeUrl(f), text = `🎙️ ${PODCAST.titel}: ${f.titel}`;
+    if (a === 'folgeTeilen' && navigator.share) return navigator.share({ title: PODCAST.titel, text, url }).catch(() => {});
+    if (navigator.clipboard) navigator.clipboard.writeText(a === 'folgeTeilen' ? `${text}\n${url}` : url).then(() => { const t = el.textContent; el.textContent = 'Kopiert ✓'; setTimeout(() => { el.innerHTML = a === 'folgeTeilen' ? `${ico('teilen', 1)} Link teilen` : t; }, 2000); }, () => {});
+  }
+
   // ================= Newsroom =================
   // Vorerst nur ein Verweis aufs Instagram-Profil. Beiträge selbst bräuchten einen Feed mit Zustimmung des Kontos
   // (z. B. Behold); ohne den lädt die App nichts von Instagram, es fließen also keine Daten an Meta.
@@ -1556,7 +1595,7 @@
   // ================= Zeichnen =================
   let letzteBreite = 0;
   function zeichne(scrollOben) {
-    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik, erfassung: seiteErfassung, social: seiteSocial };
+    const seiten = { heute: seiteHeute, matchplan: seiteMatchplan, spiele: seiteSpiele, tabelle: seiteTabelle, labor: seiteLabor, spielerinnen: seiteSpielerinnen, teams: seiteTeams, methodik: seiteMethodik, erfassung: seiteErfassung, social: seiteSocial, podcast: seitePodcast };
     if (!seiten[bereich]) bereich = 'heute';
     if (window.trackerUnmount) trackerUnmount(); // Preact-Baum sauber abbauen, bevor der Inhalt ersetzt wird
     gerüst();
@@ -1604,6 +1643,7 @@
       if (a === 'berichtKopieren') { const t = spielberichtText(spielNach[el.dataset.spielId]); if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { el.textContent = 'Kopiert ✓'; setTimeout(() => { el.textContent = 'Text kopieren'; }, 2000); }, () => {}); return; }
       if (a === 'bildTeilen') return bildTeilen(bildObj(el.dataset.spielId), el);
       if (a === 'bildSpeichern') return bildSpeichern(bildObj(el.dataset.spielId), el);
+      if (a === 'folgeTeilen' || a === 'folgeLink') return folgeAktion(a, el);
       if (a === 'sponsorKopieren') { if (navigator.clipboard) navigator.clipboard.writeText(sponsorText()).then(() => { el.textContent = 'Kopiert ✓'; setTimeout(() => { el.textContent = 'Text kopieren'; }, 2000); }, () => {}); return; }
       if (a === 'whatsapp') return whatsappSheet();
       if (a === 'waKopieren') { const t = whatsappText(); const ok = () => { el.textContent = 'Kopiert'; }; if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => {}); return; }
