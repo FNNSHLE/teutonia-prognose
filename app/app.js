@@ -810,6 +810,7 @@
     const l = SPRUECHE[k]; return l[Math.abs(Number(g.id)) % l.length];
   }
   function ergebnisDaten(g) {
+    if (g.ai) return aiDaten();
     if (g.sponsor) return sponsorDaten(g);
     if (!g.gewertet) return matchdayDaten(g);
     const eigen = g.heim === UNSER ? 'heim' : g.gast === UNSER ? 'gast' : null;
@@ -989,7 +990,7 @@
     { id: 'sponsor-growport-foto', sponsor: true, variante: 'foto', titel: 'Mit Trikotfoto' },
   ];
   const SPONSOR_NACH = Object.fromEntries(SPONSOR_BILDER.map(x => [x.id, x]));
-  const bildObj = id => spielNach[id] || SPONSOR_NACH[id];
+  const bildObj = id => spielNach[id] || SPONSOR_NACH[id] || (id === 'ai-analyse' ? AI_BILD : null);
   function sponsorDaten(x) {
     const h = new Date(), j = h.getFullYear(), saison = h.getMonth() >= 6 ? `${j}/${String(j + 1).slice(2)}` : `${j - 1}/${String(j).slice(2)}`;
     return { art: 'sponsor', variante: x.variante, name: SPONSOR.name, foto: SPONSOR.foto, logo: SPONSOR.logo, fokusY: SPONSOR.fokusY,
@@ -1004,7 +1005,12 @@
     `#SchwarzWeissBunt #Teutonia10 #Handball #Frauenhandball #Hamburg #${SPONSOR.name}`,
   ].join('\n');
 
-  const bildName = g => g.sponsor ? `${g.id}-${bildFormat}.png` : `${g.gewertet ? 'ergebnis' : 'matchday'}-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+  // ================= Kattas AI-Analyse Freitag =================
+  // Cover-Bild für das Freitags-Format, nur Titel ohne Inhalte.
+  const AI_BILD = { id: 'ai-analyse', ai: true, titel: 'Kattas AI-Analyse Freitag' };
+  const aiDaten = () => ({ art: 'ai', ort: `${VEREIN} · ${HEIMHALLE}` });
+
+  const bildName = g => g.ai ? `kattas-ai-analyse-freitag-${bildFormat}.png` : g.sponsor ? `${g.id}-${bildFormat}.png` : `${g.gewertet ? 'ergebnis' : 'matchday'}-${kurz(g.heim)}-${kurz(g.gast)}-${g.datum.toISOString().slice(0, 10)}-${bildFormat}.png`.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
   let bildCache = {};
   function ergebnisBildFuer(g) {
     const k = `${g.id}:${bildFormat}`;
@@ -1021,14 +1027,14 @@
       ergebnisBildFuer(g).then(blob => {
         const v = el.querySelector('.ebild-vorschau'); if (!v) return;
         v.className = `ebild-vorschau f-${bildFormat}`;
-        v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="${g.sponsor ? `Sponsor-Bild ${SPONSOR.name}` : `${g.gewertet ? 'Ergebnis' : 'Matchday'}-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}`}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
+        v.innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="${g.ai ? 'Kattas AI-Analyse Freitag' : g.sponsor ? `Sponsor-Bild ${SPONSOR.name}` : `${g.gewertet ? 'Ergebnis' : 'Matchday'}-Bild ${esc(kurz(g.heim))} gegen ${esc(kurz(g.gast))}`}">` : '<span class="cap t2">Bild konnte nicht erstellt werden.</span>';
       });
     });
   }
   async function bildTeilen(g, knopf) {
     const blob = await ergebnisBildFuer(g); if (!blob) return;
     const datei = new File([blob], bildName(g), { type: 'image/png' });
-    const text = g.sponsor ? `Danke an unseren neuen Trikotsponsor ${SPONSOR.name}!` : g.gewertet ? `${kurz(g.heim)} ${g.toreHeim}:${g.toreGast} ${kurz(g.gast)} · ${spruchFuer(g)}` : `Matchday: ${kurz(g.heim)} gegen ${kurz(g.gast)} · ${g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)}, ${zeit(g.datum)} Uhr`}`;
+    const text = g.ai ? 'Kattas AI-Analyse Freitag' : g.sponsor ? `Danke an unseren neuen Trikotsponsor ${SPONSOR.name}!` : g.gewertet ? `${kurz(g.heim)} ${g.toreHeim}:${g.toreGast} ${kurz(g.gast)} · ${spruchFuer(g)}` : `Matchday: ${kurz(g.heim)} gegen ${kurz(g.gast)} · ${g.terminOffen ? 'Termin folgt' : `${tagLang(g.datum)}, ${zeit(g.datum)} Uhr`}`;
     if (navigator.canShare && navigator.canShare({ files: [datei] })) { try { await navigator.share({ files: [datei], text }); } catch (e) {} return; }
     bildSpeichern(g, knopf);
   }
@@ -1061,7 +1067,9 @@
     const sponsoren = modul('Sponsoren', `<div class="ebild-raster">${SPONSOR_BILDER.map(sponsK).join('')}</div>
       <details class="bericht"><summary>Text für Instagram</summary><pre class="wa-vorschau">${esc(sponsorText())}</pre><button class="btn" data-aktion="sponsorKopieren" style="width:100%;margin-top:8px">Text kopieren</button></details>`,
       { eyebrow: `Danke an ${SPONSOR.name}`, fuss: 'Zwei Varianten: Logo groß in der Mitte oder mit dem Trikotfoto. Format oben wählen.' });
-    return `${kopf}${leiste}${vorSpiel}${ankuend}${ergebn}${sponsoren}<div class="mkopf" style="margin-top:8px"><div><span class="micro">Immer da</span><h2 class="titel">Mehr zum Teilen</h2></div></div><div class="zwei-sp">${songK}${newsroom()}</div>
+    const aiK = modul('Kattas AI-Analyse Freitag', `<div class="ebild-raster"><div class="ebild-karte">${ergebnisBildHtml(AI_BILD, true)}</div></div>`,
+      { eyebrow: 'Cover · jeden Freitag', fuss: 'Cover für das Freitags-Format, zum Beispiel als Instagram-Beitrag, Story oder Podcast-Bild. Format oben wählen.' });
+    return `${kopf}${leiste}${vorSpiel}${aiK}${ankuend}${ergebn}${sponsoren}<div class="mkopf" style="margin-top:8px"><div><span class="micro">Immer da</span><h2 class="titel">Mehr zum Teilen</h2></div></div><div class="zwei-sp">${songK}${newsroom()}</div>
       <p class="fussnote">Formate: Feed 4:5 für Instagram-Beiträge und WhatsApp, Quadrat 1:1, Story 9:16 für Instagram-Story und WhatsApp-Status. „Bild teilen“ öffnet am Handy das Teilen-Menü.</p>`;
   }
   async function songTeilen(x = SONG) {

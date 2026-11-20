@@ -141,6 +141,63 @@
     return c;
   }
 
+  // Cover „Kattas AI-Analyse Freitag“: nur Titel, keine Inhalte. Dunkel mit Punktraster und angedeutetem Diagramm.
+  function funke(ctx, x, y, r, farbe) {
+    // vierzackiger KI-Funke
+    ctx.save(); ctx.fillStyle = farbe; ctx.beginPath();
+    ctx.moveTo(x, y - r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.quadraticCurveTo(x, y, x, y + r);
+    ctx.quadraticCurveTo(x, y, x - r, y); ctx.quadraticCurveTo(x, y, x, y - r); ctx.fill(); ctx.restore();
+  }
+  async function zeichneAi(d, format) {
+    const L = FORMATE[format] || FORMATE.feed, H = L.h, T = THEMA.dunkel;
+    await ladeSchriften();
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = T.grund; ctx.fillRect(0, 0, W, H);
+    // Punktraster, oben rechts kräftiger
+    for (let y = 18; y < H; y += 36) for (let x = 18; x < W; x += 36) {
+      const a = Math.max(0, 0.18 - Math.hypot(W - x, y) / 8500);
+      if (a > 0.01) { ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill(); }
+    }
+    pinselStreifen(ctx, H, 'rgba(255,255,255,.035)');
+    // angedeutetes Balkendiagramm am unteren Rand, ein Balken rot
+    const unten = H - L.fuss, hoehen = [0.32, 0.5, 0.41, 0.66, 0.55, 0.8, 0.62, 0.92, 0.74], bw = 84, ab = 32;
+    const x0 = W / 2 - (hoehen.length * bw + (hoehen.length - 1) * ab) / 2, hmax = H * (format === 'quadrat' ? 0.14 : 0.22);
+    hoehen.forEach((h, i) => { ctx.fillStyle = i === 7 ? 'rgba(226,35,26,.55)' : 'rgba(255,255,255,.06)';
+      ctx.beginPath(); ctx.roundRect(x0 + i * (bw + ab), unten - h * hmax, bw, h * hmax + 20, [14, 14, 0, 0]); ctx.fill(); });
+    // Titelblock, vertikal mittig über dem Fuß (Story: etwas tiefer wegen der Instagram-Leiste)
+    const z1 = 'KATTAS', z2a = 'AI', z2b = '-ANALYSE', maxB = 920;
+    ctx.font = `200px ${F.titel}`; const g2 = Math.min(250, Math.floor(200 * maxB / ctx.measureText(z2a + z2b).width));
+    ctx.font = `200px ${F.titel}`; const g1 = Math.min(340, Math.floor(200 * maxB / ctx.measureText(z1).width));
+    const eg = Math.round(g2 * 0.42), luecke = Math.round(g2 * 0.12);
+    const block = g1 * 0.86 + luecke + g2 * 0.86 + luecke * 2.4 + eg * 1.3;
+    let y = (unten - block) / 2 + (format === 'story' ? 60 : 0) - (format === 'quadrat' ? 10 : 30);
+    // Kicker
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = T.sub; ctx.font = `600 ${format === 'quadrat' ? 22 : 26}px ${F.text}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
+    ctx.fillText('SC TEUTONIA 10 · 1. DAMEN', W / 2, y - (format === 'quadrat' ? 30 : 44));
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    y += g1 * 0.86;
+    ctx.fillStyle = T.text; ctx.font = `${g1}px ${F.titel}`; ctx.fillText(z1, W / 2, y);
+    y += luecke + g2 * 0.86;
+    ctx.font = `${g2}px ${F.titel}`;
+    const b2 = ctx.measureText(z2a + z2b).width; let x = W / 2 - b2 / 2; ctx.textAlign = 'left';
+    ctx.fillStyle = FARBE.rot; ctx.fillText(z2a, x, y); x += ctx.measureText(z2a).width;
+    ctx.fillStyle = T.text; ctx.fillText(z2b, x, y);
+    const k1 = ctx.font; ctx.font = `${g1}px ${F.titel}`; const b1 = ctx.measureText(z1).width; ctx.font = k1;
+    funke(ctx, W / 2 + b1 / 2 + 6, y - g2 * 0.86 - luecke - g1 * 0.8, g1 * 0.11, '#F5C21B');
+    funke(ctx, W / 2 + b1 / 2 + g1 * 0.2, y - g2 * 0.86 - luecke - g1 * 0.58, g1 * 0.06, '#F5C21B');
+    // FREITAG als schräges gelbes Etikett
+    y += luecke * 2.4 + eg * 0.65;
+    ctx.save(); ctx.translate(W / 2, y); ctx.rotate(-0.04); ctx.font = `${eg}px ${F.titel}`; ctx.textAlign = 'center';
+    const ew = ctx.measureText('FREITAG').width + eg * 0.9, eh = eg * 0.62;
+    ctx.fillStyle = '#F5C21B'; ctx.beginPath(); ctx.moveTo(-ew / 2 + 18, -eh); ctx.lineTo(ew / 2 + 18, -eh); ctx.lineTo(ew / 2 - 18, eh); ctx.lineTo(-ew / 2 - 18, eh); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = FARBE.schwarz; ctx.textBaseline = 'middle'; ctx.fillText('FREITAG', 0, eg * 0.04); ctx.restore();
+    ctx.textBaseline = 'alphabetic';
+    fussZeichnen(ctx, d, L, H, T);
+    return c;
+  }
+
   function fussZeichnen(ctx, d, L, H, T) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     const fb = H - L.fuss + (L.fuss - 120) / 2;
@@ -160,6 +217,7 @@
   // d.art: 'ergebnis' (Endstand) oder 'matchday' (Ankündigung)
   async function zeichne(d, format = 'feed') {
     if (d.art === 'sponsor') return zeichneSponsor(d, format);
+    if (d.art === 'ai') return zeichneAi(d, format);
     const L = FORMATE[format] || FORMATE.feed, H = L.h, dy = L.dy;
     const md = d.art === 'matchday', T = md ? THEMA.dunkel : THEMA.hell;
     await ladeSchriften();

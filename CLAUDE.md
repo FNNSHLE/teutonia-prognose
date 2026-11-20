@@ -142,6 +142,11 @@ Kabinenblatt, WhatsApp) shows the own 7m order and goalkeeper, otherwise the opp
 Trikotsponsor“, variant 'logo' (logo large in a white card) or 'foto' (jersey photo + small logo card). Shown in
 Social & Assets with an Instagram caption (`sponsorText`). Swap the logo file for a higher resolution when available.
 
+## Cover „Kattas AI-Analyse Freitag“
+
+`AI_BILD` in `app.js` (`d.art === 'ai'`, `zeichneAi` in `ergebnisbild.js`): cover only, no content – dark dot grid,
+„KATTAS“ / „AI-ANALYSE“ (AI in red), yellow „FREITAG“ label, faint bar chart, shared footer. Own module in Social & Assets.
+
 ## Match report text (Spielbericht)
 
 `spielberichtText(g)` in `app.js` writes an Instagram caption for every finished own match from the goal timeline
