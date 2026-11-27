@@ -281,8 +281,11 @@
   const wortmarke = gr => `<span class="wortmarke"${gr ? ` style="font-size:${gr}px"` : ''}>${APP}<span class="ws" aria-hidden="true"><i></i><i></i><i></i></span></span>`;
 
   function logo(id, g = 20) {
-    const t = teams[id];
-    const img = t && t.logo ? `<img alt="" loading="lazy" src="${esc(t.logo)}" onload="this.classList.add('da')" onerror="this.remove()">` : '';
+    // Zuerst die lokale Kopie aus daten/logos/ (scripts/logos.sh), sonst das Original bei Handball 360
+    const t = teams[id], lk = (window.HB_LOGOS || {})[id];
+    const src = lk ? `../daten/logos/${id}.jpg?u=${encodeURIComponent(lk)}` : t && t.logo;
+    const fallback = lk && t && t.logo ? `if(!this.dataset.f){this.dataset.f=1;this.src='${esc(t.logo)}'}else this.remove()` : 'this.remove()';
+    const img = src ? `<img alt="" loading="lazy" src="${esc(src)}" onload="this.classList.add('da')" onerror="${fallback}">` : '';
     return `<span class="logo l${g}" aria-hidden="true"><span class="mono">${esc(t ? t.mono : '?')}</span>${img}</span>`;
   }
   // Spielerin als runder Avatar. Fotos gibt es nur fürs eigene Team (nur dieses hat zugestimmt, scripts/fotos.sh);
