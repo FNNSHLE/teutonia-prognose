@@ -742,6 +742,7 @@
   // Ein einziges Audio-Objekt außerhalb des DOM, damit die Musik beim Wechsel der Bereiche weiterläuft.
   // Alle Team-Songs, neuester zuerst. Der erste läuft im Player auf der Startseite, alle stehen unter Social & Assets.
   const SONGS = [
+    { src: 'assets/teutonia-ellerbek.mp3', cover: 'assets/teutonia-ellerbek-cover.jpg', titel: 'Teutonia, wir laufen euch davon', zusatz: 'Harzverbot in Ellerbek', datei: 'teutonia-wir-laufen-euch-davon-ellerbek.mp3', dauer: 187 },
     { src: 'assets/teutonia-vibe-norderstedt.mp3', cover: 'assets/teutonia-vibe-norderstedt-cover.jpg', titel: 'Teutonia, Teutonia', zusatz: 'unser Vibe für Norderstedt', datei: 'teutonia-teutonia-norderstedt.mp3', dauer: 183 },
     { src: 'assets/teutonia-vibe.mp3', cover: 'assets/teutonia-vibe-cover.jpg', titel: 'Teutonia, Teutonia', zusatz: 'der erste Team-Song', datei: 'teutonia-teutonia.mp3', dauer: 184 },
   ];
